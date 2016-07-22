@@ -20,7 +20,8 @@ fi
   mkdir -p vendor/lib
   cd vendor/lib
   # Convince VulkanSamples/CMakeLists.txt that SPIRV-Tools is installed correctly.
-  ln -sf . x86_64
+  rm -f x86_64
+  ln -s . x86_64
 )
 
 # The entire tree under vendor/lib is in .gitignore.
