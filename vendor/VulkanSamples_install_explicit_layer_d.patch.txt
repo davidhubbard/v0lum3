@@ -1,0 +1,16 @@
+diff --git a/layers/CMakeLists.txt b/layers/CMakeLists.txt
+index 076b847..5eceb55 100644
+--- a/layers/CMakeLists.txt
++++ b/layers/CMakeLists.txt
+@@ -62,6 +62,11 @@ else()
+                 )
+         endforeach(config_file)
+     endif()
++    foreach (config_file ${LAYER_JSON_FILES})
++        install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/linux/${config_file}.json
++            DESTINATION etc/vulkan/explicit_layer.d
++            )
++    endforeach(config_file)
+ endif()
+ 
+ if (WIN32)
