@@ -1,0 +1,19 @@
+[submodule "vendor/VulkanSamples"]
+	path = vendor/VulkanSamples
+	url = https://github.com/LunarG/VulkanSamples.git
+	ignore = dirty
+[submodule "vendor/glfw"]
+	path = vendor/glfw
+	url = https://github.com/glfw/glfw.git
+	ignore = untracked
+[submodule "vendor/glslang"]
+	path = vendor/glslang
+	url = https://github.com/KhronosGroup/glslang.git
+	ignore = dirty
+[submodule "vendor/SPIRV-Tools"]
+	path = vendor/SPIRV-Tools
+	url = https://github.com/KhronosGroup/SPIRV-Tools.git
+	ignore = untracked
+[submodule "vendor/SPIRV-Headers"]
+	path = vendor/SPIRV-Headers
+	url = https://github.com/KhronosGroup/SPIRV-Headers.git
