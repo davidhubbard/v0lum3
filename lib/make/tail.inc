@@ -93,7 +93,7 @@ else
 ifneq ($(TARGET_BIN),)
 all: $(TARGET_BIN)
 
-$(TARGET_BIN): $(OBJS)
+$(TARGET_BIN): $(OBJS) $(LIBS)
 ifeq ($(V),)
 	@echo "LINK   $(RELATIVE_PATH)$@"; \
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LIBS) $(LDFLAGS)
