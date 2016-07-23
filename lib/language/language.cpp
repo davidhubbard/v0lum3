@@ -130,6 +130,92 @@ static int initInstance(Instance* inst, const char ** requiredExtensions, size_t
 	return 0;
 }
 
+static const char * requiredDeviceExtensions[] = {
+	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+};
+
+static int initSupportedQueues(Instance * inst, const VkSurfaceKHR& surface,
+		const VkPhysicalDevice& phys, std::vector<VkQueueFamilyProperties>& vkQFams) {
+	// Construct dev by copy. emplace_back(Device{}) produced this error:
+	// "sorry, unimplemented: non-trivial designated initializers not supported"
+	Device dev;
+	memset(&dev, 0, sizeof(dev));
+	dev.phys = phys;
+
+	VkBool32 oneQueueWithPresentSupported = false;
+	for (size_t q_i = 0; q_i < vkQFams.size(); q_i++) {
+		VkBool32 isPresentSupported = false;
+		VkResult v = vkGetPhysicalDeviceSurfaceSupportKHR(phys, q_i, surface, &isPresentSupported);
+		if (v != VK_SUCCESS) {
+			fprintf(stderr, "dev %zu qfam %zu: vkGetPhysicalDeviceSurfaceSupportKHR returned %d\n",
+				inst->devs.size(), q_i, v);
+			return 1;
+		}
+		oneQueueWithPresentSupported |= isPresentSupported;
+		printf("dev %zu qfam %zu: isPresentSupported=%s\n", inst->devs.size(), q_i, isPresentSupported ? "T" : "F");
+
+		dev.qfams.emplace_back(QueueFamily{
+			vk: vkQFams.at(q_i),
+			surfaceSupport: isPresentSupported ? PRESENT : NONE,
+			prios: std::vector<float>(),
+			queues: std::vector<VkQueue>(),
+		});
+	}
+
+	auto* devExtensions = Vk::getDeviceExtensions(phys);
+	if (!devExtensions) {
+		return 1;
+	}
+	dev.availableExtensions = *devExtensions;
+	delete devExtensions;
+	devExtensions = nullptr;
+
+	printf("dev %zu oneQueueWithPresentSupported=%s\n", inst->devs.size(), oneQueueWithPresentSupported ? "T" : "F");
+	bool allExtensionsFound = true;
+	if (oneQueueWithPresentSupported) {
+		// A device with a queue that can PRESENT must have
+		// all of requiredDeviceExtensions.
+		// (You can delete this block of code if your app checks
+		// device extension support in devQuery().)
+		for (size_t i = 0, j; i < sizeof(requiredDeviceExtensions)/sizeof(requiredDeviceExtensions[0]); i++) {
+			for (j = 0; j < dev.availableExtensions.size(); j++) {
+				if (!strcmp(dev.availableExtensions.at(j).extensionName, requiredDeviceExtensions[i])) {
+					break;
+				}
+			}
+			if (j >= dev.availableExtensions.size()) {
+				// requiredDeviceExtensions[i] was not found in dev.availableExtensions.
+				printf("dev %zu does not have: %s\n", inst->devs.size(), requiredDeviceExtensions[i]);
+				allExtensionsFound = false;
+				break;
+			}
+		}
+	}
+
+	printf("dev %zu allExtensionsFound=%s\n", inst->devs.size(), allExtensionsFound ? "T" : "F");
+	if (allExtensionsFound) {
+		inst->devs.push_back(dev);
+	}
+	return 0;
+}
+
+static int initSupportedDevices(Instance * inst, const VkSurfaceKHR& surface,
+		std::vector<VkPhysicalDevice>& physDevs) {
+	for (const auto& phys : physDevs) {
+		auto* vkQFams = Vk::getQueueFamilies(phys);
+		if (vkQFams == nullptr) {
+			return 1;
+		}
+		int r = initSupportedQueues(inst, surface, phys, *vkQFams);
+		delete vkQFams;
+		vkQFams = nullptr;
+		if (r) {
+			return r;
+		}
+	}
+	return 0;
+}
+
 }  // anonymous namespace
 
 int Instance::ctorError(const char ** requiredExtensions, size_t requiredExtensionCount) {
@@ -159,41 +245,12 @@ int Instance::open(const VkSurfaceKHR& surface, devQueryFn devQuery) {
 	if (physDevs == nullptr) {
 		return 1;
 	}
-	for (const auto& phys : *physDevs) {
-		auto* vkQFams = Vk::getQueueFamilies(phys);
-		if (vkQFams == nullptr) {
-			return 1;
-		}
-
-		std::vector<QueueFamily> qfams;
-		for (size_t q_i = 0; q_i < vkQFams->size(); q_i++) {
-			VkBool32 isPresentSupported = false;
-			VkResult v = vkGetPhysicalDeviceSurfaceSupportKHR(phys, q_i, surface, &isPresentSupported);
-			if (v != VK_SUCCESS) {
-				fprintf(stderr, "dev %zu qfam %zu: vkGetPhysicalDeviceSurfaceSupportKHR returned %d\n",
-					devs.size(), q_i, v);
-				delete vkQFams;
-				return 1;
-			}
-
-			qfams.emplace_back(QueueFamily{
-				vk: vkQFams->at(q_i),
-				surfaceSupport: isPresentSupported ? PRESENT : NONE,
-				prios: std::vector<float>(),
-				queues: std::vector<VkQueue>(),
-			});
-		}
-
-		devs.emplace_back(Device{
-			dev: nullptr,
-			phys: phys,
-			qfams: qfams,
-			extensionRequests: std::vector<const char *>(),
-		});
-		delete vkQFams;
-	}
+	int r = initSupportedDevices(this, surface, *physDevs);
 	delete physDevs;
 	physDevs = nullptr;
+	if (r) {
+		return r;
+	}
 
 	if (devs.size() == 0) {
 		fprintf(stderr, "No Vulkan-capable devices found on your system. Try running vulkaninfo to troubleshoot.\n");
@@ -211,8 +268,7 @@ int Instance::open(const VkSurfaceKHR& surface, devQueryFn devQuery) {
 	}
 
 	std::vector<QueueRequest> request;
-	int r = devQuery(request);
-	if (r) {
+	if ((r = devQuery(request)) != 0) {
 		return r;
 	}
 
@@ -282,11 +338,15 @@ int Instance::open(const VkSurfaceKHR& surface, devQueryFn devQuery) {
 		}
 	}
 
-	// Get created queues
+	// Copy KvQueue objects into dev.qfam.queues.
 	for (const auto& kv : requested_devs) {
 		auto& dev = devs.at(kv.first);
 		for (size_t q_i = 0; q_i < dev.qfams.size(); q_i++) {
 			auto& qfam = dev.qfams.at(q_i);
+			if (dbg_lvl && qfam.prios.size()) {
+				printf("OK: dev %zu qfam %zu: got %zu queue%s\n",
+					(size_t) kv.first, q_i, qfam.prios.size(), qfam.prios.size() != 1 ? "s" : "");
+			}
 			for (size_t i = 0; i < qfam.prios.size(); i++) {
 				qfam.queues.emplace_back();
 				vkGetDeviceQueue(dev.dev, q_i, i, &(*(qfam.queues.end() - 1)));

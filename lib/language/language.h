@@ -134,6 +134,7 @@ typedef struct QueueFamily {
 typedef struct Device {
 	VkDevice dev;  // Logical Device. Unpopulated during devQuery().
 	VkPhysicalDevice phys;  // Physical Device. Populated for devQuery().
+	std::vector<VkExtensionProperties> availableExtensions;
 	std::vector<QueueFamily> qfams;
 	std::vector<const char *> extensionRequests;
 } Device;
