@@ -2,7 +2,6 @@
  */
 #include "language.h"
 #include "VkInit.h"
-#include "VkPtr.h"
 #include "VkEnum.h"
 
 #include <string>
