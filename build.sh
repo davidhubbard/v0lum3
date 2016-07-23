@@ -111,4 +111,4 @@ done
 echo ""
 echo "Success. Things to try next:"
 echo "  vendor/VulkanSamples/build/demos/vulkaninfo 2>&1 | head -n40"
-echo "  make -C main"
+echo "  make -j$NPROC"
