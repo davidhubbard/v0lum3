@@ -1,3 +1,4 @@
-vendor/lib
 vendor/bin
+vendor/etc
 vendor/include
+vendor/lib
