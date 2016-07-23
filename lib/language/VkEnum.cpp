@@ -150,7 +150,7 @@ std::vector<VkSurfaceFormatKHR> * getSurfaceFormats(const VkPhysicalDevice& dev,
 	return formats;
 }
 
-std::vector<VkPresentModeKHR> * getSurfacePresentModes(const VkPhysicalDevice& dev,
+std::vector<VkPresentModeKHR> * getPresentModes(const VkPhysicalDevice& dev,
 		const VkSurfaceKHR& surface) {
 	uint32_t modeCount = 0;
 	VkResult r = vkGetPhysicalDeviceSurfacePresentModesKHR(dev, surface, &modeCount, nullptr);

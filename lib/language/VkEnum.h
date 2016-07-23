@@ -19,7 +19,7 @@ std::vector<VkExtensionProperties> * getDeviceExtensions(const VkPhysicalDevice&
 
 std::vector<VkSurfaceFormatKHR> * getSurfaceFormats(const VkPhysicalDevice& dev,
 		const VkSurfaceKHR& surface);
-std::vector<VkPresentModeKHR> * getSurfacePresentModes(const VkPhysicalDevice& dev,
+std::vector<VkPresentModeKHR> * getPresentModes(const VkPhysicalDevice& dev,
 		const VkSurfaceKHR& surface);
 
 }  // namespace Vk
