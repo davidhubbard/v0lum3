@@ -103,6 +103,29 @@ std::vector<VkQueueFamilyProperties>* getQueueFamilies(const VkPhysicalDevice& d
 	return qs;
 }
 
+std::vector<VkExtensionProperties> * getDeviceExtensions(const VkPhysicalDevice& dev) {
+	uint32_t extensionCount = 0;
+	VkResult r = vkEnumerateDeviceExtensionProperties(dev, nullptr, &extensionCount, nullptr);
+	if (r != VK_SUCCESS) {
+		fprintf(stderr, "vkEnumerateDeviceExtensionProperties(count) returned %d", r);
+		return nullptr;
+	}
+	auto* extensions = new std::vector<VkExtensionProperties>(extensionCount);
+	r = vkEnumerateDeviceExtensionProperties(dev, nullptr, &extensionCount, extensions->data());
+	if (r != VK_SUCCESS) {
+		fprintf(stderr, "vkEnumerateDeviceExtensionProperties(all) returned %d", r);
+		delete extensions;
+		return nullptr;
+	}
+	if (extensionCount > extensions->size()) {
+		fprintf(stderr, "vkEnumerateDeviceExtensionProperties(all) returned count=%u, larger than previously (%zu)\n",
+			extensionCount, extensions->size());
+		delete extensions;
+		return nullptr;
+	}
+	return extensions;
+}
+
 }  // namespace Vk
 }  // namespace VkEnum
 }  // namespace language

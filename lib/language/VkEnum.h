@@ -14,6 +14,7 @@ std::vector<VkExtensionProperties> * getExtensions();
 std::vector<VkLayerProperties> * getLayers();
 std::vector<VkPhysicalDevice> * getDevices(const VkInstance& instance);
 std::vector<VkQueueFamilyProperties>* getQueueFamilies(const VkPhysicalDevice& dev);
+std::vector<VkExtensionProperties> * getDeviceExtensions(const VkPhysicalDevice& dev);
 
 }  // namespace Vk
 }  // namespace VkEnum
