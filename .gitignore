@@ -21,3 +21,4 @@ out64/*
 *.sdf
 *.filters
 *.o
+*.a
