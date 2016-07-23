@@ -4,9 +4,6 @@
 #include "VkInit.h"
 #include "VkEnum.h"
 
-#include <string>
-#include <map>
-
 namespace language {
 using namespace VkEnum;
 
