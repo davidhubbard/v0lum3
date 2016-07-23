@@ -126,6 +126,54 @@ std::vector<VkExtensionProperties> * getDeviceExtensions(const VkPhysicalDevice&
 	return extensions;
 }
 
+std::vector<VkSurfaceFormatKHR> * getSurfaceFormats(const VkPhysicalDevice& dev,
+		const VkSurfaceKHR& surface) {
+	uint32_t formatCount = 0;
+	VkResult r = vkGetPhysicalDeviceSurfaceFormatsKHR(dev, surface, &formatCount, nullptr);
+	if (r != VK_SUCCESS) {
+		fprintf(stderr, "vkGetPhysicalDeviceSurfaceFormatsKHR(count) returned %d", r);
+		return nullptr;
+	}
+	auto* formats = new std::vector<VkSurfaceFormatKHR>(formatCount);
+	r = vkGetPhysicalDeviceSurfaceFormatsKHR(dev, surface, &formatCount, formats->data());
+	if (r != VK_SUCCESS) {
+		fprintf(stderr, "vkGetPhysicalDeviceSurfaceFormatsKHR(all) returned %d", r);
+		delete formats;
+		return nullptr;
+	}
+	if (formatCount > formats->size()) {
+		fprintf(stderr, "vkGetPhysicalDeviceSurfaceFormatsKHR(all) returned count=%u, larger than previously (%zu)\n",
+			formatCount, formats->size());
+		delete formats;
+		return nullptr;
+	}
+	return formats;
+}
+
+std::vector<VkPresentModeKHR> * getSurfacePresentModes(const VkPhysicalDevice& dev,
+		const VkSurfaceKHR& surface) {
+	uint32_t modeCount = 0;
+	VkResult r = vkGetPhysicalDeviceSurfacePresentModesKHR(dev, surface, &modeCount, nullptr);
+	if (r != VK_SUCCESS) {
+		fprintf(stderr, "vkGetPhysicalDeviceSurfacePresentModesKHR(count) returned %d", r);
+		return nullptr;
+	}
+	auto* modes = new std::vector<VkPresentModeKHR>(modeCount);
+	r = vkGetPhysicalDeviceSurfacePresentModesKHR(dev, surface, &modeCount, modes->data());
+	if (r != VK_SUCCESS) {
+		fprintf(stderr, "vkGetPhysicalDeviceSurfacePresentModesKHR(all) returned %d", r);
+		delete modes;
+		return nullptr;
+	}
+	if (modeCount > modes->size()) {
+		fprintf(stderr, "vkGetPhysicalDeviceSurfacePresentModesKHR(all) returned count=%u, larger than previously (%zu)\n",
+			modeCount, modes->size());
+		delete modes;
+		return nullptr;
+	}
+	return modes;
+}
+
 }  // namespace Vk
 }  // namespace VkEnum
 }  // namespace language
