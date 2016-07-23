@@ -82,6 +82,7 @@ namespace language {
 
 // For debugging lib/language: set language::dbg_lvl to higher values to log more debug info.
 extern int dbg_lvl;
+extern const char VK_LAYER_LUNARG_standard_validation[];
 
 // SurfaceSupport encodes the result of vkGetPhysicalDeviceSurfaceSupportKHR().
 enum SurfaceSupport {
