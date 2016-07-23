@@ -54,7 +54,12 @@ endif
 
 clean:
 ifneq ($(strip $(TARGET_BIN) $(TARGET_LIB) $(OBJS)),)
+ifeq ($(V),)
+	@echo "clean $(RELATIVE_PATH): $(RM) $(strip $(TARGET_BIN) $(TARGET_LIB) $(OBJS))"; \
 	$(RM) $(strip $(TARGET_BIN) $(TARGET_LIB) $(OBJS))
+else
+	$(RM) $(strip $(TARGET_BIN) $(TARGET_LIB) $(OBJS))
+endif
 endif
 
 define SUBDIR_TARGET
