@@ -182,6 +182,7 @@ typedef struct Device {
 	// Unpopulated during devQuery().
 	VkPtr<VkSwapchainKHR> swapchain{dev, vkDestroySwapchainKHR};
 	std::vector<VkImage> images;
+	std::vector<VkPtr<VkImageView>> imageViews;
 
 protected:
 	friend struct Instance;

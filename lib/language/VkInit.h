@@ -50,6 +50,11 @@ inline void _VkInit(VkSwapchainCreateInfoKHR& scci) {
 	scci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 }
 
+inline void _VkInit(VkImageViewCreateInfo& ivci) {
+	memset(&ivci, 0, sizeof(ivci));
+	ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+}
+
 }  // namespace internal
 }  // namespace language
 
