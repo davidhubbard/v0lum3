@@ -132,12 +132,23 @@ typedef struct QueueFamily {
 // Instance::open() uses devQuery() to set up each Device. When devQuery() returns,
 // the QueueRequest vector is used to create Device::dev (the logical device).
 // open() also populates Device::qfams.queues.
+//
+// surfaceFormats and presentModes are populated during devQuery() if the device
+// claims to have a queue that supports PRESENT (and has the right extensions to
+// do a swapchain). devQuery() may choose a different format or mode. But
+// devQuery() only _must_ look at qfams.surfaceSupport - format and mode are
+// handled automatically.
 typedef struct Device {
 	VkDevice dev;  // Logical Device. Unpopulated during devQuery().
 	VkPhysicalDevice phys;  // Physical Device. Populated for devQuery().
-	std::vector<VkExtensionProperties> availableExtensions;
+	std::vector<VkExtensionProperties> availableExtensions;  // populated.
 	std::vector<QueueFamily> qfams;
 	std::vector<const char *> extensionRequests;
+
+	std::vector<VkSurfaceFormatKHR> surfaceFormats;
+	std::vector<VkPresentModeKHR> presentModes;
+	VkSurfaceFormatKHR format;
+	VkPresentModeKHR mode;
 } Device;
 
 typedef std::function<int(std::vector<QueueRequest>& request)> devQueryFn;
@@ -181,6 +192,13 @@ typedef struct Instance {
 	WARN_UNUSED_RESULT int open(const VkSurfaceKHR& surface, devQueryFn devQuery);
 
 	virtual ~Instance();
+
+	// Override initSurfaceFormat() if your app needs a different default.
+	// Note: devQueryFn() can also change the format and mode.
+	virtual int initSurfaceFormat(Device& dev);
+	// Override initPresentMode() if your app needs a different default.
+	// Note: devQueryFn() can also change the format and mode.
+	virtual int initPresentMode(Device& dev);
 } Instance;
 
 } // namespace language

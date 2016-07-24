@@ -68,6 +68,35 @@ static int initSupportedQueues(Instance * inst, const VkSurfaceKHR& surface,
 				return 0;
 			}
 		}
+
+		auto* surfaceFormats = Vk::getSurfaceFormats(phys, surface);
+		if (!surfaceFormats) {
+			return 1;
+		}
+		dev.surfaceFormats = *surfaceFormats;
+		delete surfaceFormats;
+		surfaceFormats = nullptr;
+
+		auto* presentModes = Vk::getPresentModes(phys, surface);
+		if (!presentModes) {
+			return 1;
+		}
+		dev.presentModes = *presentModes;
+		delete presentModes;
+		presentModes = nullptr;
+
+		if (dev.surfaceFormats.size() == 0 || dev.presentModes.size() == 0) {
+			// Do not add dev: it claims oneQueueWithPresentSupported but it has no
+			// surfaceFormats -- or no presentModes.
+			return 0;
+		}
+		int r = inst->initSurfaceFormat(dev);
+		if (r) {
+			return r;
+		}
+		if ((r = inst->initPresentMode(dev)) != 0) {
+			return r;
+		}
 	}
 
 	inst->devs.push_back(dev);

@@ -3,7 +3,11 @@ include $(TOP)lib/make/head.inc
 
 TARGET_LIB=liblanguage.a
 PKGCONFIG_PKGS+=vulkan
-SRCS=language.cpp deviceinit.cpp VkEnum.cpp
 HDRS=VkPtr.h VkInit.h VkEnum.h
+
+SRCS+=deviceinit.cpp
+SRCS+=language.cpp
+SRCS+=swapchain.cpp
+SRCS+=VkEnum.cpp
 
 include $(TOP)lib/make/tail.inc
