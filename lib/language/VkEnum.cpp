@@ -19,12 +19,13 @@ std::vector<VkExtensionProperties>* getExtensions() {
 	}
 	auto* extensions = new std::vector<VkExtensionProperties>(extensionCount);
 	r = vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions->data());
-	if (r != VK_SUCCESS) {
+	if (r != VK_SUCCESS && r != VK_INCOMPLETE) {
 		fprintf(stderr, "vkEnumerateInstanceExtensionProperties(all) returned %d", r);
 		delete extensions;
 		return nullptr;
 	}
 	if (extensionCount > extensions->size()) {
+		// This can happen if an extension was added between the two Enumerate calls.
 		fprintf(stderr, "vkEnumerateInstanceExtensionProperties(all) returned count=%u, larger than previously (%zu)\n",
 			extensionCount, extensions->size());
 		delete extensions;
@@ -42,12 +43,13 @@ std::vector<VkLayerProperties>* getLayers() {
 	}
 	auto* layers = new std::vector<VkLayerProperties>(layerCount);
 	r = vkEnumerateInstanceLayerProperties(&layerCount, layers->data());
-	if (r != VK_SUCCESS) {
+	if (r != VK_SUCCESS && r != VK_INCOMPLETE) {
 		fprintf(stderr, "vkEnumerateInstanceLayerProperties(all) returned %d", r);
 		delete layers;
 		return nullptr;
 	}
 	if (layerCount > layers->size()) {
+		// This can happen if a layer was added between the two Enumerate calls.
 		fprintf(stderr, "vkEnumerateInstanceLayerProperties(all) returned count=%u, larger than previously (%zu)\n",
 			layerCount, layers->size());
 		delete layers;
@@ -65,12 +67,13 @@ std::vector<VkPhysicalDevice>* getDevices(VkInstance instance) {
 	}
 	auto* devs = new std::vector<VkPhysicalDevice>(devCount);
 	r = vkEnumeratePhysicalDevices(instance, &devCount, devs->data());
-	if (r != VK_SUCCESS) {
+	if (r != VK_SUCCESS && r != VK_INCOMPLETE) {
 		fprintf(stderr, "vkEnumeratePhysicalDevices(all) returned %d", r);
 		delete devs;
 		return nullptr;
 	}
 	if (devCount > devs->size()) {
+		// This can happen if a device was added between the two Enumerate calls.
 		fprintf(stderr, "vkEnumeratePhysicalDevices(all) returned count=%u, larger than previously (%zu)\n",
 			devCount, devs->size());
 		delete devs;
@@ -85,6 +88,7 @@ std::vector<VkQueueFamilyProperties>* getQueueFamilies(VkPhysicalDevice dev) {
 	auto* qs = new std::vector<VkQueueFamilyProperties>(qCount);
 	vkGetPhysicalDeviceQueueFamilyProperties(dev, &qCount, qs->data());
 	if (qCount > qs->size()) {
+		// This can happen if a queue family was added between the two Enumerate calls.
 		fprintf(stderr, "vkGetPhysicalDeviceQueueFamilyProperties(all) returned count=%u, larger than previously (%zu)\n",
 			qCount, qs->size());
 		delete qs;
@@ -112,12 +116,13 @@ std::vector<VkExtensionProperties> * getDeviceExtensions(VkPhysicalDevice dev) {
 	}
 	auto* extensions = new std::vector<VkExtensionProperties>(extensionCount);
 	r = vkEnumerateDeviceExtensionProperties(dev, nullptr, &extensionCount, extensions->data());
-	if (r != VK_SUCCESS) {
+	if (r != VK_SUCCESS && r != VK_INCOMPLETE) {
 		fprintf(stderr, "vkEnumerateDeviceExtensionProperties(all) returned %d", r);
 		delete extensions;
 		return nullptr;
 	}
 	if (extensionCount > extensions->size()) {
+		// This can happen if an extension was added between the two Enumerate calls.
 		fprintf(stderr, "vkEnumerateDeviceExtensionProperties(all) returned count=%u, larger than previously (%zu)\n",
 			extensionCount, extensions->size());
 		delete extensions;
@@ -136,12 +141,13 @@ std::vector<VkSurfaceFormatKHR> * getSurfaceFormats(VkPhysicalDevice dev,
 	}
 	auto* formats = new std::vector<VkSurfaceFormatKHR>(formatCount);
 	r = vkGetPhysicalDeviceSurfaceFormatsKHR(dev, surface, &formatCount, formats->data());
-	if (r != VK_SUCCESS) {
+	if (r != VK_SUCCESS && r != VK_INCOMPLETE) {
 		fprintf(stderr, "vkGetPhysicalDeviceSurfaceFormatsKHR(all) returned %d", r);
 		delete formats;
 		return nullptr;
 	}
 	if (formatCount > formats->size()) {
+		// This can happen if a format was added between the two Get calls.
 		fprintf(stderr, "vkGetPhysicalDeviceSurfaceFormatsKHR(all) returned count=%u, larger than previously (%zu)\n",
 			formatCount, formats->size());
 		delete formats;
@@ -160,12 +166,13 @@ std::vector<VkPresentModeKHR> * getPresentModes(VkPhysicalDevice dev,
 	}
 	auto* modes = new std::vector<VkPresentModeKHR>(modeCount);
 	r = vkGetPhysicalDeviceSurfacePresentModesKHR(dev, surface, &modeCount, modes->data());
-	if (r != VK_SUCCESS) {
+	if (r != VK_SUCCESS && r != VK_INCOMPLETE) {
 		fprintf(stderr, "vkGetPhysicalDeviceSurfacePresentModesKHR(all) returned %d", r);
 		delete modes;
 		return nullptr;
 	}
 	if (modeCount > modes->size()) {
+		// This can happen if a mode was added between the two Get calls.
 		fprintf(stderr, "vkGetPhysicalDeviceSurfacePresentModesKHR(all) returned count=%u, larger than previously (%zu)\n",
 			modeCount, modes->size());
 		delete modes;
@@ -184,12 +191,13 @@ std::vector<VkImage> * getSwapchainImages(VkDevice dev,
 	}
 	auto* images = new std::vector<VkImage>(imageCount);
 	r = vkGetSwapchainImagesKHR(dev, swapchain, &imageCount, images->data());
-	if (r != VK_SUCCESS) {
+	if (r != VK_SUCCESS && r != VK_INCOMPLETE) {
 		fprintf(stderr, "vkGetSwapchainImagesKHR(all) returned %d", r);
 		delete images;
 		return nullptr;
 	}
 	if (imageCount > images->size()) {
+		// This can happen if an image was added between the two Get calls.
 		fprintf(stderr, "vkGetSwapchainImagesKHR(all) returned count=%u, larger than previously (%zu)\n",
 			imageCount, images->size());
 		delete images;
