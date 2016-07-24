@@ -99,6 +99,32 @@ int Device::createSwapchain(Instance& inst, VkExtent2D surfaceSizeRequest) {
 	}
 	images = *vkImages;
 	delete vkImages;
+
+	if (imageViews.size() != 0) {
+		fprintf(stderr, "BUG: imageViews gets initialized here. "
+			"That should happen only once! (why is size %zu?)\n",
+			imageViews.size());
+		return 1;
+	}
+	for (size_t i = 0; i < images.size(); i++) {
+		imageViews.emplace_back(VkPtr<VkImageView>{dev, vkDestroyImageView});
+
+		VkImageViewCreateInfo VkInit(ivci);
+		ivci.image = images.at(i);
+		ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		ivci.format = format.format;
+		ivci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		ivci.subresourceRange.baseMipLevel = 0;  // No mipmapping.
+		ivci.subresourceRange.levelCount = 1;
+		ivci.subresourceRange.baseArrayLayer = 0;
+		ivci.subresourceRange.layerCount = 1;  // Used for stereo displays.
+		v = vkCreateImageView(dev, &ivci, nullptr, &imageViews.at(i));
+		if (v != VK_SUCCESS) {
+			fprintf(stderr, "vkCreateImageView() returned %d\n", v);
+			imageViews.clear();
+			return 1;
+		}
+	}
 	return 0;
 }
 
