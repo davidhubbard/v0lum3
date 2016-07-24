@@ -1,0 +1,69 @@
+diff --git a/loader/loader.c b/loader/loader.c
+index d0cdc00..e08e5c6 100644
+--- a/loader/loader.c
++++ b/loader/loader.c
+@@ -1043,6 +1043,37 @@ static bool loader_init_layer_list(const struct loader_instance *inst,
+ void loader_destroy_layer_list(const struct loader_instance *inst,
+                                struct loader_device *device,
+                                struct loader_layer_list *layer_list) {
++////
++//// BEGIN BUGFIX: loader_destroy_layer_list() should copy loader_delete_layer_properties()
++//// BEGIN BUGFIX: (which really means they should be refactored into one function)
++////
++    uint32_t i, j;
++    struct loader_device_extension_list *dev_ext_list;
++    if (!layer_list)
++        return;
++
++    for (i = 0; i < layer_list->count; i++) {
++        loader_destroy_generic_list(
++            inst, (struct loader_generic_list *)&layer_list->list[i]
++                      .instance_extension_list);
++        dev_ext_list = &layer_list->list[i].device_extension_list;
++        if (dev_ext_list->capacity > 0 &&
++            NULL != dev_ext_list->list &&
++            dev_ext_list->list->entrypoint_count > 0) {
++            for (j = 0; j < dev_ext_list->list->entrypoint_count; j++) {
++                loader_instance_heap_free(inst, dev_ext_list->list->entrypoints[j]);
++            }
++            loader_instance_heap_free(inst, dev_ext_list->list->entrypoints);
++        }
++        loader_destroy_generic_list(inst,
++                                    (struct loader_generic_list *)dev_ext_list);
++    }
++    layer_list->count = 0;
++////
++//// END BUGFIX: loader_destroy_layer_list() should copy loader_delete_layer_properties()
++//// END BUGFIX: (which really means they should be refactored into one function)
++////
++
+     if (device) {
+         loader_device_heap_free(device, layer_list->list);
+     } else {
+@@ -2610,7 +2641,7 @@ static VkResult loader_get_manifest_files(
+ 
+     // Print out the paths being searched if debugging is enabled
+     loader_log(inst, VK_DEBUG_REPORT_DEBUG_BIT_EXT, 0,
+-               "Searching the following paths for manifest files: %s\n", loc);
++               "Searching the following paths for manifest files: %s", loc);
+ 
+     file = loc;
+     while (*file) {
+@@ -2732,7 +2763,7 @@ static VkResult loader_get_manifest_files(
+ 
+                 loader_log(
+                     inst, VK_DEBUG_REPORT_DEBUG_BIT_EXT, 0,
+-                    "Searching the following paths for manifest files: %s\n",
++                    "Searching the following paths for manifest files: %s",
+                     home_loc);
+                 list_is_dirs = true;
+             }
+@@ -2880,7 +2911,7 @@ VkResult loader_icd_scan(const struct loader_instance *inst,
+                 // Print out the paths being searched if debugging is enabled
+                 loader_log(
+                     inst, VK_DEBUG_REPORT_DEBUG_BIT_EXT, 0,
+-                    "Searching for ICD drivers named %s default dir %s\n",
++                    "Searching for ICD drivers named %s default dir %s",
+                     library_path, DEFAULT_VK_DRIVERS_PATH);
+                 if (loader_platform_is_path(library_path)) {
+                     // a relative or absolute path
