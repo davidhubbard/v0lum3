@@ -3,7 +3,8 @@
 #
 # Set up dependencies and compiler flags.
 #
-CXXFLAGS+=-g -std=c++11 -fno-exceptions -Wall -Wextra
+CXXFLAGS+=-ggdb -std=c++11 -fno-exceptions -Wall -Wextra
+LDFLAGS+=-Og -ggdb
 PKG_CONFIG_FLAGS+=--static
 
 ifneq ($(TOP),)
