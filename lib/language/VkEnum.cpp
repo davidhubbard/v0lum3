@@ -56,7 +56,7 @@ std::vector<VkLayerProperties>* getLayers() {
 	return layers;
 }
 
-std::vector<VkPhysicalDevice>* getDevices(const VkInstance& instance) {
+std::vector<VkPhysicalDevice>* getDevices(VkInstance instance) {
 	uint32_t devCount = 0;
 	VkResult r = vkEnumeratePhysicalDevices(instance, &devCount, nullptr);
 	if (r != VK_SUCCESS) {
@@ -79,7 +79,7 @@ std::vector<VkPhysicalDevice>* getDevices(const VkInstance& instance) {
 	return devs;
 }
 
-std::vector<VkQueueFamilyProperties>* getQueueFamilies(const VkPhysicalDevice& dev) {
+std::vector<VkQueueFamilyProperties>* getQueueFamilies(VkPhysicalDevice dev) {
 	uint32_t qCount = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(dev, &qCount, nullptr);
 	auto* qs = new std::vector<VkQueueFamilyProperties>(qCount);
@@ -103,7 +103,7 @@ std::vector<VkQueueFamilyProperties>* getQueueFamilies(const VkPhysicalDevice& d
 	return qs;
 }
 
-std::vector<VkExtensionProperties> * getDeviceExtensions(const VkPhysicalDevice& dev) {
+std::vector<VkExtensionProperties> * getDeviceExtensions(VkPhysicalDevice dev) {
 	uint32_t extensionCount = 0;
 	VkResult r = vkEnumerateDeviceExtensionProperties(dev, nullptr, &extensionCount, nullptr);
 	if (r != VK_SUCCESS) {
@@ -126,8 +126,8 @@ std::vector<VkExtensionProperties> * getDeviceExtensions(const VkPhysicalDevice&
 	return extensions;
 }
 
-std::vector<VkSurfaceFormatKHR> * getSurfaceFormats(const VkPhysicalDevice& dev,
-		const VkSurfaceKHR& surface) {
+std::vector<VkSurfaceFormatKHR> * getSurfaceFormats(VkPhysicalDevice dev,
+		VkSurfaceKHR surface) {
 	uint32_t formatCount = 0;
 	VkResult r = vkGetPhysicalDeviceSurfaceFormatsKHR(dev, surface, &formatCount, nullptr);
 	if (r != VK_SUCCESS) {
@@ -150,8 +150,8 @@ std::vector<VkSurfaceFormatKHR> * getSurfaceFormats(const VkPhysicalDevice& dev,
 	return formats;
 }
 
-std::vector<VkPresentModeKHR> * getPresentModes(const VkPhysicalDevice& dev,
-		const VkSurfaceKHR& surface) {
+std::vector<VkPresentModeKHR> * getPresentModes(VkPhysicalDevice dev,
+		VkSurfaceKHR surface) {
 	uint32_t modeCount = 0;
 	VkResult r = vkGetPhysicalDeviceSurfacePresentModesKHR(dev, surface, &modeCount, nullptr);
 	if (r != VK_SUCCESS) {
@@ -172,6 +172,30 @@ std::vector<VkPresentModeKHR> * getPresentModes(const VkPhysicalDevice& dev,
 		return nullptr;
 	}
 	return modes;
+}
+
+std::vector<VkImage> * getSwapchainImages(VkDevice dev,
+		VkSwapchainKHR swapchain) {
+	uint32_t imageCount = 0;
+	VkResult r = vkGetSwapchainImagesKHR(dev, swapchain, &imageCount, nullptr);
+	if (r != VK_SUCCESS) {
+		fprintf(stderr, "vkGetSwapchainImagesKHR(count) returned %d", r);
+		return nullptr;
+	}
+	auto* images = new std::vector<VkImage>(imageCount);
+	r = vkGetSwapchainImagesKHR(dev, swapchain, &imageCount, images->data());
+	if (r != VK_SUCCESS) {
+		fprintf(stderr, "vkGetSwapchainImagesKHR(all) returned %d", r);
+		delete images;
+		return nullptr;
+	}
+	if (imageCount > images->size()) {
+		fprintf(stderr, "vkGetSwapchainImagesKHR(all) returned count=%u, larger than previously (%zu)\n",
+			imageCount, images->size());
+		delete images;
+		return nullptr;
+	}
+	return images;
 }
 
 }  // namespace Vk

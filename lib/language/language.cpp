@@ -144,7 +144,22 @@ int Instance::ctorError(const char ** requiredExtensions, size_t requiredExtensi
 	return r;
 }
 
+void Instance::cleanSurface() {
+	for (auto& dev : devs) {
+		if (dev.swapchain != VK_NULL_HANDLE) {
+			vkDestroySwapchainKHR(dev.dev, dev.swapchain, nullptr /*allocator*/);
+			dev.swapchain = VK_NULL_HANDLE;
+		}
+		if (dev.dev != VK_NULL_HANDLE) {
+			vkDestroyDevice(dev.dev, nullptr /*allocator*/);
+			dev.dev = VK_NULL_HANDLE;
+		}
+	}
+	devs.clear();
+}
+
 Instance::~Instance() {
+	cleanSurface();
 	vkDestroyInstance(vk, nullptr);
 }
 

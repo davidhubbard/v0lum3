@@ -12,15 +12,17 @@ namespace Vk {
 
 std::vector<VkExtensionProperties> * getExtensions();
 std::vector<VkLayerProperties> * getLayers();
-std::vector<VkPhysicalDevice> * getDevices(const VkInstance& instance);
+std::vector<VkPhysicalDevice> * getDevices(VkInstance instance);
 
-std::vector<VkQueueFamilyProperties>* getQueueFamilies(const VkPhysicalDevice& dev);
-std::vector<VkExtensionProperties> * getDeviceExtensions(const VkPhysicalDevice& dev);
+std::vector<VkQueueFamilyProperties>* getQueueFamilies(VkPhysicalDevice dev);
+std::vector<VkExtensionProperties> * getDeviceExtensions(VkPhysicalDevice dev);
 
-std::vector<VkSurfaceFormatKHR> * getSurfaceFormats(const VkPhysicalDevice& dev,
-		const VkSurfaceKHR& surface);
-std::vector<VkPresentModeKHR> * getPresentModes(const VkPhysicalDevice& dev,
-		const VkSurfaceKHR& surface);
+std::vector<VkSurfaceFormatKHR> * getSurfaceFormats(VkPhysicalDevice dev,
+		VkSurfaceKHR surface);
+std::vector<VkPresentModeKHR> * getPresentModes(VkPhysicalDevice dev,
+		VkSurfaceKHR surface);
+std::vector<VkImage> * getSwapchainImages(VkDevice dev,
+		VkSwapchainKHR swapchain);
 
 }  // namespace Vk
 }  // namespace VkEnum

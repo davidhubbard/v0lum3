@@ -45,6 +45,11 @@ inline void _VkInit(VkPhysicalDeviceFeatures& df) {
 	// VkPhysicalDeviceFeatures has no 'sType'.
 }
 
+inline void _VkInit(VkSwapchainCreateInfoKHR& scci) {
+	memset(&scci, 0, sizeof(scci));
+	scci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+}
+
 }  // namespace internal
 }  // namespace language
 

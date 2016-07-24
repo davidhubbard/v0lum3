@@ -90,11 +90,11 @@ static int initSupportedQueues(Instance * inst, const VkSurfaceKHR& surface,
 			// surfaceFormats -- or no presentModes.
 			return 0;
 		}
-		int r = inst->initSurfaceFormat(dev);
+		int r = inst->initSurfaceFormat(dev, surface);
 		if (r) {
 			return r;
 		}
-		if ((r = inst->initPresentMode(dev)) != 0) {
+		if ((r = inst->initPresentMode(dev, surface)) != 0) {
 			return r;
 		}
 	}
@@ -122,7 +122,8 @@ static int initSupportedDevices(Instance * inst, const VkSurfaceKHR& surface,
 
 }  // anonymous namespace
 
-int Instance::open(const VkSurfaceKHR& surface, devQueryFn devQuery) {
+int Instance::open(const VkSurfaceKHR& surface, VkExtent2D surfaceSizeRequest,
+		devQueryFn devQuery) {
 	std::vector<VkPhysicalDevice> * physDevs = Vk::getDevices(vk);
 	if (physDevs == nullptr) {
 		return 1;
@@ -221,18 +222,31 @@ int Instance::open(const VkSurfaceKHR& surface, devQueryFn devQuery) {
 	}
 
 	// Copy KvQueue objects into dev.qfam.queues.
+	size_t swap_chain_count = 0;
 	for (const auto& kv : requested_devs) {
 		auto& dev = devs.at(kv.first);
+		size_t q_count = 0;
 		for (size_t q_i = 0; q_i < dev.qfams.size(); q_i++) {
 			auto& qfam = dev.qfams.at(q_i);
 			if (dbg_lvl && qfam.prios.size()) {
-				printf("OK: dev %zu qfam %zu: got %zu queue%s\n",
-					(size_t) kv.first, q_i, qfam.prios.size(), qfam.prios.size() != 1 ? "s" : "");
+				printf("dev_i=%u q_count=%zu adding qfam[%zu] x %zu\n",
+					kv.first, q_count, q_i, qfam.prios.size());
 			}
 			for (size_t i = 0; i < qfam.prios.size(); i++) {
 				qfam.queues.emplace_back();
 				vkGetDeviceQueue(dev.dev, q_i, i, &(*(qfam.queues.end() - 1)));
+				q_count++;
 			}
+		}
+		if (q_count && dev.presentModes.size()) {
+			if (swap_chain_count == 1) {
+				fprintf(stderr, "Warn: A multi-display setup probably does not work.\n");
+				fprintf(stderr, "Warn: Here be dragons.\n");
+			}
+			if (dev.createSwapChain(*this, surface, surfaceSizeRequest)) {
+				return 1;
+			}
+			swap_chain_count++;
 		}
 	}
 	return 0;

@@ -28,7 +28,8 @@
  * #include <lib/language/language.h>
  *
  * int main() {
- *   GLFWwindow * window = glfwCreateWindow(...);
+ *   const int WIDTH = 800, HEIGHT = 600;
+ *   GLFWwindow * window = glfwCreateWindow(WIDTH, HEIGHT...);
  *   unsigned int glfwExtensionCount = 0;
  *   const char ** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
  *   language::Instance inst;
@@ -38,27 +39,41 @@
  *     cerr << "glfwCreateWindowSurface() failed" << endl;
  *     exit(1);
  *   }
- *   int r = inst.open(surface, [&](std::vector<language::QueueRequest>& request) -> int {
+ *   int r = inst.open(surface, {WIDTH, HEIGHT},
+ *     [&](std::vector<language::QueueRequest>& request) -> int {
+ *       bool foundPRESENTdev = false;
  *       for (size_t dev_i = 0; dev_i < inst.devs.size(); dev_i++) {
  *         const auto& dev = inst.devs.at(dev_i);
+ *         bool foundPRESENT = false, foundGRAPHICS = false;
  *         for (size_t q_i = 0; q_i < dev.qfams.size(); q_i++) {
  *           const auto& fam = dev.qfams.at(q_i);
- *           if (fam.surfaceSupport != PRESENT) continue;
- *           if (!(fam.vk.queueFlags & VK_QUEUE_GRAPHICS_BIT)) continue;
+ *           bool fPRESENT = fam.surfaceSupport == PRESENT;
+ *           bool fGRAPHICS = (fam.vk.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0;
+ *           // Only need one queue to PRESENT and one to GRAPHICS.
+ *           if ((!fPRESENT || foundPRESENT) && (!fGRAPHICS || foundGRAPHICS)) {
+ *             continue;
+ *           }
+ *           foundPRESENT |= fPRESENT;
+ *           foundGRAPHICS |= fGRAPHICS;
  *
- *           // For example, if only one queue is needed.
  *           language::QueueRequest qr(dev_i, q_i);
- *           request.push_back(qr);  // Could also be written emplace_back(dev_i, q_i);
- *           return 0;
+ *           request.push_back(qr);  // Or emplace_back(dev_i, q_i);
+ *         }
+ *         if (foundPRESENT && foundGRAPHICS) {
+ *           foundPRESENTdev = true;  // A single physical device must have both.
  *         }
  *       }
- *       cerr << "Error: No device has a suitable GRAPHICS queue." << endl;
- *       return 1;
+ *       if (!foundPRESENTdev) {
+ *         cerr << "Error: no device has a suitable PRESENT queue." << endl;
+ *         return 1;
+ *       }
+ *       return 0;
  *     });
  *   if (r != 0) exit(1);
  *   while(!glfwWindowShouldClose(window)) {
  *     glfwPollEvents();
  *   }
+ *   inst.cleanSurface();
  *   glfwDestroyWindow(window);
  *   return r;
  * }
@@ -93,14 +108,13 @@ enum SurfaceSupport {
 
 // QueueRequest communicates the physical device and queue family (within the device)
 // being requested by devQuery() (passed to open(), below). devQuery() should push
-// one QueueRequest instance for each queue.
+// one QueueRequest instance per queue you want created.
 typedef struct QueueRequest {
 	uint32_t dev_index;
 	uint32_t dev_qfam_index;
 	float priority;
 
-	// The default priority is the highest possible (1.0). Modify the instance after
-	// creating it to change the priority. Or extend the struct with a derived class.
+	// The default priority is the highest possible (1.0), but can be changed.
 	QueueRequest(uint32_t dev_i, uint32_t dev_qfam_i) {
 		dev_index = dev_i;
 		dev_qfam_index = dev_qfam_i;
@@ -109,9 +123,9 @@ typedef struct QueueRequest {
 	virtual ~QueueRequest() {};
 } QueueRequest;
 
-// QueueFamily wraps VkQueueFamilyProperties. QueueFamily also gives whether the QueueFamily
-// can be used to "present" on the app surface (i.e. render to the screen).
-// If surfaceSupport == NONE, only offscreen rendering is supported.
+// QueueFamily wraps VkQueueFamilyProperties. QueueFamily also gives whether the
+// QueueFamily can be used to "present" on the app surface (i.e. swap a surface to
+// the screen if surfaceSupport == PRESENT).
 typedef struct QueueFamily {
 	VkQueueFamilyProperties vk;
 	SurfaceSupport surfaceSupport;  // Result of vkGetPhysicalDeviceSurfaceSupportKHR().
@@ -119,10 +133,12 @@ typedef struct QueueFamily {
 	std::vector<VkQueue> queues;  // populated only for mainloop.
 } QueueFamily;
 
+struct Instance;
+
 // Device wraps the Vulkan logical and physical devices and a list of QueueFamily
 // supported by the physical device. When devQuery() is called, Instance::devs are
 // populated with phys and qfams, but dev (the logical device) and qfams.queues
-// are not populated in devQuery().
+// are not populated.
 //
 // devQuery() should push the QueueRequest instances suitable for your app.
 //
@@ -131,26 +147,37 @@ typedef struct QueueFamily {
 //
 // Instance::open() uses devQuery() to set up each Device. When devQuery() returns,
 // the QueueRequest vector is used to create Device::dev (the logical device).
-// open() also populates Device::qfams.queues.
+// open() then populates Device::qfams.queues and returns.
 //
-// surfaceFormats and presentModes are populated during devQuery() if the device
+// surfaceFormats and presentModes are populated before devQuery() if the device
 // claims to have a queue that supports PRESENT (and has the right extensions to
 // do a swapchain). devQuery() may choose a different format or mode. But
-// devQuery() only _must_ look at qfams.surfaceSupport - format and mode are
-// handled automatically.
+// format and mode should just work automatically...devQuery() does not have
+// to handle that.
 typedef struct Device {
 	VkDevice dev;  // Logical Device. Unpopulated during devQuery().
 	VkPhysicalDevice phys;  // Physical Device. Populated for devQuery().
 	std::vector<VkExtensionProperties> availableExtensions;  // populated.
-	std::vector<QueueFamily> qfams;
-	std::vector<const char *> extensionRequests;
+	std::vector<QueueFamily> qfams;  // qfams.queue is unpopulated for devQuery().
+	std::vector<const char *> extensionRequests;  // devQuery() can modify this.
 
 	std::vector<VkSurfaceFormatKHR> surfaceFormats;
 	std::vector<VkPresentModeKHR> presentModes;
 	VkSurfaceFormatKHR format;
 	VkPresentModeKHR mode;
+	VkSwapchainKHR swapchain;  // Unpopulated during devQuery().
+	std::vector<VkImage> images;
+
+protected:
+	friend struct Instance;
+
+	// Override createSwapChain() for your app's needs.
+	virtual int createSwapChain(Instance& inst, const VkSurfaceKHR& surface,
+		VkExtent2D surfaceSizeRequest);
 } Device;
 
+// Type signature for devQuery():
+// devQuery() should call request.push_back() for at least one QueueRequest.
 typedef std::function<int(std::vector<QueueRequest>& request)> devQueryFn;
 
 // Instance holds the top level state of the Vulkan pipeline. Construct with
@@ -159,8 +186,9 @@ typedef std::function<int(std::vector<QueueRequest>& request)> devQueryFn;
 // The correct initialization procedure is:
 // 1. Create an Instance object
 // 2. Call ctorError() which loads requiredExtensions. Check the return value.
-// 3. Construct the VkSurfaceKHR using whatever windowing library you choose.
+// 3. Construct a VkSurfaceKHR using your choice of windowing library.
 // 4. Call Instance::open() to initialize devices and queue families.
+//    open() calls your devQuery() function.
 // 5. Run the main loop.
 //
 // In many cases it only makes sense to use 1 CPU thread to submit to GPU queues
@@ -169,7 +197,7 @@ typedef std::function<int(std::vector<QueueRequest>& request)> devQueryFn;
 // driver is forced to multiplex commands to that single port if the app uses
 // multiple queues. In other words, the GPU is the bottleneck and is essentially
 // single-threaded. Perhaps this could be viewed as a driver bug -- it should
-// report a max of *1* queue only in this case.
+// report a max of *1* queue only in this case. But some drivers report more.
 //
 // To be clear, queues are not about how the GPU consumes command buffers (the
 // GPU consumes the commands in parallel). The CPU should assemble command buffers
@@ -178,6 +206,8 @@ typedef std::function<int(std::vector<QueueRequest>& request)> devQueryFn;
 //
 // Multi-GPU systems definitely allow multiple independent command queues, at least
 // one queue per device.
+//
+// Separate GRAPHICS and PRESENT queues don't reduce the GRAPHICS queue load.
 typedef struct Instance {
 	VkInstance vk;
 	std::vector<Device> devs;
@@ -189,16 +219,26 @@ typedef struct Instance {
 
 	// open() enumerates devs and queue families and calls devQuery(). devQuery() should call
 	// request.push_back() for at least one QueueRequest.
-	WARN_UNUSED_RESULT int open(const VkSurfaceKHR& surface, devQueryFn devQuery);
+	WARN_UNUSED_RESULT int open(const VkSurfaceKHR& surface, VkExtent2D surfaceSizeRequest,
+		devQueryFn devQuery);
+
+	// cleanSurface() cleans up resources that must be destroyed before the
+	// VkSurfaceKHR is destroyed. If the VkSurfaceKHR is auto-destroyed when it goes
+	// out of scope, it is necessary to call cleanSurface() just before the
+	// VkSurfaceKHR goes out of scope.
+	void cleanSurface();
 
 	virtual ~Instance();
 
+	// INTERNAL: Avoid calling initSurfaceFormat() directly.
 	// Override initSurfaceFormat() if your app needs a different default.
-	// Note: devQueryFn() can also change the format and mode.
-	virtual int initSurfaceFormat(Device& dev);
+	// Note: devQueryFn() can also change the format.
+	virtual int initSurfaceFormat(Device& dev, const VkSurfaceKHR& surface);
+
+	// INTERNAL: Avoid calling initPresentMode() directly.
 	// Override initPresentMode() if your app needs a different default.
-	// Note: devQueryFn() can also change the format and mode.
-	virtual int initPresentMode(Device& dev);
+	// Note: devQueryFn() can also change the mode.
+	virtual int initPresentMode(Device& dev, const VkSurfaceKHR& surface);
 } Instance;
 
 } // namespace language
