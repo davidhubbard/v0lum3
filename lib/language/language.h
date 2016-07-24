@@ -30,12 +30,12 @@
  * int main() {
  *   const int WIDTH = 800, HEIGHT = 600;
  *   GLFWwindow * window = glfwCreateWindow(WIDTH, HEIGHT...);
- *   unsigned int glfwExtensionCount = 0;
- *   const char ** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+ *   unsigned int glfwExtCount = 0;
+ *   const char ** glfwExts = glfwGetRequiredInstanceExtensions(&glfwExtCount);
  *   language::Instance inst;
- *   if (inst.ctorError(glfwExtensions, glfwExtensionCount)) return 1;
- *   VkPtr<VkSurfaceKHR> surface{inst.vk, vkDestroySurfaceKHR};
- *   if (glfwCreateWindowSurface(inst.vk, window, nullptr, &surface) != VK_SUCCESS) {
+ *   if (inst.ctorError(glfwExts, glfwExtCount)) return 1;
+ *   if (glfwCreateWindowSurface(inst.vk, window, nullptr, &inst.surface)
+ *       != VK_SUCCESS) {
  *     cerr << "glfwCreateWindowSurface() failed" << endl;
  *     exit(1);
  *   }
@@ -73,7 +73,6 @@
  *   while(!glfwWindowShouldClose(window)) {
  *     glfwPollEvents();
  *   }
- *   inst.cleanSurface();
  *   glfwDestroyWindow(window);
  *   return r;
  * }
@@ -84,6 +83,7 @@
 #include <vector>
 #include <functional>
 #include <vulkan/vulkan.h>
+#include "VkPtr.h"
 
 namespace language {
 
@@ -155,25 +155,39 @@ struct Instance;
 // format and mode should just work automatically...devQuery() does not have
 // to handle that.
 typedef struct Device {
-	VkDevice dev;  // Logical Device. Unpopulated during devQuery().
-	VkPhysicalDevice phys;  // Physical Device. Populated for devQuery().
-	std::vector<VkExtensionProperties> availableExtensions;  // populated.
-	std::vector<QueueFamily> qfams;  // qfams.queue is unpopulated for devQuery().
-	std::vector<const char *> extensionRequests;  // devQuery() can modify this.
+	Device() = default;
+	Device(Device&&) = default;
+	Device(const Device&) = delete;
+
+	// Logical Device. Unpopulated during devQuery().
+	VkPtr<VkDevice> dev{vkDestroyDevice};
+
+	// Physical Device. Populated for devQuery().
+	VkPhysicalDevice phys = VK_NULL_HANDLE;
+
+	// Extensions devQuery() can choose from. Populated for devQuery().
+	std::vector<VkExtensionProperties> availableExtensions;
+
+	// qfams is populated for devQuery() but qfams.queue is unpopulated.
+	std::vector<QueueFamily> qfams;
+
+	// devQuery() can request extension names by adding to extensionRequests.
+	std::vector<const char *> extensionRequests;
 
 	std::vector<VkSurfaceFormatKHR> surfaceFormats;
 	std::vector<VkPresentModeKHR> presentModes;
-	VkSurfaceFormatKHR format;
-	VkPresentModeKHR mode;
-	VkSwapchainKHR swapchain;  // Unpopulated during devQuery().
+	VkSurfaceFormatKHR format = { (VkFormat) 0, (VkColorSpaceKHR) 0 };
+	VkPresentModeKHR mode = (VkPresentModeKHR) 0;
+
+	// Unpopulated during devQuery().
+	VkPtr<VkSwapchainKHR> swapchain{dev, vkDestroySwapchainKHR};
 	std::vector<VkImage> images;
 
 protected:
 	friend struct Instance;
 
-	// Override createSwapChain() for your app's needs.
-	virtual int createSwapChain(Instance& inst, const VkSurfaceKHR& surface,
-		VkExtent2D surfaceSizeRequest);
+	// Override createSwapchain() for your app's needs.
+	virtual int createSwapchain(Instance& inst, VkExtent2D surfaceSizeRequest);
 } Device;
 
 // Type signature for devQuery():
@@ -209,36 +223,29 @@ typedef std::function<int(std::vector<QueueRequest>& request)> devQueryFn;
 //
 // Separate GRAPHICS and PRESENT queues don't reduce the GRAPHICS queue load.
 typedef struct Instance {
-	VkInstance vk;
+	VkPtr<VkInstance> vk{vkDestroyInstance};
+	VkPtr<VkSurfaceKHR> surface{vk, vkDestroySurfaceKHR};
 	std::vector<Device> devs;
 
-	// Dummy constructor.
-	Instance() {};
 	// This is the actual constructor (and can return an error if Vulkan indicates an error).
 	WARN_UNUSED_RESULT int ctorError(const char ** requiredExtensions, size_t requiredExtensionCount);
 
 	// open() enumerates devs and queue families and calls devQuery(). devQuery() should call
 	// request.push_back() for at least one QueueRequest.
-	WARN_UNUSED_RESULT int open(const VkSurfaceKHR& surface, VkExtent2D surfaceSizeRequest,
+	WARN_UNUSED_RESULT int open(VkExtent2D surfaceSizeRequest,
 		devQueryFn devQuery);
-
-	// cleanSurface() cleans up resources that must be destroyed before the
-	// VkSurfaceKHR is destroyed. If the VkSurfaceKHR is auto-destroyed when it goes
-	// out of scope, it is necessary to call cleanSurface() just before the
-	// VkSurfaceKHR goes out of scope.
-	void cleanSurface();
 
 	virtual ~Instance();
 
 	// INTERNAL: Avoid calling initSurfaceFormat() directly.
 	// Override initSurfaceFormat() if your app needs a different default.
 	// Note: devQueryFn() can also change the format.
-	virtual int initSurfaceFormat(Device& dev, const VkSurfaceKHR& surface);
+	virtual int initSurfaceFormat(Device& dev);
 
 	// INTERNAL: Avoid calling initPresentMode() directly.
 	// Override initPresentMode() if your app needs a different default.
 	// Note: devQueryFn() can also change the mode.
-	virtual int initPresentMode(Device& dev, const VkSurfaceKHR& surface);
+	virtual int initPresentMode(Device& dev);
 } Instance;
 
 } // namespace language
