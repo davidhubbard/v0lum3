@@ -39,7 +39,7 @@
  *     cerr << "glfwCreateWindowSurface() failed" << endl;
  *     exit(1);
  *   }
- *   int r = inst.open(surface, {WIDTH, HEIGHT},
+ *   int r = inst.open({WIDTH, HEIGHT},
  *     [&](std::vector<language::QueueRequest>& request) -> int {
  *       bool foundPRESENTdev = false;
  *       for (size_t dev_i = 0; dev_i < inst.devs.size(); dev_i++) {

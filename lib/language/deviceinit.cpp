@@ -15,18 +15,12 @@ static const char * requiredDeviceExtensions[] = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 };
 
-static int initSupportedQueues(Instance * inst, const VkSurfaceKHR& surface,
-		const VkPhysicalDevice& phys, std::vector<VkQueueFamilyProperties>& vkQFams) {
-	// Construct dev by copy. emplace_back(Device{}) produced this error:
-	// "sorry, unimplemented: non-trivial designated initializers not supported"
-	Device dev;
-	memset(&dev, 0, sizeof(dev));
-	dev.phys = phys;
-
+static int initSupportedQueues(Instance * inst, std::vector<VkQueueFamilyProperties>& vkQFams, Device& dev) {
 	VkBool32 oneQueueWithPresentSupported = false;
 	for (size_t q_i = 0; q_i < vkQFams.size(); q_i++) {
 		VkBool32 isPresentSupported = false;
-		VkResult v = vkGetPhysicalDeviceSurfaceSupportKHR(phys, q_i, surface, &isPresentSupported);
+		VkResult v = vkGetPhysicalDeviceSurfaceSupportKHR(dev.phys, q_i, inst->surface,
+			&isPresentSupported);
 		if (v != VK_SUCCESS) {
 			fprintf(stderr, "dev %zu qfam %zu: vkGetPhysicalDeviceSurfaceSupportKHR returned %d\n",
 				inst->devs.size(), q_i, v);
@@ -42,7 +36,7 @@ static int initSupportedQueues(Instance * inst, const VkSurfaceKHR& surface,
 		});
 	}
 
-	auto* devExtensions = Vk::getDeviceExtensions(phys);
+	auto* devExtensions = Vk::getDeviceExtensions(dev.phys);
 	if (!devExtensions) {
 		return 1;
 	}
@@ -69,7 +63,7 @@ static int initSupportedQueues(Instance * inst, const VkSurfaceKHR& surface,
 			}
 		}
 
-		auto* surfaceFormats = Vk::getSurfaceFormats(phys, surface);
+		auto* surfaceFormats = Vk::getSurfaceFormats(dev.phys, inst->surface);
 		if (!surfaceFormats) {
 			return 1;
 		}
@@ -77,7 +71,7 @@ static int initSupportedQueues(Instance * inst, const VkSurfaceKHR& surface,
 		delete surfaceFormats;
 		surfaceFormats = nullptr;
 
-		auto* presentModes = Vk::getPresentModes(phys, surface);
+		auto* presentModes = Vk::getPresentModes(dev.phys, inst->surface);
 		if (!presentModes) {
 			return 1;
 		}
@@ -90,30 +84,38 @@ static int initSupportedQueues(Instance * inst, const VkSurfaceKHR& surface,
 			// surfaceFormats -- or no presentModes.
 			return 0;
 		}
-		int r = inst->initSurfaceFormat(dev, surface);
+		int r = inst->initSurfaceFormat(dev);
 		if (r) {
 			return r;
 		}
-		if ((r = inst->initPresentMode(dev, surface)) != 0) {
+		if ((r = inst->initPresentMode(dev)) != 0) {
 			return r;
 		}
 	}
 
-	inst->devs.push_back(dev);
 	return 0;
 }
 
-static int initSupportedDevices(Instance * inst, const VkSurfaceKHR& surface,
+static int initSupportedDevices(Instance * inst,
 		std::vector<VkPhysicalDevice>& physDevs) {
 	for (const auto& phys : physDevs) {
 		auto* vkQFams = Vk::getQueueFamilies(phys);
 		if (vkQFams == nullptr) {
 			return 1;
 		}
-		int r = initSupportedQueues(inst, surface, phys, *vkQFams);
+
+		// Construct dev in place. emplace_back(Device{}) produced this error:
+		// "sorry, unimplemented: non-trivial designated initializers not supported"
+		//
+		// Be careful to also call pop_back() unless initSupportQueues() succeeded.
+		inst->devs.resize(inst->devs.size() + 1);
+		Device& dev = *(inst->devs.end() - 1);
+		dev.phys = phys;
+		int r = initSupportedQueues(inst, *vkQFams, dev);
 		delete vkQFams;
 		vkQFams = nullptr;
 		if (r) {
+			inst->devs.pop_back();
 			return r;
 		}
 	}
@@ -122,13 +124,13 @@ static int initSupportedDevices(Instance * inst, const VkSurfaceKHR& surface,
 
 }  // anonymous namespace
 
-int Instance::open(const VkSurfaceKHR& surface, VkExtent2D surfaceSizeRequest,
+int Instance::open(VkExtent2D surfaceSizeRequest,
 		devQueryFn devQuery) {
 	std::vector<VkPhysicalDevice> * physDevs = Vk::getDevices(vk);
 	if (physDevs == nullptr) {
 		return 1;
 	}
-	int r = initSupportedDevices(this, surface, *physDevs);
+	int r = initSupportedDevices(this, *physDevs);
 	delete physDevs;
 	physDevs = nullptr;
 	if (r) {
@@ -243,7 +245,7 @@ int Instance::open(const VkSurfaceKHR& surface, VkExtent2D surfaceSizeRequest,
 				fprintf(stderr, "Warn: A multi-display setup probably does not work.\n");
 				fprintf(stderr, "Warn: Here be dragons.\n");
 			}
-			if (dev.createSwapChain(*this, surface, surfaceSizeRequest)) {
+			if (dev.createSwapchain(*this, surfaceSizeRequest)) {
 				return 1;
 			}
 			swap_chain_count++;

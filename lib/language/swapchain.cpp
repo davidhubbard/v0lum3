@@ -63,19 +63,16 @@ static int initImageSharingMode(Device& dev, VkSwapchainCreateInfoKHR& scci) {
 
 }  // anonymous namespace
 
-int Device::createSwapChain(Instance& inst, const VkSurfaceKHR& surface,
-		VkExtent2D surfaceSizeRequest) {
-	(void) inst;
-
+int Device::createSwapchain(Instance& inst, VkExtent2D surfaceSizeRequest) {
 	VkSurfaceCapabilitiesKHR scap;
-	VkResult v = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(phys, surface, &scap);
+	VkResult v = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(phys, inst.surface, &scap);
 	if (v != VK_SUCCESS) {
 		fprintf(stderr, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR() returned %d\n", v);
 		return 1;
 	}
 
 	VkSwapchainCreateInfoKHR VkInit(scci);
-	scci.surface = surface;
+	scci.surface = inst.surface;
 	scci.minImageCount = calculateMinRequestedImages(scap);
 	scci.imageFormat = format.format;
 	scci.imageColorSpace = format.colorSpace;
@@ -105,9 +102,7 @@ int Device::createSwapChain(Instance& inst, const VkSurfaceKHR& surface,
 	return 0;
 }
 
-int Instance::initSurfaceFormat(Device& dev, const VkSurfaceKHR& surface) {
-	(void) surface;
-
+int Instance::initSurfaceFormat(Device& dev) {
 	if (dev.surfaceFormats.size() == 0) {
 		fprintf(stderr, "BUG: should not init a device with 0 SurfaceFormats\n");
 		return 1;
@@ -141,9 +136,7 @@ int Instance::initSurfaceFormat(Device& dev, const VkSurfaceKHR& surface) {
 	return 0;
 }
 
-int Instance::initPresentMode(Device& dev, const VkSurfaceKHR& surface) {
-	(void) surface;
-
+int Instance::initPresentMode(Device& dev) {
 	if (dev.presentModes.size() == 0) {
 		fprintf(stderr, "BUG: should not init a device with 0 PresentModes\n");
 		return 1;
