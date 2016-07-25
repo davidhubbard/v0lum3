@@ -13,6 +13,7 @@ CXXFLAGS+=-ggdb -std=c++11 -fno-exceptions -Wall -Wextra
 LDFLAGS+=-Og -ggdb
 PKG_CONFIG_FLAGS+=--static
 OBJCOPY ?= objcopy
+OBJSYMS_HDR ?= objsyms.h
 
 ifneq ($(TOP),)
 CXXFLAGS+=-I$(TOP)
@@ -77,8 +78,10 @@ endef
 $(foreach f,$(GLSL),$(eval $(call COMPILE_GLSLANG,$(f))))
 BINS+=$(patsubst %,%.spv,$(GLSL))
 
+# This rule ignores the symbol $$(SYM)_size because end and start give that information.
 define BIN_TO_OBJ_TARGET
 $(1).o: $(1)
+	$$(eval SYM := _binary_$(subst .,_,$(subst /,_,$(1))))
 	$$(eval CMD := $(LD) -r -o $(1).o -z noexecstack --format=binary $(1) && \
 		$(OBJCOPY) --rename-section .data=.rodata,alloc,load,readonly,data,contents $(1).o)
 ifeq ($(V),)
@@ -86,6 +89,12 @@ ifeq ($(V),)
 else
 	$$(CMD)
 endif
+	@if ! grep -q $$(SYM)_start $(OBJSYMS_HDR) /dev/null; then \
+		echo "Warning: $(RELATIVE_PATH)$(OBJSYMS_HDR) is missing \"extern char * $$(SYM)_start\""; \
+	fi
+	@if ! grep -q $$(SYM)_end $(OBJSYMS_HDR) /dev/null; then \
+		echo "Warning: $(RELATIVE_PATH)$(OBJSYMS_HDR) is missing \"extern char * $$(SYM)_end\""; \
+	fi
 endef
 $(foreach f,$(BINS),$(eval $(call BIN_TO_OBJ_TARGET,$(f))))
 
