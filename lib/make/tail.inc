@@ -12,6 +12,7 @@
 CXXFLAGS+=-ggdb -std=c++11 -fno-exceptions -Wall -Wextra
 LDFLAGS+=-Og -ggdb
 PKG_CONFIG_FLAGS+=--static
+OBJCOPY ?= objcopy
 
 ifneq ($(TOP),)
 CXXFLAGS+=-I$(TOP)
@@ -22,11 +23,6 @@ CXXFLAGS+=$(strip $(shell pkg-config $(PKG_CONFIG_FLAGS) --cflags $(1)))
 LDFLAGS+=$(strip $(shell pkg-config $(PKG_CONFIG_FLAGS) --libs $(1)))
 endef
 $(foreach pkg,$(PKGCONFIG_PKGS),$(eval $(call IMPORT_PKG_CONFIG,$(pkg))))
-
-#
-# Convert $(SRCS) into $(OBJS)
-#
-OBJS+=$(strip $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SRCS))))
 
 ifneq ($(VERBOSE),)
 V=$(VERBOSE)
@@ -58,19 +54,91 @@ else
 RELATIVE_PATH=$(shell a=$$PWD; echo $${a\#$$(realpath $(TOP))/})/
 endif
 
+define CPP_TARGET
+$(1).o : $(1).cpp $(HDRS)
+	$$(eval CMD := $$(CXX) $$(CXXFLAGS) -c -o $$@ $$<)
+ifeq ($(V),)
+	@echo "CXX    $(RELATIVE_PATH)$$<"; $$(CMD)
+else
+	$$(CMD)
+endif
+endef
+$(foreach f,$(filter %.cpp,$(SRCS)),$(eval $(call CPP_TARGET,$(patsubst %.cpp,%,$(f)))))
+
+define COMPILE_GLSLANG
+$(1).spv: $(1)
+	$$(eval CMD := $$(GLSLANG) $$(GLSLANGFLAGS) -V -o $$@ $$<)
+ifeq ($(V),)
+	@( echo -n "GLSL   $(RELATIVE_PATH)"; $$(CMD) ) | sed -e '/^\(Linked.*stage:\|\)$$$$/d'
+else
+	$$(CMD)
+endif
+endef
+$(foreach f,$(GLSL),$(eval $(call COMPILE_GLSLANG,$(f))))
+BINS+=$(patsubst %,%.spv,$(GLSL))
+
+define BIN_TO_OBJ_TARGET
+$(1).o: $(1)
+	$$(eval CMD := $(LD) -r -o $(1).o -z noexecstack --format=binary $(1) && \
+		$(OBJCOPY) --rename-section .data=.rodata,alloc,load,readonly,data,contents $(1).o)
+ifeq ($(V),)
+	@echo "OBJCP  $(RELATIVE_PATH)$(1)"; $$(CMD)
+else
+	$$(CMD)
+endif
+endef
+$(foreach f,$(BINS),$(eval $(call BIN_TO_OBJ_TARGET,$(f))))
+
+#
+# Convert $(SRCS) into $(OBJS)
+#
+OBJS+=$(strip $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SRCS))) $(patsubst %,%.o,$(BINS)))
+
+#
+# If TARGET_LIB was set, build a static library.
+# Else if TARGET_BIN was set, build a binary.
+#
+ifneq ($(TARGET_LIB),)
+all: $(TARGET_LIB)
+
+$(TARGET_LIB): $(OBJS)
+	$(eval CMD := $(AR) $(ARFLAGS_RESPECTING_V)cs $@ $^)
+ifeq ($(V),)
+	@echo "AR $(ARFLAGS_RESPECTING_V)cs $(RELATIVE_PATH)$@"; $(CMD)
+else
+	$(CMD)
+endif
+else
+ifneq ($(TARGET_BIN),)
+all: $(TARGET_BIN)
+
+$(TARGET_BIN): $(OBJS) $(LIBS)
+	$(eval CMD := $(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS))
+ifeq ($(V),)
+	@echo "LINK   $(RELATIVE_PATH)$@"; $(CMD)
+else
+	$(CMD)
+endif
+else
+ifeq ($(SUBDIRS),)
+$(error Makefile did not set TARGET_BIN, TARGET_LIB, or SUBDIRS. One of them must be set.)
+endif
+endif
+endif
+
 #
 # Define all: and clean: targets.
 #
 .phony: all clean
 
-CLEAN_FILES_TO_RM=$(strip $(TARGET_BIN) $(TARGET_LIB) $(OBJS) $(INTFILES))
+CLEAN_FILES_TO_RM=$(strip $(TARGET_BIN) $(TARGET_LIB) $(OBJS) $(patsubst %,%.spv,$(GLSL)))
 clean:
+	$(eval CMD := $(RM) $(CLEAN_FILES_TO_RM))
 ifneq ($(CLEAN_FILES_TO_RM),)
 ifeq ($(V),)
-	@printf "cd %-20s $(RM) $(CLEAN_FILES_TO_RM)\n" "$(RELATIVE_PATH)"; \
-	$(RM) $(CLEAN_FILES_TO_RM)
+	@printf "cd %-20s $(CMD)\n" "$(RELATIVE_PATH)"; $(CMD)
 else
-	$(RM) $(CLEAN_FILES_TO_RM)
+	$(CMD)
 endif
 endif
 
@@ -84,57 +152,3 @@ $(2)/$(1):
 endef
 $(foreach s,$(SUBDIRS),$(eval $(call SUBDIR_TARGET,all,$(s))))
 $(foreach s,$(SUBDIRS),$(eval $(call SUBDIR_TARGET,clean,$(s))))
-
-#
-# If TARGET_LIB was set, build a static library.
-# Else if TARGET_BIN was set, build a binary.
-#
-ifneq ($(TARGET_LIB),)
-all: $(TARGET_LIB)
-
-$(TARGET_LIB): $(OBJS)
-ifeq ($(V),)
-	@echo "AR $(ARFLAGS_RESPECTING_V)cs $(RELATIVE_PATH)$@"; \
-	$(AR) $(ARFLAGS_RESPECTING_V)cs $@ $^
-else
-	$(AR) $(ARFLAGS_RESPECTING_V)cs $@ $^
-endif
-else
-ifneq ($(TARGET_BIN),)
-all: $(TARGET_BIN)
-
-$(TARGET_BIN): $(OBJS) $(LIBS)
-ifeq ($(V),)
-	@echo "LINK   $(RELATIVE_PATH)$@"; \
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LIBS) $(LDFLAGS)
-else
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LIBS) $(LDFLAGS)
-endif
-else
-ifeq ($(SUBDIRS),)
-$(error Makefile did not set TARGET_BIN, TARGET_LIB, or SUBDIRS. One of them must be set.)
-endif
-endif
-endif
-
-define CPP_TARGET
-$(1).o : $(1).cpp $(HDRS)
-ifeq ($(V),)
-	@echo "CXX -c $(RELATIVE_PATH)$$<"; \
-	$$(CXX) $$(CXXFLAGS) -c -o $$@ $$<
-else
-	$$(CXX) $$(CXXFLAGS) -c -o $$@ $$<
-endif
-endef
-$(foreach f,$(filter %.cpp,$(SRCS)),$(eval $(call CPP_TARGET,$(patsubst %.cpp,%,$(f)))))
-
-define COMPILE_GLSLANG
-$(1).spv: $(1)
-ifeq ($(V),)
-	@( echo -n "GLSL   $(RELATIVE_PATH)"; \
-	$$(GLSLANG) $$(GLSLANGFLAGS) -V -o $$@ $$< ) | sed -e '/^\(Linked.*stage:\|\)$$$$/d'
-else
-	$$(GLSLANG) $$(GLSLANGFLAGS) -V -o $$@ $$<
-endif
-endef
-$(foreach f,$(filter %.spv,$(HDRS)),$(eval $(call COMPILE_GLSLANG,$(patsubst %.spv,%,$(f)))))
