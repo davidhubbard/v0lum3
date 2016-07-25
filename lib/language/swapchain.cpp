@@ -100,15 +100,13 @@ int Device::createSwapchain(Instance& inst, VkExtent2D surfaceSizeRequest) {
 	images = *vkImages;
 	delete vkImages;
 
-	if (imageViews.size() != 0) {
-		fprintf(stderr, "BUG: imageViews gets initialized here. "
-			"That should happen only once! (why is size %zu?)\n",
-			imageViews.size());
-		return 1;
-	}
+	// imageViews.resize() fails with error: no matching function
+	// for call to VkPtr<VkImageView_T*>::VkPtr(const value_type&)
 	for (size_t i = 0; i < images.size(); i++) {
-		imageViews.emplace_back(VkPtr<VkImageView>{dev, vkDestroyImageView});
+		imageViews.emplace_back(dev, vkDestroyImageView);
+	}
 
+	for (size_t i = 0; i < images.size(); i++) {
 		VkImageViewCreateInfo VkInit(ivci);
 		ivci.image = images.at(i);
 		ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
