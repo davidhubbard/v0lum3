@@ -63,63 +63,66 @@ static int initImageSharingMode(Device& dev, VkSwapchainCreateInfoKHR& scci) {
 
 }  // anonymous namespace
 
-int Device::createSwapchain(Instance& inst, VkExtent2D surfaceSizeRequest) {
+int Instance::createSwapchain(size_t dev_i, VkExtent2D surfaceSizeRequest) {
+	Device& dev = devs.at(dev_i);
+
 	VkSurfaceCapabilitiesKHR scap;
-	VkResult v = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(phys, inst.surface, &scap);
+	VkResult v = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(dev.phys, surface, &scap);
 	if (v != VK_SUCCESS) {
 		fprintf(stderr, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR() returned %d\n", v);
 		return 1;
 	}
 
+	dev.swapchainExtent = calculateSurfaceExtend2D(scap, surfaceSizeRequest);
 	VkSwapchainCreateInfoKHR VkInit(scci);
-	scci.surface = inst.surface;
+	scci.surface = surface;
 	scci.minImageCount = calculateMinRequestedImages(scap);
-	scci.imageFormat = format.format;
-	scci.imageColorSpace = format.colorSpace;
-	scci.imageExtent = calculateSurfaceExtend2D(scap, surfaceSizeRequest);
+	scci.imageFormat = dev.format.format;
+	scci.imageColorSpace = dev.format.colorSpace;
+	scci.imageExtent = dev.swapchainExtent;
 	scci.imageArrayLayers = 1;  // e.g. 2 is for stereo displays.
 	scci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 	scci.preTransform = scap.currentTransform;
 	scci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-	scci.presentMode = mode;
+	scci.presentMode = dev.mode;
 	scci.clipped = VK_TRUE;
 	scci.oldSwapchain = VK_NULL_HANDLE;
-	if (initImageSharingMode(*this, scci)) {
+	if (initImageSharingMode(dev, scci)) {
 		return 1;
 	}
-	v = vkCreateSwapchainKHR(dev, &scci, nullptr /*allocator*/, &swapchain);
+	v = vkCreateSwapchainKHR(dev.dev, &scci, nullptr /*allocator*/, &dev.swapchain);
 	if (v != VK_SUCCESS) {
 		fprintf(stderr, "vkCreateSwapchainKHR() returned %d\n", v);
 		return 1;
 	}
 
-	auto* vkImages = Vk::getSwapchainImages(dev, swapchain);
+	auto* vkImages = Vk::getSwapchainImages(dev.dev, dev.swapchain);
 	if (!vkImages) {
 		return 1;
 	}
-	images = *vkImages;
+	dev.images = *vkImages;
 	delete vkImages;
 
 	// imageViews.resize() fails with error: no matching function
 	// for call to VkPtr<VkImageView_T*>::VkPtr(const value_type&)
-	for (size_t i = 0; i < images.size(); i++) {
-		imageViews.emplace_back(dev, vkDestroyImageView);
+	for (size_t i = 0; i < dev.images.size(); i++) {
+		dev.imageViews.emplace_back(dev.dev, vkDestroyImageView);
 	}
 
-	for (size_t i = 0; i < images.size(); i++) {
+	for (size_t i = 0; i < dev.images.size(); i++) {
 		VkImageViewCreateInfo VkInit(ivci);
-		ivci.image = images.at(i);
+		ivci.image = dev.images.at(i);
 		ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		ivci.format = format.format;
+		ivci.format = dev.format.format;
 		ivci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		ivci.subresourceRange.baseMipLevel = 0;  // No mipmapping.
 		ivci.subresourceRange.levelCount = 1;
 		ivci.subresourceRange.baseArrayLayer = 0;
-		ivci.subresourceRange.layerCount = 1;  // Used for stereo displays.
-		v = vkCreateImageView(dev, &ivci, nullptr, &imageViews.at(i));
+		ivci.subresourceRange.layerCount = 1;  // Might be 2 for stereo displays.
+		v = vkCreateImageView(dev.dev, &ivci, nullptr, &dev.imageViews.at(i));
 		if (v != VK_SUCCESS) {
 			fprintf(stderr, "vkCreateImageView() returned %d\n", v);
-			imageViews.clear();
+			dev.imageViews.clear();
 			return 1;
 		}
 	}

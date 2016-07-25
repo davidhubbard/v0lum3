@@ -78,12 +78,12 @@
  * }
  */
 
-#pragma once
-
 #include <vector>
 #include <functional>
 #include <vulkan/vulkan.h>
 #include "VkPtr.h"
+
+#pragma once
 
 namespace language {
 
@@ -178,17 +178,12 @@ typedef struct Device {
 	std::vector<VkPresentModeKHR> presentModes;
 	VkSurfaceFormatKHR format = { (VkFormat) 0, (VkColorSpaceKHR) 0 };
 	VkPresentModeKHR mode = (VkPresentModeKHR) 0;
+	VkExtent2D swapchainExtent;
 
 	// Unpopulated during devQuery().
 	VkPtr<VkSwapchainKHR> swapchain{dev, vkDestroySwapchainKHR};
 	std::vector<VkImage> images;
 	std::vector<VkPtr<VkImageView>> imageViews;
-
-protected:
-	friend struct Instance;
-
-	// Override createSwapchain() for your app's needs.
-	virtual int createSwapchain(Instance& inst, VkExtent2D surfaceSizeRequest);
 } Device;
 
 // Type signature for devQuery():
@@ -233,6 +228,7 @@ typedef struct Instance {
 
 	// open() enumerates devs and queue families and calls devQuery(). devQuery() should call
 	// request.push_back() for at least one QueueRequest.
+	// surfaceSizeRequest should be the size of the window.
 	WARN_UNUSED_RESULT int open(VkExtent2D surfaceSizeRequest,
 		devQueryFn devQuery);
 
@@ -247,6 +243,10 @@ typedef struct Instance {
 	// Override initPresentMode() if your app needs a different default.
 	// Note: devQueryFn() can also change the mode.
 	virtual int initPresentMode(Device& dev);
+
+protected:
+	// Override createSwapchain() if your app needs a different swapchain.
+	virtual int createSwapchain(size_t dev_i, VkExtent2D surfaceSizeRequest);
 } Instance;
 
 } // namespace language

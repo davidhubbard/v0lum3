@@ -245,7 +245,7 @@ int Instance::open(VkExtent2D surfaceSizeRequest,
 				fprintf(stderr, "Warn: A multi-display setup probably does not work.\n");
 				fprintf(stderr, "Warn: Here be dragons.\n");
 			}
-			if (dev.createSwapchain(*this, surfaceSizeRequest)) {
+			if (createSwapchain(kv.first, surfaceSizeRequest)) {
 				return 1;
 			}
 			swap_chain_count++;
