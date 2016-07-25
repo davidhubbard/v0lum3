@@ -90,10 +90,10 @@ else
 	$$(CMD)
 endif
 	@if ! grep -q $$(SYM)_start $(OBJSYMS_HDR) /dev/null; then \
-		echo "Warning: $(RELATIVE_PATH)$(OBJSYMS_HDR) is missing \"extern char * $$(SYM)_start\""; \
+		echo "Warning: $(RELATIVE_PATH)$(OBJSYMS_HDR) is missing \"extern const char $$(SYM)_start[]\""; \
 	fi
 	@if ! grep -q $$(SYM)_end $(OBJSYMS_HDR) /dev/null; then \
-		echo "Warning: $(RELATIVE_PATH)$(OBJSYMS_HDR) is missing \"extern char * $$(SYM)_end\""; \
+		echo "Warning: $(RELATIVE_PATH)$(OBJSYMS_HDR) is missing \"extern const char $$(SYM)_end[]\""; \
 	fi
 endef
 $(foreach f,$(BINS),$(eval $(call BIN_TO_OBJ_TARGET,$(f))))
