@@ -1,10 +1,8 @@
 /* Copyright (c) David Hubbard 2016. Licensed under the GPLv3.
  */
-#pragma once
+#include <vulkan/vulkan.h>
 
-#ifndef VK_NULL_HANDLE
-#error VkEnum.h requires <vulkan/vulkan.h> to be included before it.
-#else
+#pragma once
 
 namespace language {
 namespace VkEnum {
@@ -27,5 +25,3 @@ std::vector<VkImage> * getSwapchainImages(VkDevice dev,
 }  // namespace Vk
 }  // namespace VkEnum
 }  // namespace language
-
-#endif // ifdef VK_NULL_HANDLE

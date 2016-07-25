@@ -1,12 +1,9 @@
 /* Copyright (c) David Hubbard 2016. Licensed under the GPLv3.
  */
 #include <string.h>
+#include <vulkan/vulkan.h>
 
 #pragma once
-
-#ifndef VK_NULL_HANDLE
-#error VkInit.h requires <vulkan/vulkan.h> to be included before it.
-#else
 
 // VkInit simplifies vulkan object initialization idioms by automatically
 // initializing the Vulkan object as soon as it is instantiated.
@@ -55,7 +52,50 @@ inline void _VkInit(VkImageViewCreateInfo& ivci) {
 	ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 }
 
+inline void _VkInit(VkShaderModuleCreateInfo& smci) {
+	memset(&smci, 0, sizeof(smci));
+	smci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+}
+
+inline void _VkInit(VkPipelineVertexInputStateCreateInfo& vsci) {
+	memset(&vsci, 0, sizeof(vsci));
+	vsci.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+}
+
+inline void _VkInit(VkPipelineInputAssemblyStateCreateInfo& asci) {
+	memset(&asci, 0, sizeof(asci));
+	asci.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+}
+
+inline void _VkInit(VkPipelineViewportStateCreateInfo& vsci) {
+	memset(&vsci, 0, sizeof(vsci));
+	vsci.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+}
+
+inline void _VkInit(VkPipelineRasterizationStateCreateInfo& rsci) {
+	memset(&rsci, 0, sizeof(rsci));
+	rsci.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+}
+
+inline void _VkInit(VkPipelineMultisampleStateCreateInfo& msci) {
+	memset(&msci, 0, sizeof(msci));
+	msci.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+}
+
+inline void _VkInit(VkPipelineDepthStencilStateCreateInfo& dsci) {
+	memset(&dsci, 0, sizeof(dsci));
+	dsci.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+}
+
+inline void _VkInit(VkPipelineColorBlendAttachmentState& cbas) {
+	memset(&cbas, 0, sizeof(cbas));
+	// VkPipelineColorBlendAttachmentState has no 'sType'.
+}
+
+inline void _VkInit(VkPipelineColorBlendStateCreateInfo& cbsci) {
+	memset(&cbsci, 0, sizeof(cbsci));
+	// VkPipelineColorBlendAttachmentState has no 'sType'.
+}
+
 }  // namespace internal
 }  // namespace language
-
-#endif // ifdef VK_NULL_HANDLE

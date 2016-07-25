@@ -3,12 +3,9 @@
 #include <stdlib.h>
 #include <typeinfo>
 #include <cxxabi.h>
+#include <vulkan/vulkan.h>
 
 #pragma once
-
-#ifndef VK_NULL_HANDLE
-#error VkPtr.h requires <vulkan/vulkan.h> to be included before it.
-#else
 
 #define VKDEBUG(x...)
 #ifndef VKDEBUG
@@ -149,5 +146,3 @@ private:
 		return abi::__cxa_demangle(typeid(T).name(), 0, 0, &status);
 	}
 };
-
-#endif // ifdef VK_NULL_HANDLE
