@@ -14,6 +14,9 @@ LDFLAGS+=-Og -ggdb
 PKG_CONFIG_FLAGS+=--static
 OBJCOPY ?= objcopy
 OBJSYMS_HDR ?= objsyms.h
+ifeq ($(PKG_CONFIG_PATH),)
+$(error PKG_CONFIG_PATH is not set, please run build.sh and follow the directions to set PKG_CONFIG_PATH)
+endif
 
 ifneq ($(TOP),)
 CXXFLAGS+=-I$(TOP)
