@@ -1,5 +1,5 @@
 diff --git a/layers/CMakeLists.txt b/layers/CMakeLists.txt
-index 076b847..5eceb55 100644
+index 076b847..5858b72 100644
 --- a/layers/CMakeLists.txt
 +++ b/layers/CMakeLists.txt
 @@ -62,6 +62,11 @@ else()
@@ -14,3 +14,19 @@ index 076b847..5eceb55 100644
  endif()
  
  if (WIN32)
+@@ -82,6 +87,7 @@ else()
+     add_dependencies(VkLayer_${target} generate_vk_layer_helpers)
+     set_target_properties(VkLayer_${target} PROPERTIES LINK_FLAGS "-Wl,-Bsymbolic")
+     install(TARGETS VkLayer_${target} DESTINATION ${PROJECT_BINARY_DIR}/install_staging)
++    install(TARGETS VkLayer_${target} DESTINATION etc/vulkan/explicit_layer.d)
+     endmacro()
+ endif()
+ 
+@@ -149,6 +155,7 @@ if (WIN32)
+ else()
+     add_library(VkLayer_utils SHARED vk_layer_config.cpp vk_layer_extension_utils.cpp vk_layer_utils.cpp)
+     install(TARGETS VkLayer_utils DESTINATION ${PROJECT_BINARY_DIR}/install_staging)
++    install(TARGETS VkLayer_utils DESTINATION etc/vulkan/explicit_layer.d)
+ endif()
+ 
+ add_vk_layer(core_validation core_validation.cpp vk_layer_table.cpp vk_safe_struct.cpp descriptor_sets.cpp)
