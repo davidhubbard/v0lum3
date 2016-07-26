@@ -28,14 +28,25 @@ template <typename T>
 class VkPtr {
 public:
 	VkPtr() = delete;
-	VkPtr(VkPtr&&) = default;
+	VkPtr(VkPtr&& other) {
+		VKDEBUG("this=%p VkPtr<%s> steal from %p dD=%p pD=%p\n", this, typeID, std::addressof(other), other.deleterDev, other.pDev);
+		object = other.object;
+		deleterT = other.deleterT;
+		deleterInst = other.deleterInst;
+		deleterDev = other.deleterDev;
+		allocator = other.allocator;
+		pInst = other.pInst;
+		pDev = other.pDev;
 
-	explicit VkPtr(const VkPtr& other) {
-		VKDEBUG("this=%p VkPtr<%s> copy from %p dD=%p\n", this, typeID, &other, other.deleterDev);
-		memmove(this, &other, sizeof(*this));
-		VKDEBUG("this=%p object=%p dT=%p dI=%p dD=%p  pI=%p pD=%p\n",
-			this, *((void **) &this->object), deleterT, deleterInst, deleterDev, pInst, pDev);
+		other.object = VK_NULL_HANDLE;
+		other.deleterT = nullptr;
+		other.deleterInst = nullptr;
+		other.deleterDev = nullptr;
+		other.allocator = nullptr;
+		other.pInst = nullptr;
+		other.pDev = nullptr;
 	}
+	VkPtr(const VkPtr&) = delete;
 
 	// Constructor that has a destroy_fn which takes two arguments: the obj and the allocator.
 	explicit VkPtr(void (* destroy_fn)(T, const VkAllocationCallbacks *)) {
