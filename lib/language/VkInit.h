@@ -57,6 +57,11 @@ inline void _VkInit(VkShaderModuleCreateInfo& smci) {
 	smci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 }
 
+inline void _VkInit(VkPipelineShaderStageCreateInfo& ssci) {
+	memset(&ssci, 0, sizeof(ssci));
+	ssci.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+}
+
 inline void _VkInit(VkPipelineVertexInputStateCreateInfo& vsci) {
 	memset(&vsci, 0, sizeof(vsci));
 	vsci.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -94,7 +99,37 @@ inline void _VkInit(VkPipelineColorBlendAttachmentState& cbas) {
 
 inline void _VkInit(VkPipelineColorBlendStateCreateInfo& cbsci) {
 	memset(&cbsci, 0, sizeof(cbsci));
-	// VkPipelineColorBlendAttachmentState has no 'sType'.
+	cbsci.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+}
+
+inline void _VkInit(VkPipelineLayoutCreateInfo& plci) {
+	memset(&plci, 0, sizeof(plci));
+	plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+}
+
+inline void _VkInit(VkAttachmentDescription& ad) {
+	memset(&ad, 0, sizeof(ad));
+	// VkAttachmentDescription has no 'sType'.
+}
+
+inline void _VkInit(VkAttachmentReference& ar) {
+	memset(&ar, 0, sizeof(ar));
+	// VkAttachmentReference has no 'sType'.
+}
+
+inline void _VkInit(VkSubpassDescription& sd) {
+	memset(&sd, 0, sizeof(sd));
+	// VkSubpassDescription has no 'sType'.
+}
+
+inline void _VkInit(VkRenderPassCreateInfo& rpci) {
+	memset(&rpci, 0, sizeof(rpci));
+	rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+}
+
+inline void _VkInit(VkGraphicsPipelineCreateInfo& gpci) {
+	memset(&gpci, 0, sizeof(gpci));
+	gpci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 }
 
 }  // namespace internal
