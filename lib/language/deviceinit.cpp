@@ -51,6 +51,7 @@ static int initSupportedQueues(Instance * inst, std::vector<VkQueueFamilyPropert
 		for (size_t i = 0, j; i < sizeof(requiredDeviceExtensions)/sizeof(requiredDeviceExtensions[0]); i++) {
 			for (j = 0; j < dev.availableExtensions.size(); j++) {
 				if (!strcmp(dev.availableExtensions.at(j).extensionName, requiredDeviceExtensions[i])) {
+					dev.extensionRequests.push_back(requiredDeviceExtensions[i]);
 					break;
 				}
 			}
@@ -186,7 +187,9 @@ int Instance::open(VkExtent2D surfaceSizeRequest,
 			}
 
 			// Now have c.prios.size() == how many queues to create of this queue family.
-			if (qfam.prios.size() > qfam.vk.queueCount) {
+			if (qfam.prios.size() < 1) {
+				continue;  // This qfam is not being requested on this dev.
+			} else if (qfam.prios.size() > qfam.vk.queueCount) {
 				fprintf(stderr, "Cannot request %zu of dev_i=%zu, qFam[%zu] (max %zu allowed)\n",
 					qfam.prios.size(), (size_t) kv.first, q_i, (size_t) qfam.vk.queueCount);
 				return 1;

@@ -24,11 +24,20 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(VkFlags msgFlags, VkDe
 		if (strstr(pMsg, "manifest file") && debugLineCount < 20) {
 			return false;
 		}
+		if (strstr(pMsg, VK_LAYER_LUNARG_standard_validation) && debugLineCount < 30) {
+			return false;
+		}
 		if (!strcmp(pMsg, "Build ICD instance extension list")) {
 			extensionListSuppress = 1;
 			return false;
 		}
 		if (extensionListSuppress && !strncmp(pMsg, "Instance Extension:", 19)) {
+			return false;
+		}
+		if (!strncmp(pMsg, "Searching for ICD drivers named", 31)) {
+			return false;
+		}
+		if (!strncmp(pMsg, "Chain: instance: Loading layer library", 38)) {
 			return false;
 		}
 		extensionListSuppress = 0;
@@ -54,6 +63,12 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(VkFlags msgFlags, VkDe
 	return false;
 }
 
+static const char VK_LAYER_LUNARG_core_validation[] = "VK_LAYER_LUNARG_core_validation";
+static const char VK_LAYER_LUNARG_object_tracker[] = "VK_LAYER_LUNARG_object_tracker";
+static const char VK_LAYER_LUNARG_parameter_validation[] = "VK_LAYER_LUNARG_parameter_validation";
+static const char VK_LAYER_LUNARG_image[] = "VK_LAYER_LUNARG_image";
+static const char VK_LAYER_LUNARG_swapchain[] = "VK_LAYER_LUNARG_swapchain";
+
 static int initInstance(Instance* inst, const char ** requiredExtensions, size_t requiredExtensionCount,
 		std::vector<VkExtensionProperties>& extensions,
 		std::vector<VkLayerProperties>& layers) {
@@ -74,7 +89,30 @@ static int initInstance(Instance* inst, const char ** requiredExtensions, size_t
 	for (const auto& layerprop : layers) {
 		// Enable instance layer "VK_LAYER_LUNARG_standard_validation"
 		// Note: Modify this code to suit your application.
+		//
+		// Getting validation working involves more than just enabling the layer!
+		// https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/tree/master/layers
+		// 1. Copy libVkLayer_<name>.so to the same dir as your binary, or
+		//    set VK_LAYER_PATH to point to where the libVkLayer_<name>.so is.
+		// 2. Create a vk_layer_settings.txt file next to libVkLayer_<name>.so.
+		// 3. Set the environment variable VK_INSTANCE_LAYERS to activate layers:
+		//    export VK_INSTANCE_LAYERS=VK_LAYER_LUNARG_standard_validation
 		if (!strcmp(VK_LAYER_LUNARG_standard_validation, layerprop.layerName)) {
+			enabledLayers.push_back(layerprop.layerName);
+		}
+		if (0 && !strcmp(VK_LAYER_LUNARG_core_validation, layerprop.layerName)) {
+			enabledLayers.push_back(layerprop.layerName);
+		}
+		if (0 && !strcmp(VK_LAYER_LUNARG_object_tracker, layerprop.layerName)) {
+			enabledLayers.push_back(layerprop.layerName);
+		}
+		if (0 && !strcmp(VK_LAYER_LUNARG_parameter_validation, layerprop.layerName)) {
+			enabledLayers.push_back(layerprop.layerName);
+		}
+		if (0 && !strcmp(VK_LAYER_LUNARG_image, layerprop.layerName)) {
+			enabledLayers.push_back(layerprop.layerName);
+		}
+		if (0 && !strcmp(VK_LAYER_LUNARG_swapchain, layerprop.layerName)) {
 			enabledLayers.push_back(layerprop.layerName);
 		}
 	}
