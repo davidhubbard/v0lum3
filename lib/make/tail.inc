@@ -9,7 +9,8 @@
 #
 # Set up dependencies and compiler flags.
 #
-CXXFLAGS+=-ggdb -std=c++11 -fno-exceptions -Wall -Wextra
+CXXFLAGS+=-ggdb -std=c++11 -fno-exceptions -fno-omit-frame-pointer -Wall -Wextra -Wformat=2
+CXXFLAGS+=-fstrict-aliasing -Wstrict-aliasing -fstrict-overflow -Wstrict-overflow=5
 LDFLAGS+=-Og -ggdb
 PKG_CONFIG_FLAGS+=--static
 OBJCOPY ?= objcopy
