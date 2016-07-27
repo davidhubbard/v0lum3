@@ -152,11 +152,41 @@ static int initInstance(Instance* inst, const char ** requiredExtensions, size_t
 		VK_DEBUG_REPORT_INFORMATION_BIT_EXT |
 		VK_DEBUG_REPORT_DEBUG_BIT_EXT;
 	dinfo.pfnCallback = debugReportCallback;
-	iinfo.pNext = &dinfo;
+	//
+	// There is this clever trick in vulkaninfo:
+	// iinfo.pNext = &dinfo;
+	// Amazing use of pNext. But it triggers a memory leak in
+	// loader/loader.c: loader_instance_heap_free()
+	// The OBJTRACK layer prints this out right before the double free():
+	// "OBJ_STAT Destroy VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT obj 0x775d790 "
+	// " (1 total objs remain & 0 VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT objs)"
+	//
+	// The workaround is to manually call vkCreateDebugReportCallbackEXT().
 
 	VkResult v = vkCreateInstance(&iinfo, nullptr, &inst->vk);
 	if (v != VK_SUCCESS) {
 		fprintf(stderr, "vkCreateInstance returned %d", v);
+		return 1;
+	}
+
+	auto pCreateDebugReportCallback = (PFN_vkCreateDebugReportCallbackEXT)
+		vkGetInstanceProcAddr(inst->vk, "vkCreateDebugReportCallbackEXT");
+	if (!pCreateDebugReportCallback) {
+		fprintf(stderr, "Failed to dlsym(vkCreateDebugReportCallbackEXT)\n");
+		return 1;
+	}
+
+	inst->pDestroyDebugReportCallbackEXT = (PFN_vkDestroyDebugReportCallbackEXT)
+		vkGetInstanceProcAddr(inst->vk, "vkDestroyDebugReportCallbackEXT");
+	if (!inst->pDestroyDebugReportCallbackEXT) {
+		fprintf(stderr, "Failed to dlsym(vkDestroyDebugReportCallbackEXT)\n");
+		return 1;
+	}
+
+	v = pCreateDebugReportCallback(inst->vk, &dinfo, nullptr /*allocator*/,
+		&inst->debugReport);
+	if (v != VK_SUCCESS) {
+		fprintf(stderr, "pCreateDebugReportCallback returned %d\n", v);
 		return 1;
 	}
 	return 0;
@@ -183,6 +213,9 @@ int Instance::ctorError(const char ** requiredExtensions, size_t requiredExtensi
 }
 
 Instance::~Instance() {
+	if (pDestroyDebugReportCallbackEXT) {
+		pDestroyDebugReportCallbackEXT(vk, debugReport, nullptr /*allocator*/);
+	}
 }
 
 int dbg_lvl = 0;

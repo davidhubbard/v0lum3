@@ -244,6 +244,9 @@ typedef struct Instance {
 	// Note: devQueryFn() can also change the mode.
 	virtual int initPresentMode(Device& dev);
 
+	PFN_vkDestroyDebugReportCallbackEXT pDestroyDebugReportCallbackEXT = nullptr;
+	VkDebugReportCallbackEXT debugReport = nullptr;
+
 protected:
 	// Override createSwapchain() if your app needs a different swapchain.
 	virtual int createSwapchain(size_t dev_i, VkExtent2D surfaceSizeRequest);
