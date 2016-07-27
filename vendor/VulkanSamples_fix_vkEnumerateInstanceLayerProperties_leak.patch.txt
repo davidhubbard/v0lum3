@@ -1,0 +1,24 @@
+diff --git a/loader/trampoline.c b/loader/trampoline.c
+index 367a3ed..ab1b665 100644
+--- a/loader/trampoline.c
++++ b/loader/trampoline.c
+@@ -240,7 +240,8 @@ vkEnumerateInstanceLayerProperties(uint32_t *pPropertyCount,
+ 
+     if (pProperties == NULL) {
+         *pPropertyCount = instance_layer_list.count;
+-        loader_destroy_layer_list(NULL, NULL, &instance_layer_list);
++        //loader_destroy_layer_list(NULL, NULL, &instance_layer_list);
++        loader_delete_layer_properties(NULL, &instance_layer_list);
+         return VK_SUCCESS;
+     }
+ 
+@@ -253,7 +254,8 @@ vkEnumerateInstanceLayerProperties(uint32_t *pPropertyCount,
+     }
+ 
+     *pPropertyCount = copy_size;
+-    loader_destroy_layer_list(NULL, NULL, &instance_layer_list);
++    //loader_destroy_layer_list(NULL, NULL, &instance_layer_list);
++    loader_delete_layer_properties(NULL, &instance_layer_list);
+ 
+     if (copy_size < instance_layer_list.count) {
+         return VK_INCOMPLETE;
