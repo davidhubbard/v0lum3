@@ -63,6 +63,10 @@ static int initImageSharingMode(Device& dev, VkSwapchainCreateInfoKHR& scci) {
 
 }  // anonymous namespace
 
+Framebuf::Framebuf(Device& dev)
+	: imageView(dev.dev, vkDestroyImageView)
+	, framebuf(dev.dev, vkDestroyFramebuffer) {};
+
 int Instance::createSwapchain(size_t dev_i, VkExtent2D surfaceSizeRequest) {
 	Device& dev = devs.at(dev_i);
 
@@ -103,13 +107,10 @@ int Instance::createSwapchain(size_t dev_i, VkExtent2D surfaceSizeRequest) {
 	dev.images = *vkImages;
 	delete vkImages;
 
-	// imageViews.resize() fails with error: no matching function
-	// for call to VkPtr<VkImageView_T*>::VkPtr(const value_type&)
 	for (size_t i = 0; i < dev.images.size(); i++) {
-		dev.imageViews.emplace_back(dev.dev, vkDestroyImageView);
-	}
+		dev.framebufs.emplace_back(dev);
+		auto& framebuf = *(dev.framebufs.end() - 1);
 
-	for (size_t i = 0; i < dev.images.size(); i++) {
 		VkImageViewCreateInfo VkInit(ivci);
 		ivci.image = dev.images.at(i);
 		ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
@@ -119,10 +120,9 @@ int Instance::createSwapchain(size_t dev_i, VkExtent2D surfaceSizeRequest) {
 		ivci.subresourceRange.levelCount = 1;
 		ivci.subresourceRange.baseArrayLayer = 0;
 		ivci.subresourceRange.layerCount = 1;  // Might be 2 for stereo displays.
-		v = vkCreateImageView(dev.dev, &ivci, nullptr, &dev.imageViews.at(i));
+		v = vkCreateImageView(dev.dev, &ivci, nullptr, &framebuf.imageView);
 		if (v != VK_SUCCESS) {
-			fprintf(stderr, "vkCreateImageView() returned %d\n", v);
-			dev.imageViews.clear();
+			fprintf(stderr, "vkCreateImageView[%zu] returned %d\n", i, v);
 			return 1;
 		}
 	}

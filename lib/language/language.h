@@ -99,6 +99,19 @@ namespace language {
 extern int dbg_lvl;
 extern const char VK_LAYER_LUNARG_standard_validation[];
 
+// Forward declaration of Device for Framebuffer.
+struct Device;
+
+// Framebuffer references the presented pixels and manages the memory behind them.
+typedef struct Framebuf {
+	Framebuf(Device& dev);
+	Framebuf(Framebuf&&) = default;
+	Framebuf(const Framebuf&) = delete;
+
+	VkPtr<VkImageView> imageView;
+	VkPtr<VkFramebuffer> framebuf;
+} Framebuf;
+
 // SurfaceSupport encodes the result of vkGetPhysicalDeviceSurfaceSupportKHR().
 enum SurfaceSupport {
 	UNDEFINED = 0,
@@ -133,6 +146,7 @@ typedef struct QueueFamily {
 	std::vector<VkQueue> queues;  // populated only for mainloop.
 } QueueFamily;
 
+// Forward declaration of Instance for Device.
 struct Instance;
 
 // Device wraps the Vulkan logical and physical devices and a list of QueueFamily
@@ -183,7 +197,7 @@ typedef struct Device {
 	// Unpopulated during devQuery().
 	VkPtr<VkSwapchainKHR> swapchain{dev, vkDestroySwapchainKHR};
 	std::vector<VkImage> images;
-	std::vector<VkPtr<VkImageView>> imageViews;
+	std::vector<Framebuf> framebufs;
 } Device;
 
 // Type signature for devQuery():

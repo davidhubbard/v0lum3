@@ -132,5 +132,10 @@ inline void _VkInit(VkGraphicsPipelineCreateInfo& gpci) {
 	gpci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 }
 
+inline void _VkInit(VkFramebufferCreateInfo &fbci) {
+	memset(&fbci, 0, sizeof(fbci));
+	fbci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+}
+
 }  // namespace internal
 }  // namespace language
