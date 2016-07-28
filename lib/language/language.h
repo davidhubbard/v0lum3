@@ -109,7 +109,7 @@ typedef struct Framebuf {
 	Framebuf(const Framebuf&) = delete;
 
 	VkPtr<VkImageView> imageView;
-	VkPtr<VkFramebuffer> framebuf;
+	VkPtr<VkFramebuffer> vk;
 } Framebuf;
 
 // SurfaceSupport encodes the result of vkGetPhysicalDeviceSurfaceSupportKHR().
@@ -140,10 +140,20 @@ typedef struct QueueRequest {
 // QueueFamily can be used to "present" on the app surface (i.e. swap a surface to
 // the screen if surfaceSupport == PRESENT).
 typedef struct QueueFamily {
+	QueueFamily(const VkQueueFamilyProperties& vk_, SurfaceSupport surfaceSupport_) {
+		vk = vk_;
+		surfaceSupport = surfaceSupport_;
+	};
+	QueueFamily(QueueFamily&&) = default;
+	QueueFamily(const QueueFamily&) = delete;
+
 	VkQueueFamilyProperties vk;
 	SurfaceSupport surfaceSupport;  // Result of vkGetPhysicalDeviceSurfaceSupportKHR().
-	std::vector<float> prios;  // populated only for mainloop.
-	std::vector<VkQueue> queues;  // populated only for mainloop.
+
+	// populated only for mainloop.
+	std::vector<float> prios;
+	std::vector<VkQueue> queues;
+	std::vector<VkPtr<VkCommandPool>> pools;
 } QueueFamily;
 
 // Forward declaration of Instance for Device.
@@ -233,9 +243,12 @@ typedef std::function<int(std::vector<QueueRequest>& request)> devQueryFn;
 //
 // Separate GRAPHICS and PRESENT queues don't reduce the GRAPHICS queue load.
 typedef struct Instance {
+	Instance() = default;
+	Instance(Instance&&) = delete;
+	Instance(const Instance&) = delete;
+
 	VkPtr<VkInstance> vk{vkDestroyInstance};
 	VkPtr<VkSurfaceKHR> surface{vk, vkDestroySurfaceKHR};
-	std::vector<Device> devs;
 
 	// This is the actual constructor (and can return an error if Vulkan indicates an error).
 	WARN_UNUSED_RESULT int ctorError(const char ** requiredExtensions, size_t requiredExtensionCount);
@@ -261,7 +274,14 @@ typedef struct Instance {
 	PFN_vkDestroyDebugReportCallbackEXT pDestroyDebugReportCallbackEXT = nullptr;
 	VkDebugReportCallbackEXT debugReport = nullptr;
 
+	size_t devs_size() const { return devs.size(); };
+	Device& at(size_t i) { return devs.at(i); };
 protected:
+	// After the devs vector is created, it must not be resized because any
+	// operation on the vector that causes it to reallocate its storage
+	// will invalidate references held to the individual Device instances.
+	std::vector<Device> devs;
+
 	// Override createSwapchain() if your app needs a different swapchain.
 	virtual int createSwapchain(size_t dev_i, VkExtent2D surfaceSizeRequest);
 } Instance;

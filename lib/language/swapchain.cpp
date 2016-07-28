@@ -65,7 +65,7 @@ static int initImageSharingMode(Device& dev, VkSwapchainCreateInfoKHR& scci) {
 
 Framebuf::Framebuf(Device& dev)
 	: imageView(dev.dev, vkDestroyImageView)
-	, framebuf(dev.dev, vkDestroyFramebuffer) {};
+	, vk(dev.dev, vkDestroyFramebuffer) {};
 
 int Instance::createSwapchain(size_t dev_i, VkExtent2D surfaceSizeRequest) {
 	Device& dev = devs.at(dev_i);
