@@ -20,7 +20,11 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(VkFlags msgFlags, VkDe
 	debugLineCount++;
 
 	// Suppress the most common log messages.
-	if (!strcmp(pLayerPrefix, "loader")) {
+	if (!strcmp(pLayerPrefix, "DebugReport")) {
+		if (!strcmp(pMsg, "Added callback")) {
+			return false;
+		}
+	} else if (!strcmp(pLayerPrefix, "loader")) {
 		if (strstr(pMsg, "manifest file") && debugLineCount < 20) {
 			return false;
 		}

@@ -41,29 +41,14 @@
  *   }
  *   int r = inst.open({WIDTH, HEIGHT},
  *     [&](std::vector<language::QueueRequest>& request) -> int {
- *       bool foundPRESENTdev = false;
+ *       bool foundDev = false;
  *       for (size_t dev_i = 0; dev_i < inst.devs.size(); dev_i++) {
- *         const auto& dev = inst.devs.at(dev_i);
- *         bool foundPRESENT = false, foundGRAPHICS = false;
- *         for (size_t q_i = 0; q_i < dev.qfams.size(); q_i++) {
- *           const auto& fam = dev.qfams.at(q_i);
- *           bool fPRESENT = fam.surfaceSupport == PRESENT;
- *           bool fGRAPHICS = (fam.vk.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0;
- *           // Only need one queue to PRESENT and one to GRAPHICS.
- *           if ((!fPRESENT || foundPRESENT) && (!fGRAPHICS || foundGRAPHICS)) {
- *             continue;
- *           }
- *           foundPRESENT |= fPRESENT;
- *           foundGRAPHICS |= fGRAPHICS;
- *
- *           language::QueueRequest qr(dev_i, q_i);
- *           request.push_back(qr);  // Or emplace_back(dev_i, q_i);
- *         }
- *         if (foundPRESENT && foundGRAPHICS) {
- *           foundPRESENTdev = true;  // A single physical device must have both.
- *         }
+ *         auto selected = inst.requestQfams(dev_i,
+ *             {language::PRESENT, language::GRAPHICS});
+ *         foundDev |= selected.size();
+ *         request.insert(request.end(), selected.begin(), selected.end());
  *       }
- *       if (!foundPRESENTdev) {
+ *       if (!foundDev) {
  *         cerr << "Error: no device has a suitable PRESENT queue." << endl;
  *         return 1;
  *       }
@@ -79,6 +64,7 @@
  */
 
 #include <vector>
+#include <set>
 #include <functional>
 #include <vulkan/vulkan.h>
 #include "VkPtr.h"
@@ -113,10 +99,14 @@ typedef struct Framebuf {
 } Framebuf;
 
 // SurfaceSupport encodes the result of vkGetPhysicalDeviceSurfaceSupportKHR().
+// As an exception, the GRAPHICS value is only used to request a QueueFamily
+// with vk.queueFlags & VK_QUEUE_GRAPHICS_BIT from Instance::requestQfams().
 enum SurfaceSupport {
 	UNDEFINED = 0,
 	NONE = 1,
 	PRESENT = 2,
+
+	GRAPHICS = 0x1000,  // Only for Instance::requestQfams().
 };
 
 // QueueRequest communicates the physical device and queue family (within the device)
@@ -260,6 +250,15 @@ typedef struct Instance {
 		devQueryFn devQuery);
 
 	virtual ~Instance();
+
+	// requestQfams() is a convenience function that selects the minimal list of
+	// QueueFamily instances from Device dev_i and returns a vector of
+	// QueueRequest that cover the requested support.
+	//
+	// For example:
+	// auto r = dev.requestQfams({language::PRESENT, language::GRAPHICS});
+	std::vector<QueueRequest> requestQfams(
+		size_t dev_i, std::set<SurfaceSupport> support);
 
 	// INTERNAL: Avoid calling initSurfaceFormat() directly.
 	// Override initSurfaceFormat() if your app needs a different default.

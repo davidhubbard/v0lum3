@@ -11,6 +11,7 @@ HDRS+=VkEnum.h
 
 SRCS+=deviceinit.cpp
 SRCS+=language.cpp
+SRCS+=requestqfams.cpp
 SRCS+=swapchain.cpp
 SRCS+=VkEnum.cpp
 
