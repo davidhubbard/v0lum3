@@ -76,7 +76,7 @@ cmake_it() {
 
 (
   cd vendor/VulkanSamples
-  git apply ../VulkanSamples_*.patch.txt
+  git apply ../VulkanSamples_*.patch.txt || true
 )
 
 # No need to build SPIRV-Headers here. It is used by SPIRV-Tools in source form.
