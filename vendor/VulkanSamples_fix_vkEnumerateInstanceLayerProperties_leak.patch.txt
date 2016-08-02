@@ -1,24 +1,59 @@
 diff --git a/loader/trampoline.c b/loader/trampoline.c
-index 367a3ed..ab1b665 100644
+index e2c3205..d607f4a 100644
 --- a/loader/trampoline.c
 +++ b/loader/trampoline.c
-@@ -240,7 +240,8 @@ vkEnumerateInstanceLayerProperties(uint32_t *pPropertyCount,
+@@ -156,7 +156,7 @@ vkEnumerateInstanceExtensionProperties(const char *pLayerName,
+                 loader_add_to_ext_list(NULL, &local_ext_list, ext_list->count,
+                                        ext_list->list);
+             }
+-            loader_destroy_layer_list(NULL, NULL, &local_list);
++            loader_delete_layer_properties(NULL, &local_list);
+             global_ext_list = &local_ext_list;
+ 
+         } else {
+@@ -240,7 +240,7 @@ vkEnumerateInstanceLayerProperties(uint32_t *pPropertyCount,
  
      if (pProperties == NULL) {
          *pPropertyCount = instance_layer_list.count;
 -        loader_destroy_layer_list(NULL, NULL, &instance_layer_list);
-+        //loader_destroy_layer_list(NULL, NULL, &instance_layer_list);
 +        loader_delete_layer_properties(NULL, &instance_layer_list);
          return VK_SUCCESS;
      }
  
-@@ -253,7 +254,8 @@ vkEnumerateInstanceLayerProperties(uint32_t *pPropertyCount,
-     }
- 
+@@ -255,11 +255,11 @@ vkEnumerateInstanceLayerProperties(uint32_t *pPropertyCount,
      *pPropertyCount = copy_size;
--    loader_destroy_layer_list(NULL, NULL, &instance_layer_list);
-+    //loader_destroy_layer_list(NULL, NULL, &instance_layer_list);
-+    loader_delete_layer_properties(NULL, &instance_layer_list);
  
      if (copy_size < instance_layer_list.count) {
+-        loader_destroy_layer_list(NULL, NULL, &instance_layer_list);
++        loader_delete_layer_properties(NULL, &instance_layer_list);
          return VK_INCOMPLETE;
+     }
+ 
+-    loader_destroy_layer_list(NULL, NULL, &instance_layer_list);
++    loader_delete_layer_properties(NULL, &instance_layer_list);
+ 
+     return VK_SUCCESS;
+ }
+diff --git a/loader/loader.c b/loader/loader.c
+index d0cdc00..da561ea 100644
+--- a/loader/loader.c
++++ b/loader/loader.c
+@@ -1123,6 +1123,18 @@ VkResult loader_add_to_layer_list(const struct loader_instance *inst,
+ 
+         memcpy(&list->list[list->count], layer,
+                sizeof(struct loader_layer_properties));
++        // list->list[list->count].instance_extension_list.list now references
++        // the same memory as layer->instance_extension_list. A ref-counter
++        // or a deep copy is needed at this point.
++        memset(&list->list[list->count].instance_extension_list, 0,
++                sizeof(list->list[list->count].instance_extension_list));
++        VkResult result = loader_add_to_ext_list(
++            inst, &list->list[list->count].instance_extension_list,
++            layer->instance_extension_list.count,
++            layer->instance_extension_list.list);
++        if (result != VK_SUCCESS) {
++            return result;
++        }
+         list->count++;
+     }
+ 
