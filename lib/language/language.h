@@ -99,14 +99,15 @@ typedef struct Framebuf {
 } Framebuf;
 
 // SurfaceSupport encodes the result of vkGetPhysicalDeviceSurfaceSupportKHR().
-// As an exception, the GRAPHICS value is only used to request a QueueFamily
-// with vk.queueFlags & VK_QUEUE_GRAPHICS_BIT from Instance::requestQfams().
+// As an exception, the GRAPHICS value is used to request a QueueFamily
+// with vk.queueFlags & VK_QUEUE_GRAPHICS_BIT in Instance::requestQfams() and
+// Device::getQfamI().
 enum SurfaceSupport {
 	UNDEFINED = 0,
 	NONE = 1,
 	PRESENT = 2,
 
-	GRAPHICS = 0x1000,  // Only for Instance::requestQfams().
+	GRAPHICS = 0x1000,  // Not used in struct QueueFamily.
 };
 
 // QueueRequest communicates the physical device and queue family (within the device)
@@ -129,16 +130,18 @@ typedef struct QueueRequest {
 // QueueFamily wraps VkQueueFamilyProperties. QueueFamily also gives whether the
 // QueueFamily can be used to "present" on the app surface (i.e. swap a surface to
 // the screen if surfaceSupport == PRESENT).
+// SurfaceSupport is the result of vkGetPhysicalDeviceSurfaceSupportKHR().
 typedef struct QueueFamily {
-	QueueFamily(const VkQueueFamilyProperties& vk_, SurfaceSupport surfaceSupport_) {
-		vk = vk_;
-		surfaceSupport = surfaceSupport_;
-	};
+	QueueFamily(const VkQueueFamilyProperties& vk_, SurfaceSupport surfaceSupport_)
+		: vk(vk_), surfaceSupport(surfaceSupport_) {};
 	QueueFamily(QueueFamily&&) = default;
 	QueueFamily(const QueueFamily&) = delete;
 
 	VkQueueFamilyProperties vk;
-	SurfaceSupport surfaceSupport;  // Result of vkGetPhysicalDeviceSurfaceSupportKHR().
+	const SurfaceSupport surfaceSupport;
+	inline bool isGraphics() const {
+		return vk.queueFlags & VK_QUEUE_GRAPHICS_BIT;
+	};
 
 	// populated only for mainloop.
 	std::vector<float> prios;
@@ -184,6 +187,9 @@ typedef struct Device {
 
 	// qfams is populated for devQuery() but qfams.queue is unpopulated.
 	std::vector<QueueFamily> qfams;
+	// getQfamI() is a convenience method to get the queue family index that
+	// supports the given SurfaceSupport.
+	size_t getQfamI(SurfaceSupport support);
 
 	// devQuery() can request extension names by adding to extensionRequests.
 	std::vector<const char *> extensionRequests;

@@ -54,7 +54,7 @@ std::vector<QueueRequest> Instance::requestQfams(
 		std::set<SurfaceSupport> qsupport;
 		for (auto s_i = support.begin(); s_i != support.end(); s_i++) {
 			auto s = *s_i;
-			if (s == GRAPHICS && (fam.vk.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0) {
+			if (s == GRAPHICS && fam.isGraphics()) {
 				qsupport.emplace(GRAPHICS);
 			} else if (fam.surfaceSupport == s) {
 				qsupport.emplace(s);
@@ -103,6 +103,14 @@ std::vector<QueueRequest> Instance::requestQfams(
 	}
 	if (dbg_lvl > 0) printf("result.size=%zu\n", result.size());
 	return result;
+}
+
+size_t Device::getQfamI(SurfaceSupport support) {
+	for (size_t i = 0; i < qfams.size(); i++) {
+		auto& fam = qfams.at(i);
+		if (support == GRAPHICS && fam.isGraphics()) return i;
+		if (support == fam.surfaceSupport) return 1;
+	}
 }
 
 }  // namespace language
