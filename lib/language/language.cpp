@@ -153,8 +153,8 @@ static int initInstance(Instance* inst, const char ** requiredExtensions, size_t
 	dinfo.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT |
 		VK_DEBUG_REPORT_WARNING_BIT_EXT |
 		VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT |
-		VK_DEBUG_REPORT_INFORMATION_BIT_EXT |
-		VK_DEBUG_REPORT_DEBUG_BIT_EXT;
+		VK_DEBUG_REPORT_INFORMATION_BIT_EXT;
+	//	VK_DEBUG_REPORT_DEBUG_BIT_EXT;
 	dinfo.pfnCallback = debugReportCallback;
 	//
 	// There is this clever trick in vulkaninfo:

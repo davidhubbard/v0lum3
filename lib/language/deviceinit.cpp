@@ -224,7 +224,6 @@ int Instance::open(VkExtent2D surfaceSizeRequest,
 		}
 	}
 
-	// Copy VkQueue objects into dev.qfam.queues. Then call createSwapChain().
 	size_t swap_chain_count = 0;
 	for (const auto& kv : requested_devs) {
 		auto& dev = devs.at(kv.first);
@@ -235,6 +234,7 @@ int Instance::open(VkExtent2D surfaceSizeRequest,
 				printf("dev_i=%u q_count=%zu adding qfam[%zu] x %zu\n",
 					kv.first, q_count, q_i, qfam.prios.size());
 			}
+			// Copy the newly minted VkQueue objects into dev.qfam.queues.
 			for (size_t i = 0; i < qfam.prios.size(); i++) {
 				qfam.queues.emplace_back();
 				vkGetDeviceQueue(dev.dev, q_i, i, &(*(qfam.queues.end() - 1)));
@@ -246,7 +246,7 @@ int Instance::open(VkExtent2D surfaceSizeRequest,
 				fprintf(stderr, "Warn: A multi-display setup probably does not work.\n");
 				fprintf(stderr, "Warn: Here be dragons.\n");
 			}
-			if (createSwapchain(kv.first, surfaceSizeRequest)) {
+			if (this->createSwapchain(kv.first, surfaceSizeRequest)) {
 				return 1;
 			}
 			swap_chain_count++;

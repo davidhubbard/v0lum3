@@ -46,21 +46,6 @@ VkExtent2D calculateSurfaceExtend2D(const VkSurfaceCapabilitiesKHR& scap,
 	};
 }
 
-static int initImageSharingMode(Device& dev, VkSwapchainCreateInfoKHR& scci) {
-	(void) dev;
-
-	// If there is one QueueFamily that supports both PRESENT and GRAPHICS:
-	//   scci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE
-	// Else 2 x QueueFamily setup can use EXCLUSIVE or CONCURRENT...
-	//   scci.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-	//   scci.queueFamilyIndexCount = 2;
-	//   scci.pQueueFamilyIndices = uint32_t[]{ GRAPHICS_i, PRESENT_i };
-	printf("TODO: either set up CONCURRENT or figure out EXCLUSIVE\n");
-
-	scci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	return 0;
-}
-
 }  // anonymous namespace
 
 Framebuf::Framebuf(Device& dev)
@@ -91,8 +76,22 @@ int Instance::createSwapchain(size_t dev_i, VkExtent2D surfaceSizeRequest) {
 	scci.presentMode = dev.mode;
 	scci.clipped = VK_TRUE;
 	scci.oldSwapchain = VK_NULL_HANDLE;
-	if (initImageSharingMode(dev, scci)) {
-		return 1;
+	uint32_t qfamIndices[] = {
+		(uint32_t) dev.getQfamI(PRESENT),
+		(uint32_t) dev.getQfamI(GRAPHICS),
+	};
+	if (qfamIndices[0] == qfamIndices[1]) {
+		// Device queues were set up such that one QueueFamily does both
+		// PRESENT and GRAPHICS.
+		scci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		scci.queueFamilyIndexCount = 0;
+		scci.pQueueFamilyIndices = nullptr;
+	} else {
+		// Device queues were set up such that a different QueueFamily does PRESENT
+		// and a different QueueFamily does GRAPHICS.
+		scci.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+		scci.queueFamilyIndexCount = 2;
+		scci.pQueueFamilyIndices = qfamIndices;
 	}
 	v = vkCreateSwapchainKHR(dev.dev, &scci, nullptr /*allocator*/, &dev.swapchain);
 	if (v != VK_SUCCESS) {
