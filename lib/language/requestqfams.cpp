@@ -105,7 +105,7 @@ std::vector<QueueRequest> Instance::requestQfams(
 	return result;
 }
 
-size_t Device::getQfamI(SurfaceSupport support) {
+size_t Device::getQfamI(SurfaceSupport support) const {
 	for (size_t i = 0; i < qfams.size(); i++) {
 		auto& fam = qfams.at(i);
 		if (support == GRAPHICS && fam.isGraphics()) return i;

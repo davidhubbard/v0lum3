@@ -127,6 +127,11 @@ inline void _VkInit(VkRenderPassCreateInfo& rpci) {
 	rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 }
 
+inline void _VkInit(VkSubpassDependency& spd) {
+	memset(&spd, 0, sizeof(spd));
+	// VkSubpassDependency has no 'sType'.
+}
+
 inline void _VkInit(VkGraphicsPipelineCreateInfo& gpci) {
 	memset(&gpci, 0, sizeof(gpci));
 	gpci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -135,6 +140,31 @@ inline void _VkInit(VkGraphicsPipelineCreateInfo& gpci) {
 inline void _VkInit(VkFramebufferCreateInfo &fbci) {
 	memset(&fbci, 0, sizeof(fbci));
 	fbci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+}
+
+inline void _VkInit(VkSemaphoreCreateInfo &sci) {
+	memset(&sci, 0, sizeof(sci));
+	sci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+}
+
+inline void _VkInit(VkFenceCreateInfo &fci) {
+	memset(&fci, 0, sizeof(fci));
+	fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+}
+
+inline void _VkInit(VkCommandPoolCreateInfo &cpci) {
+	memset(&cpci, 0, sizeof(cpci));
+	cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+}
+
+inline void _VkInit(VkRenderPassBeginInfo &rpbi) {
+	memset(&rpbi, 0, sizeof(rpbi));
+	rpbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+}
+
+inline void _VkInit(VkPresentInfoKHR &pik) {
+	memset(&pik, 0, sizeof(pik));
+	pik.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 }
 
 }  // namespace internal

@@ -146,7 +146,6 @@ typedef struct QueueFamily {
 	// populated only for mainloop.
 	std::vector<float> prios;
 	std::vector<VkQueue> queues;
-	std::vector<VkPtr<VkCommandPool>> pools;
 } QueueFamily;
 
 // Forward declaration of Instance for Device.
@@ -262,7 +261,7 @@ typedef struct Instance {
 	// QueueRequest that cover the requested support.
 	//
 	// For example:
-	// auto r = dev.requestQfams({language::PRESENT, language::GRAPHICS});
+	// auto r = dev.requestQfams(dev_i, {language::PRESENT, language::GRAPHICS});
 	std::vector<QueueRequest> requestQfams(
 		size_t dev_i, std::set<SurfaceSupport> support);
 
