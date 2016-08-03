@@ -253,3 +253,127 @@ index 9bac94b..1f28ab6 100644
          return VK_ERROR_EXTENSION_NOT_PRESENT;
      }
  
+diff --git a/layers/core_validation.cpp b/layers/core_validation.cpp
+index a872457..26b84fa 100644
+--- a/layers/core_validation.cpp
++++ b/layers/core_validation.cpp
+@@ -816,15 +816,15 @@ static bool get_mem_for_type(layer_data *dev_data, uint64_t handle, VkDebugRepor
+ // Print details of MemObjInfo list
+ static void print_mem_list(layer_data *dev_data) {
+     // Early out if info is not requested
+-    if (!(dev_data->report_data->active_flags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT)) {
++    if (!(dev_data->report_data->active_flags & VK_DEBUG_REPORT_DEBUG_BIT_EXT)) {
+         return;
+     }
+ 
+     // Just printing each msg individually for now, may want to package these into single large print
+-    log_msg(dev_data->report_data, VK_DEBUG_REPORT_INFORMATION_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0, __LINE__,
++    log_msg(dev_data->report_data, VK_DEBUG_REPORT_DEBUG_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0, __LINE__,
+             MEMTRACK_NONE, "MEM", "Details of Memory Object list (of size " PRINTF_SIZE_T_SPECIFIER " elements)",
+             dev_data->memObjMap.size());
+-    log_msg(dev_data->report_data, VK_DEBUG_REPORT_INFORMATION_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0, __LINE__,
++    log_msg(dev_data->report_data, VK_DEBUG_REPORT_DEBUG_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0, __LINE__,
+             MEMTRACK_NONE, "MEM", "=============================");
+ 
+     if (dev_data->memObjMap.size() <= 0)
+@@ -833,39 +833,39 @@ static void print_mem_list(layer_data *dev_data) {
+     for (auto ii = dev_data->memObjMap.begin(); ii != dev_data->memObjMap.end(); ++ii) {
+         auto mem_info = (*ii).second.get();
+ 
+-        log_msg(dev_data->report_data, VK_DEBUG_REPORT_INFORMATION_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
++        log_msg(dev_data->report_data, VK_DEBUG_REPORT_DEBUG_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
+                 __LINE__, MEMTRACK_NONE, "MEM", "    ===MemObjInfo at 0x%p===", (void *)mem_info);
+-        log_msg(dev_data->report_data, VK_DEBUG_REPORT_INFORMATION_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
++        log_msg(dev_data->report_data, VK_DEBUG_REPORT_DEBUG_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
+                 __LINE__, MEMTRACK_NONE, "MEM", "    Mem object: 0x%" PRIxLEAST64, (uint64_t)(mem_info->mem));
+-        log_msg(dev_data->report_data, VK_DEBUG_REPORT_INFORMATION_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
++        log_msg(dev_data->report_data, VK_DEBUG_REPORT_DEBUG_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
+                 __LINE__, MEMTRACK_NONE, "MEM", "    Ref Count: " PRINTF_SIZE_T_SPECIFIER,
+                 mem_info->commandBufferBindings.size() + mem_info->objBindings.size());
+         if (0 != mem_info->allocInfo.allocationSize) {
+             string pAllocInfoMsg = vk_print_vkmemoryallocateinfo(&mem_info->allocInfo, "MEM(INFO):         ");
+-            log_msg(dev_data->report_data, VK_DEBUG_REPORT_INFORMATION_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
++            log_msg(dev_data->report_data, VK_DEBUG_REPORT_DEBUG_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
+                     __LINE__, MEMTRACK_NONE, "MEM", "    Mem Alloc info:\n%s", pAllocInfoMsg.c_str());
+         } else {
+-            log_msg(dev_data->report_data, VK_DEBUG_REPORT_INFORMATION_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
++            log_msg(dev_data->report_data, VK_DEBUG_REPORT_DEBUG_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
+                     __LINE__, MEMTRACK_NONE, "MEM", "    Mem Alloc info is NULL (alloc done by vkCreateSwapchainKHR())");
+         }
+ 
+-        log_msg(dev_data->report_data, VK_DEBUG_REPORT_INFORMATION_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
++        log_msg(dev_data->report_data, VK_DEBUG_REPORT_DEBUG_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
+                 __LINE__, MEMTRACK_NONE, "MEM", "    VK OBJECT Binding list of size " PRINTF_SIZE_T_SPECIFIER " elements:",
+                 mem_info->objBindings.size());
+         if (mem_info->objBindings.size() > 0) {
+             for (auto obj : mem_info->objBindings) {
+-                log_msg(dev_data->report_data, VK_DEBUG_REPORT_INFORMATION_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT,
++                log_msg(dev_data->report_data, VK_DEBUG_REPORT_DEBUG_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT,
+                         0, __LINE__, MEMTRACK_NONE, "MEM", "       VK OBJECT 0x%" PRIx64, obj.handle);
+             }
+         }
+ 
+-        log_msg(dev_data->report_data, VK_DEBUG_REPORT_INFORMATION_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
++        log_msg(dev_data->report_data, VK_DEBUG_REPORT_DEBUG_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
+                 __LINE__, MEMTRACK_NONE, "MEM",
+                 "    VK Command Buffer (CB) binding list of size " PRINTF_SIZE_T_SPECIFIER " elements",
+                 mem_info->commandBufferBindings.size());
+         if (mem_info->commandBufferBindings.size() > 0) {
+             for (auto cb : mem_info->commandBufferBindings) {
+-                log_msg(dev_data->report_data, VK_DEBUG_REPORT_INFORMATION_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT,
++                log_msg(dev_data->report_data, VK_DEBUG_REPORT_DEBUG_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT,
+                         0, __LINE__, MEMTRACK_NONE, "MEM", "      VK CB 0x%p", cb);
+             }
+         }
+@@ -876,14 +876,14 @@ static void printCBList(layer_data *my_data) {
+     GLOBAL_CB_NODE *pCBInfo = NULL;
+ 
+     // Early out if info is not requested
+-    if (!(my_data->report_data->active_flags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT)) {
++    if (!(my_data->report_data->active_flags & VK_DEBUG_REPORT_DEBUG_BIT_EXT)) {
+         return;
+     }
+ 
+-    log_msg(my_data->report_data, VK_DEBUG_REPORT_INFORMATION_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0, __LINE__,
++    log_msg(my_data->report_data, VK_DEBUG_REPORT_DEBUG_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0, __LINE__,
+             MEMTRACK_NONE, "MEM", "Details of CB list (of size " PRINTF_SIZE_T_SPECIFIER " elements)",
+             my_data->commandBufferMap.size());
+-    log_msg(my_data->report_data, VK_DEBUG_REPORT_INFORMATION_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0, __LINE__,
++    log_msg(my_data->report_data, VK_DEBUG_REPORT_DEBUG_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0, __LINE__,
+             MEMTRACK_NONE, "MEM", "==================");
+ 
+     if (my_data->commandBufferMap.size() <= 0)
+@@ -892,13 +892,13 @@ static void printCBList(layer_data *my_data) {
+     for (auto &cb_node : my_data->commandBufferMap) {
+         pCBInfo = cb_node.second;
+ 
+-        log_msg(my_data->report_data, VK_DEBUG_REPORT_INFORMATION_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
++        log_msg(my_data->report_data, VK_DEBUG_REPORT_DEBUG_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
+                 __LINE__, MEMTRACK_NONE, "MEM", "    CB Info (0x%p) has CB 0x%p", (void *)pCBInfo, (void *)pCBInfo->commandBuffer);
+ 
+         if (pCBInfo->memObjs.size() <= 0)
+             continue;
+         for (auto obj : pCBInfo->memObjs) {
+-            log_msg(my_data->report_data, VK_DEBUG_REPORT_INFORMATION_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
++            log_msg(my_data->report_data, VK_DEBUG_REPORT_DEBUG_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
+                     __LINE__, MEMTRACK_NONE, "MEM", "      Mem obj 0x%" PRIx64, (uint64_t)obj);
+         }
+     }
+@@ -3976,7 +3976,7 @@ static bool printPipeline(layer_data *my_data, const VkCommandBuffer cb) {
+         if (!pPipeTrav) {
+             // nothing to print
+         } else {
+-            skip_call |= log_msg(my_data->report_data, VK_DEBUG_REPORT_INFORMATION_BIT_EXT, (VkDebugReportObjectTypeEXT)0, 0,
++            skip_call |= log_msg(my_data->report_data, VK_DEBUG_REPORT_DEBUG_BIT_EXT, (VkDebugReportObjectTypeEXT)0, 0,
+                                  __LINE__, DRAWSTATE_NONE, "DS", "%s",
+                                  vk_print_vkgraphicspipelinecreateinfo(
+                                      reinterpret_cast<const VkGraphicsPipelineCreateInfo *>(&pPipeTrav->graphicsPipelineCI), "{DS}")
+@@ -7080,7 +7087,7 @@ VKAPI_ATTR void VKAPI_CALL CmdDraw(VkCommandBuffer commandBuffer, uint32_t verte
+         skip_call |= markStoreImagesAndBuffersAsWritten(dev_data, pCB);
+         // TODO : Need to pass commandBuffer as srcObj here
+         skip_call |=
+-            log_msg(dev_data->report_data, VK_DEBUG_REPORT_INFORMATION_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT, 0,
++            log_msg(dev_data->report_data, VK_DEBUG_REPORT_DEBUG_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT, 0,
+                     __LINE__, DRAWSTATE_NONE, "DS", "vkCmdDraw() call 0x%" PRIx64 ", reporting DS state:", g_drawCount[DRAW]++);
+         skip_call |= synchAndPrintDSConfig(dev_data, commandBuffer);
+         if (!skip_call) {
