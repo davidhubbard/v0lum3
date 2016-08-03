@@ -224,7 +224,7 @@ int Instance::open(VkExtent2D surfaceSizeRequest,
 		}
 	}
 
-	// Copy KvQueue objects into dev.qfam.queues.
+	// Copy VkQueue objects into dev.qfam.queues. Then call createSwapChain().
 	size_t swap_chain_count = 0;
 	for (const auto& kv : requested_devs) {
 		auto& dev = devs.at(kv.first);

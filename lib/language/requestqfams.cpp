@@ -109,7 +109,7 @@ size_t Device::getQfamI(SurfaceSupport support) const {
 	for (size_t i = 0; i < qfams.size(); i++) {
 		auto& fam = qfams.at(i);
 		if (support == GRAPHICS && fam.isGraphics()) return i;
-		if (support == fam.surfaceSupport) return 1;
+		if (support == fam.surfaceSupport) return i;
 	}
 	fprintf(stderr, "getQfamI(%d): not found\n", (int) support);
 	return (size_t) -1;
