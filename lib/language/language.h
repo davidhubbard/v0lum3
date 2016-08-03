@@ -188,8 +188,8 @@ typedef struct Device {
 	// qfams is populated for devQuery() but qfams.queue is unpopulated.
 	std::vector<QueueFamily> qfams;
 	// getQfamI() is a convenience method to get the queue family index that
-	// supports the given SurfaceSupport.
-	size_t getQfamI(SurfaceSupport support);
+	// supports the given SurfaceSupport. Returns (size_t) -1 on error.
+	size_t getQfamI(SurfaceSupport support) const;
 
 	// devQuery() can request extension names by adding to extensionRequests.
 	std::vector<const char *> extensionRequests;

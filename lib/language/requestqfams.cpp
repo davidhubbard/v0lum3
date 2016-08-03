@@ -111,6 +111,8 @@ size_t Device::getQfamI(SurfaceSupport support) {
 		if (support == GRAPHICS && fam.isGraphics()) return i;
 		if (support == fam.surfaceSupport) return 1;
 	}
+	fprintf(stderr, "getQfamI(%d): not found\n", (int) support);
+	return (size_t) -1;
 }
 
 }  // namespace language
