@@ -2,7 +2,7 @@
 include $(TOP)lib/make/head.inc
 
 TARGET_LIB=liblanguage.a
-PKGCONFIG_PKGS+=vulkan
+PKG_CONFIG_PKGS+=vulkan
 
 HDRS+=language.h
 HDRS+=VkPtr.h

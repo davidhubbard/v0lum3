@@ -27,7 +27,7 @@ define IMPORT_PKG_CONFIG
 CXXFLAGS+=$(strip $(shell pkg-config $(PKG_CONFIG_FLAGS) --cflags $(1)))
 LDFLAGS+=$(strip $(shell pkg-config $(PKG_CONFIG_FLAGS) --libs $(1)))
 endef
-$(foreach pkg,$(PKGCONFIG_PKGS),$(eval $(call IMPORT_PKG_CONFIG,$(pkg))))
+$(foreach pkg,$(PKG_CONFIG_PKGS),$(eval $(call IMPORT_PKG_CONFIG,$(pkg))))
 
 ifneq ($(VERBOSE),)
 V=$(VERBOSE)
@@ -165,3 +165,12 @@ $(2)/$(1):
 endef
 $(foreach s,$(SUBDIRS),$(eval $(call SUBDIR_TARGET,all,$(s))))
 $(foreach s,$(SUBDIRS),$(eval $(call SUBDIR_TARGET,clean,$(s))))
+
+.phony: check_build_sh_has_run
+
+check_build_sh_has_run:
+	@if [ ! -d $(TOP)vendor/etc/vulkan ]; then \
+		echo "Missing $(TOP)vendor/etc/vulkan. Please try running:"; \
+		echo "    build.sh"; \
+		exit 1; \
+	fi
