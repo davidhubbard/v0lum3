@@ -257,7 +257,8 @@ int RenderPass::getSubpassDeps(size_t subpass_i,
 	// Link this subpass to the next one, as shown in
 	// https://github.com/GameTechDev/IntroductionToVulkan/blob/master/Project/Tutorial04/Tutorial04.cpp
 	//
-	// Is this needed?
+	// This is not needed as described here:
+	// https://forums.khronos.org/showthread.php/13119-Intel-TuT-4-uses-a-SubpassDependency-but-why?p=40575&viewfull=1#post40575
 	VkSubpassDependency VkInit(tonext);
 	tonext.srcSubpass = subpass_i;
 	tonext.dstSubpass = (subpass_i == pcis.size() - 1) ? VK_SUBPASS_EXTERNAL : subpass_i + 1;
