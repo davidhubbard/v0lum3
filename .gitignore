@@ -2,12 +2,14 @@ vendor/bin
 vendor/etc
 vendor/include
 vendor/lib
+main/v
 
 CMakeCache.txt
 CMakeLists.txt.user
 cmake_install.cmake
 CMakeFiles/
 __pycache__
+*.spv
 *.so
 *.so.*
 _out64

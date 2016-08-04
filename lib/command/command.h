@@ -213,8 +213,9 @@ typedef struct RenderPass {
 
 	// Override this function to customize the subpass dependencies.
 	// The default just executes subpasses serially (in order).
-	virtual VkSubpassDependency getSubpassDep(size_t subpass_i,
-		const std::vector<PipelineCreateInfo>& pcis);
+	virtual int getSubpassDeps(size_t subpass_i,
+		const std::vector<PipelineCreateInfo>& pcis,
+		std::vector<VkSubpassDependency>& subpassdeps);
 
 	// init() initializes the pipelines with the supplied vector of
 	// PipelineCreateInfo objects.

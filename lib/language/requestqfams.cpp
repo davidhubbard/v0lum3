@@ -102,6 +102,16 @@ std::vector<QueueRequest> Instance::requestQfams(
 		}
 	}
 	if (dbg_lvl > 0) printf("result.size=%zu\n", result.size());
+	if (support.size() > 0) {
+		fprintf(stderr,
+			"requestQfams: %zu queue families not found on dev[%zu]:\n",
+			support.size(), dev_i);
+		for (auto s_i = support.begin(); s_i != support.end(); s_i++) {
+			fprintf(stderr, "requestQfams: queue family %d not found on dev[%zu]\n",
+				(int) *s_i, dev_i);
+		}
+		result.clear();
+	}
 	return result;
 }
 

@@ -228,26 +228,53 @@ Shader& RenderPass::addShader(PipelineCreateInfo& pci,
 	return shader;
 }
 
-VkSubpassDependency RenderPass::getSubpassDep(size_t subpass_i,
-		const std::vector<PipelineCreateInfo>& pcis) {
-	VkSubpassDependency VkInit(spd);
-	spd.srcSubpass = (subpass_i == 0) ? VK_SUBPASS_EXTERNAL : (subpass_i - 1);
-	spd.dstSubpass = subpass_i;
+int RenderPass::getSubpassDeps(size_t subpass_i,
+		const std::vector<PipelineCreateInfo>& pcis,
+		std::vector<VkSubpassDependency>& subpassdeps) {
+	// Link this subpass to the previous one.
+	VkSubpassDependency VkInit(fromprev);
+	fromprev.srcSubpass = (subpass_i == 0) ? VK_SUBPASS_EXTERNAL : (subpass_i - 1);
+	fromprev.dstSubpass = subpass_i;
+	fromprev.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 	if (subpass_i == 0) {
-		spd.srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-		spd.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+		fromprev.srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		fromprev.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
 	} else {
 		// See https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkSubpassDependency.html
 		fprintf(stderr, "TODO: getSubpassDep(src) needs to know the VK_PIPELINE_STAGE_...\n");
-		exit(1);
+		return 1;
 	}
 	if (subpass_i == pcis.size() - 1) {
-		spd.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		spd.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		fromprev.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		fromprev.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 	} else {
 		fprintf(stderr, "TODO: getSubpassDep(dst) needs to know the VK_PIPELINE_STAGE_...\n");
+		return 1;
 	}
-	return spd;
+	subpassdeps.push_back(fromprev);
+
+	// Link this subpass to the next one.
+	VkSubpassDependency VkInit(tonext);
+	tonext.srcSubpass = subpass_i;
+	tonext.dstSubpass = (subpass_i == pcis.size() - 1) ? VK_SUBPASS_EXTERNAL : subpass_i + 1;
+	tonext.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+	if (subpass_i == pcis.size() - 1) {
+		tonext.srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		tonext.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+	} else {
+		// See https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkSubpassDependency.html
+		fprintf(stderr, "TODO: getSubpassDep(src) needs to know the VK_PIPELINE_STAGE_...\n");
+		return 1;
+	}
+	if (subpass_i == pcis.size() - 1) {
+		tonext.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		tonext.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	} else {
+		fprintf(stderr, "TODO: getSubpassDep(dst) needs to know the VK_PIPELINE_STAGE_...\n");
+		return 1;
+	}
+	subpassdeps.push_back(fromprev);
+	return 0;
 }
 
 int RenderPass::init(std::vector<PipelineCreateInfo> pcis) {
@@ -286,7 +313,9 @@ int RenderPass::init(std::vector<PipelineCreateInfo> pcis) {
 		pci.subpassci.colorAttachmentCount = pci.colorAttaches.size();
 		pci.subpassci.pColorAttachments = pci.colorAttaches.data();
 		only_vk_subpasses.push_back(pci.subpassci);
-		only_vk_deps.push_back(getSubpassDep(subpass_i, pcis));
+		if (getSubpassDeps(subpass_i, pcis, only_vk_deps)) {
+			return 1;
+		}
 	}
 	rpci.attachmentCount = colorAttaches.size();
 	rpci.pAttachments = colorAttaches.data();
