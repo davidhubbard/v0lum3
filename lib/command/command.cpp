@@ -78,8 +78,8 @@ PipelineCreateInfo::PipelineCreateInfo(language::Device& dev) : dev(dev)
 	aref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	colorAttaches.push_back(aref);
 
-	VkOverwrite(subpassci);
-	subpassci.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	VkOverwrite(subpassDesc);
+	subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 };
 
 VkPipelineColorBlendAttachmentState PipelineCreateInfo::withDisabledAlpha() {
@@ -207,7 +207,7 @@ RenderPass::RenderPass(language::Device& dev)
 	ad.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	ad.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	ad.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	ad.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	ad.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	ad.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	colorAttaches.push_back(ad);
 
@@ -310,9 +310,9 @@ int RenderPass::init(std::vector<PipelineCreateInfo> pcis) {
 			return 1;
 		}
 
-		pci.subpassci.colorAttachmentCount = pci.colorAttaches.size();
-		pci.subpassci.pColorAttachments = pci.colorAttaches.data();
-		only_vk_subpasses.push_back(pci.subpassci);
+		pci.subpassDesc.colorAttachmentCount = pci.colorAttaches.size();
+		pci.subpassDesc.pColorAttachments = pci.colorAttaches.data();
+		only_vk_subpasses.push_back(pci.subpassDesc);
 		if (getSubpassDeps(subpass_i, pcis, only_vk_deps)) {
 			return 1;
 		}

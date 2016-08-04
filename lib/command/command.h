@@ -137,9 +137,9 @@ typedef struct PipelineCreateInfo {
 	VkPipelineColorBlendStateCreateInfo cbsci;
 
 	// Optionally modify these structures before calling init().
-	// colorAttaches will be written to subpassci by init().
+	// colorAttaches will be written to subpassDesc by init().
 	std::vector<VkAttachmentReference> colorAttaches;
-	VkSubpassDescription subpassci;
+	VkSubpassDescription subpassDesc;
 } PipelineCreateInfo;
 
 // Forward declaration of RenderPass for Pipeline.
