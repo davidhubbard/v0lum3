@@ -207,7 +207,7 @@ RenderPass::RenderPass(language::Device& dev)
 	ad.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	ad.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	ad.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	ad.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	ad.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	ad.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	colorAttaches.push_back(ad);
 
@@ -235,7 +235,7 @@ int RenderPass::getSubpassDeps(size_t subpass_i,
 	VkSubpassDependency VkInit(fromprev);
 	fromprev.srcSubpass = (subpass_i == 0) ? VK_SUBPASS_EXTERNAL : (subpass_i - 1);
 	fromprev.dstSubpass = subpass_i;
-	fromprev.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+	fromprev.dependencyFlags = 0;
 	if (subpass_i == 0) {
 		fromprev.srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 		fromprev.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
@@ -253,11 +253,15 @@ int RenderPass::getSubpassDeps(size_t subpass_i,
 	}
 	subpassdeps.push_back(fromprev);
 
-	// Link this subpass to the next one.
+#if 0
+	// Link this subpass to the next one, as shown in
+	// https://github.com/GameTechDev/IntroductionToVulkan/blob/master/Project/Tutorial04/Tutorial04.cpp
+	//
+	// Is this needed?
 	VkSubpassDependency VkInit(tonext);
 	tonext.srcSubpass = subpass_i;
 	tonext.dstSubpass = (subpass_i == pcis.size() - 1) ? VK_SUBPASS_EXTERNAL : subpass_i + 1;
-	tonext.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+	tonext.dependencyFlags = 0;
 	if (subpass_i == pcis.size() - 1) {
 		tonext.srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 		tonext.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
@@ -273,7 +277,8 @@ int RenderPass::getSubpassDeps(size_t subpass_i,
 		fprintf(stderr, "TODO: getSubpassDep(dst) needs to know the VK_PIPELINE_STAGE_...\n");
 		return 1;
 	}
-	subpassdeps.push_back(fromprev);
+	subpassdeps.push_back(tonext);
+#endif
 	return 0;
 }
 
