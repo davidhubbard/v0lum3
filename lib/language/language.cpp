@@ -169,7 +169,7 @@ static int initInstance(Instance* inst, const char ** requiredExtensions, size_t
 
 	VkResult v = vkCreateInstance(&iinfo, nullptr, &inst->vk);
 	if (v != VK_SUCCESS) {
-		fprintf(stderr, "vkCreateInstance returned %d", v);
+		fprintf(stderr, "vkCreateInstance returned %d\n", v);
 		return 1;
 	}
 

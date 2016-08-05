@@ -14,13 +14,13 @@ std::vector<VkExtensionProperties>* getExtensions() {
 	uint32_t extensionCount = 0;
 	VkResult r = vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
 	if (r != VK_SUCCESS) {
-		fprintf(stderr, "vkEnumerateInstanceExtensionProperties(count) returned %d", r);
+		fprintf(stderr, "vkEnumerateInstanceExtensionProperties(count) returned %d\n", r);
 		return nullptr;
 	}
 	auto* extensions = new std::vector<VkExtensionProperties>(extensionCount);
 	r = vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions->data());
 	if (r != VK_SUCCESS && r != VK_INCOMPLETE) {
-		fprintf(stderr, "vkEnumerateInstanceExtensionProperties(all) returned %d", r);
+		fprintf(stderr, "vkEnumerateInstanceExtensionProperties(all) returned %d\n", r);
 		delete extensions;
 		return nullptr;
 	}
@@ -38,13 +38,13 @@ std::vector<VkLayerProperties>* getLayers() {
 	uint32_t layerCount = 0;
 	VkResult r = vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 	if (r != VK_SUCCESS) {
-		fprintf(stderr, "vkEnumerateInstanceLayerProperties(count) returned %d", r);
+		fprintf(stderr, "vkEnumerateInstanceLayerProperties(count) returned %d\n", r);
 		return nullptr;
 	}
 	auto* layers = new std::vector<VkLayerProperties>(layerCount);
 	r = vkEnumerateInstanceLayerProperties(&layerCount, layers->data());
 	if (r != VK_SUCCESS && r != VK_INCOMPLETE) {
-		fprintf(stderr, "vkEnumerateInstanceLayerProperties(all) returned %d", r);
+		fprintf(stderr, "vkEnumerateInstanceLayerProperties(all) returned %d\n", r);
 		delete layers;
 		return nullptr;
 	}
@@ -62,13 +62,13 @@ std::vector<VkPhysicalDevice>* getDevices(VkInstance instance) {
 	uint32_t devCount = 0;
 	VkResult r = vkEnumeratePhysicalDevices(instance, &devCount, nullptr);
 	if (r != VK_SUCCESS) {
-		fprintf(stderr, "vkEnumeratePhysicalDevices(count) returned %d", r);
+		fprintf(stderr, "vkEnumeratePhysicalDevices(count) returned %d\n", r);
 		return nullptr;
 	}
 	auto* devs = new std::vector<VkPhysicalDevice>(devCount);
 	r = vkEnumeratePhysicalDevices(instance, &devCount, devs->data());
 	if (r != VK_SUCCESS && r != VK_INCOMPLETE) {
-		fprintf(stderr, "vkEnumeratePhysicalDevices(all) returned %d", r);
+		fprintf(stderr, "vkEnumeratePhysicalDevices(all) returned %d\n", r);
 		delete devs;
 		return nullptr;
 	}
@@ -111,13 +111,13 @@ std::vector<VkExtensionProperties> * getDeviceExtensions(VkPhysicalDevice dev) {
 	uint32_t extensionCount = 0;
 	VkResult r = vkEnumerateDeviceExtensionProperties(dev, nullptr, &extensionCount, nullptr);
 	if (r != VK_SUCCESS) {
-		fprintf(stderr, "vkEnumerateDeviceExtensionProperties(count) returned %d", r);
+		fprintf(stderr, "vkEnumerateDeviceExtensionProperties(count) returned %d\n", r);
 		return nullptr;
 	}
 	auto* extensions = new std::vector<VkExtensionProperties>(extensionCount);
 	r = vkEnumerateDeviceExtensionProperties(dev, nullptr, &extensionCount, extensions->data());
 	if (r != VK_SUCCESS && r != VK_INCOMPLETE) {
-		fprintf(stderr, "vkEnumerateDeviceExtensionProperties(all) returned %d", r);
+		fprintf(stderr, "vkEnumerateDeviceExtensionProperties(all) returned %d\n", r);
 		delete extensions;
 		return nullptr;
 	}
@@ -136,13 +136,13 @@ std::vector<VkSurfaceFormatKHR> * getSurfaceFormats(VkPhysicalDevice dev,
 	uint32_t formatCount = 0;
 	VkResult r = vkGetPhysicalDeviceSurfaceFormatsKHR(dev, surface, &formatCount, nullptr);
 	if (r != VK_SUCCESS) {
-		fprintf(stderr, "vkGetPhysicalDeviceSurfaceFormatsKHR(count) returned %d", r);
+		fprintf(stderr, "vkGetPhysicalDeviceSurfaceFormatsKHR(count) returned %d\n", r);
 		return nullptr;
 	}
 	auto* formats = new std::vector<VkSurfaceFormatKHR>(formatCount);
 	r = vkGetPhysicalDeviceSurfaceFormatsKHR(dev, surface, &formatCount, formats->data());
 	if (r != VK_SUCCESS && r != VK_INCOMPLETE) {
-		fprintf(stderr, "vkGetPhysicalDeviceSurfaceFormatsKHR(all) returned %d", r);
+		fprintf(stderr, "vkGetPhysicalDeviceSurfaceFormatsKHR(all) returned %d\n", r);
 		delete formats;
 		return nullptr;
 	}
@@ -161,13 +161,13 @@ std::vector<VkPresentModeKHR> * getPresentModes(VkPhysicalDevice dev,
 	uint32_t modeCount = 0;
 	VkResult r = vkGetPhysicalDeviceSurfacePresentModesKHR(dev, surface, &modeCount, nullptr);
 	if (r != VK_SUCCESS) {
-		fprintf(stderr, "vkGetPhysicalDeviceSurfacePresentModesKHR(count) returned %d", r);
+		fprintf(stderr, "vkGetPhysicalDeviceSurfacePresentModesKHR(count) returned %d\n", r);
 		return nullptr;
 	}
 	auto* modes = new std::vector<VkPresentModeKHR>(modeCount);
 	r = vkGetPhysicalDeviceSurfacePresentModesKHR(dev, surface, &modeCount, modes->data());
 	if (r != VK_SUCCESS && r != VK_INCOMPLETE) {
-		fprintf(stderr, "vkGetPhysicalDeviceSurfacePresentModesKHR(all) returned %d", r);
+		fprintf(stderr, "vkGetPhysicalDeviceSurfacePresentModesKHR(all) returned %d\n", r);
 		delete modes;
 		return nullptr;
 	}
@@ -186,13 +186,13 @@ std::vector<VkImage> * getSwapchainImages(VkDevice dev,
 	uint32_t imageCount = 0;
 	VkResult r = vkGetSwapchainImagesKHR(dev, swapchain, &imageCount, nullptr);
 	if (r != VK_SUCCESS) {
-		fprintf(stderr, "vkGetSwapchainImagesKHR(count) returned %d", r);
+		fprintf(stderr, "vkGetSwapchainImagesKHR(count) returned %d\n", r);
 		return nullptr;
 	}
 	auto* images = new std::vector<VkImage>(imageCount);
 	r = vkGetSwapchainImagesKHR(dev, swapchain, &imageCount, images->data());
 	if (r != VK_SUCCESS && r != VK_INCOMPLETE) {
-		fprintf(stderr, "vkGetSwapchainImagesKHR(all) returned %d", r);
+		fprintf(stderr, "vkGetSwapchainImagesKHR(all) returned %d\n", r);
 		delete images;
 		return nullptr;
 	}
