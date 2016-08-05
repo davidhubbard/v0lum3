@@ -44,19 +44,17 @@ static int mainLoop(GLFWwindow * window, language::Instance& inst) {
 	command::PipelineCreateInfo pipe0params(dev);
 
 	if (renderPass.addShader(pipe0params, VK_SHADER_STAGE_VERTEX_BIT, "main")
-		.loadSPV(
-			_binary_main_vert_spv_start, _binary_main_vert_spv_end)) {
+			.loadSPV(obj_main_vert_spv_start, obj_main_vert_spv_end)) {
 		return 1;
 	}
 	if (renderPass.addShader(pipe0params, VK_SHADER_STAGE_FRAGMENT_BIT, "main")
-		.loadSPV(
-			_binary_main_frag_spv_start, _binary_main_frag_spv_end)) {
+			.loadSPV(obj_main_frag_spv_start, obj_main_frag_spv_end)) {
 		return 1;
 	}
 
 	fprintf(stderr, "renderPass.init: main.vert.spv (0x%zx bytes) main.frag.spv (0x%zx bytes)\n",
-		(size_t) (_binary_main_vert_spv_end - _binary_main_vert_spv_start),
-		(size_t) (_binary_main_frag_spv_end - _binary_main_frag_spv_start));
+		(size_t) (obj_main_vert_spv_end - obj_main_vert_spv_start),
+		(size_t) (obj_main_frag_spv_end - obj_main_frag_spv_start));
 
 	renderPass.pipelines.emplace_back(dev);
 	if (renderPass.init(std::vector<command::PipelineCreateInfo>{pipe0params})) {
@@ -141,7 +139,7 @@ static int mainLoop(GLFWwindow * window, language::Instance& inst) {
 
 		fprintf(stderr, "vkAcquireNextImageKHR\n");
 		uint32_t next_image_i;
-    if (vkAcquireNextImageKHR(dev.dev, dev.swapchain, std::numeric_limits<uint64_t>::max(),
+		if (vkAcquireNextImageKHR(dev.dev, dev.swapchain, std::numeric_limits<uint64_t>::max(),
 				imageAvailableSemaphore.vk, VK_NULL_HANDLE, &next_image_i) != VK_SUCCESS) {
 			fprintf(stderr, "vkAcquireNextImageKHR returned error\n");
 			return 1;
@@ -194,7 +192,7 @@ static int mainLoop(GLFWwindow * window, language::Instance& inst) {
 		// 0 <= count <= 666: 100%
 		//
 		count++;
-		if (count > 666) break;
+		if (count > 805) break;
 	}
 
 	fprintf(stderr, "vkDeviceWaitIdle\n");

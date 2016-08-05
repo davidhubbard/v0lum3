@@ -85,9 +85,12 @@ BINS+=$(patsubst %,%.spv,$(GLSL))
 # This rule ignores the symbol $$(SYM)_size because end and start give that information.
 define BIN_TO_OBJ_TARGET
 $(1).o: $(1)
-	$$(eval SYM := _binary_$(subst .,_,$(subst /,_,$(1))))
+	$$(eval SYM := obj_$(subst .,_,$(subst /,_,$(1))))
+	$$(eval OBJCPSYM := _binary_$(subst .,_,$(subst /,_,$(1))))
 	$$(eval CMD := $(LD) -r -o $(1).o -z noexecstack --format=binary $(1) && \
-		$(OBJCOPY) --rename-section .data=.rodata,alloc,load,readonly,data,contents $(1).o)
+		$(OBJCOPY) --rename-section .data=.rodata,alloc,load,readonly,data,contents \
+		--redefine-sym $$(OBJCPSYM)_start=$$(SYM)_start \
+		--redefine-sym $$(OBJCPSYM)_end=$$(SYM)_end $(1).o)
 ifeq ($(V),)
 	@echo "OBJCP  $(RELATIVE_PATH)$(1)"; $$(CMD)
 else
