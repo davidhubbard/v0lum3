@@ -222,15 +222,15 @@ static int runLanguage(GLFWwindow * window) {
 	int r = inst.open({WIN_W, WIN_H},
 	[&](std::vector<language::QueueRequest>& request) -> int {
 		// Search for a single device that can do both PRESENT and GRAPHICS.
-		bool foundPRESENTdev = false;
+		bool foundQueue = false;
 		for (size_t dev_i = 0; dev_i < inst.devs_size(); dev_i++) {
 			auto selectedQfams =
 				inst.requestQfams(dev_i, {language::PRESENT, language::GRAPHICS});
-			foundPRESENTdev |= selectedQfams.size() > 0;
+			foundQueue |= selectedQfams.size() > 0;
 			request.insert(request.end(),
 				selectedQfams.begin(), selectedQfams.end());
 		}
-		if (!foundPRESENTdev) {
+		if (!foundQueue) {
 			fprintf(stderr, "Error: no device has both PRESENT and GRAPHICS queues.\n");
 			return 1;
 		}
