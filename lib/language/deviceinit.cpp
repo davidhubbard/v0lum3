@@ -243,8 +243,26 @@ int Instance::open(VkExtent2D surfaceSizeRequest,
 		}
 		if (q_count && dev.presentModes.size()) {
 			if (swap_chain_count == 1) {
-				fprintf(stderr, "Warn: A multi-display setup probably does not work.\n");
+				fprintf(stderr, "Warn: A multi-GPU setup probably does not work.\n");
 				fprintf(stderr, "Warn: Here be dragons.\n");
+				fprintf(stderr, "Warn: https://lunarg.com/faqs/vulkan-multiple-gpus-acceleration/\n");
+				/**
+				 * https://lunarg.com/faqs/vulkan-multiple-gpus-acceleration/
+				 *
+				 * Does Vulkan support multiple GPUs or multiple GPU acceleration?
+				 *
+				 * There is no multiple GPU support in version 1.0. That was
+				 * unfortunately a feature Khronos had to cut in order to preserve
+				 * schedule. It is expected to be near the top of the list for
+				 * Vulkan 1.1. It is perfectly possible for a Vulkan implementation to
+				 * expose multiple GPUs. What Vulkan currently can’t do is allow
+				 * resource sharing between them. So from a point of view of, for
+				 * example, a Windows system manager, its possible to recognize
+				 * multiple ways to render to a surface and then use operating system
+				 * hooks to transfer that to the screen. What Vulkan doesn’t have is
+				 * the ability to share a texture or a render target between multiple
+				 * GPUs.
+				 */
 			}
 			if (this->createSwapchain(kv.first, surfaceSizeRequest)) {
 				return 1;
