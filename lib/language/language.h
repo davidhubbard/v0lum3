@@ -41,14 +41,14 @@
  *   }
  *   int r = inst.open({WIDTH, HEIGHT},
  *     [&](std::vector<language::QueueRequest>& request) -> int {
- *       bool foundDev = false;
+ *       bool foundQueue = false;
  *       for (size_t dev_i = 0; dev_i < inst.devs.size(); dev_i++) {
- *         auto selected = inst.requestQfams(dev_i,
- *             {language::PRESENT, language::GRAPHICS});
- *         foundDev |= selected.size();
+ *         auto selected = inst.requestQfams(
+ *             dev_i, {language::PRESENT, language::GRAPHICS});
+ *         foundQueue |= selected.size();
  *         request.insert(request.end(), selected.begin(), selected.end());
  *       }
- *       if (!foundDev) {
+ *       if (!foundQueue) {
  *         cerr << "Error: no device has a suitable PRESENT queue." << endl;
  *         return 1;
  *       }
@@ -225,18 +225,15 @@ typedef std::function<int(std::vector<QueueRequest>& request)> devQueryFn;
 // Typically this happens if the GPU implements a single hardware port and the
 // driver is forced to multiplex commands to that single port if the app uses
 // multiple queues. In other words, the GPU is the bottleneck and is essentially
-// single-threaded. Perhaps this could be viewed as a driver bug -- it should
-// report a max of *1* queue only in this case. But some drivers report more.
+// single-threaded.
 //
-// To be clear, queues are not about how the GPU consumes command buffers (the
-// GPU consumes the commands in parallel). The CPU should assemble command buffers
-// in parallel too. Queues *are* how Vulkan apps submit "draw calls," so it might
-// make a difference e.g. in a multi-GPU system if a single queue is a bottleneck.
+// Web resources: https://lunarg.com/faqs/command-multi-thread-vulkan/
+//                https://www.reddit.com/r/vulkan
 //
-// Multi-GPU systems definitely allow multiple independent command queues, at least
-// one queue per device.
-//
-// Separate GRAPHICS and PRESENT queues don't reduce the GRAPHICS queue load.
+// lib/language does not enforce a limit of 1 GRAPHICS queue because Vulkan
+// has not limit either. The tradeoff is a slightly more verbose initialization
+// in terms of juggling multiple instances of QueueRequest. The example code is
+// a demonstration of how to skip all this if it is not relevant to your app.
 typedef struct Instance {
 	Instance() = default;
 	Instance(Instance&&) = delete;
@@ -262,6 +259,9 @@ typedef struct Instance {
 	//
 	// For example:
 	// auto r = dev.requestQfams(dev_i, {language::PRESENT, language::GRAPHICS});
+	//
+	// After requestQfams() returns, multiple queues can be obtained by adding
+	// the QueueRequest multiple times in devQuery().
 	std::vector<QueueRequest> requestQfams(
 		size_t dev_i, std::set<SurfaceSupport> support);
 
