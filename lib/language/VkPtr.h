@@ -2,14 +2,16 @@
  */
 #include <stdlib.h>
 #include <typeinfo>
+#ifndef _MSC_VER
 #include <cxxabi.h>
+#endif
 #include <vulkan/vulkan.h>
 
 #pragma once
 
-#define VKDEBUG(x...)
+#define VKDEBUG(...)
 #ifndef VKDEBUG
-#define VKDEBUG(x...) { auto typeID = getTypeID_you_must_free_the_return_value(); fprintf(stderr, x); free(typeID); }
+#define VKDEBUG(...) { auto typeID = getTypeID_you_must_free_the_return_value(); fprintf(stderr, __VA_ARGS__); free(typeID); }
 #endif
 
 // class VkPtr wraps the object returned from some create...() function and
@@ -49,7 +51,7 @@ public:
 	VkPtr(const VkPtr&) = delete;
 
 	// Constructor that has a destroy_fn which takes two arguments: the obj and the allocator.
-	explicit VkPtr(void (* destroy_fn)(T, const VkAllocationCallbacks *)) {
+	explicit VkPtr( VKAPI_ATTR void (VKAPI_CALL * destroy_fn)(T, const VkAllocationCallbacks *)) {
 		object = VK_NULL_HANDLE;
 		if (!destroy_fn) {
 			auto typeID = getTypeID_you_must_free_the_return_value();
@@ -67,7 +69,7 @@ public:
 
 	// Constructor that has a destroy_fn which takes 3 arguments: a VkInstance, the obj, and the allocator.
 	// Note that the VkInstance is wrapped in a VkPtr itself.
-	explicit VkPtr(VkPtr<VkInstance>& instance, void (* destroy_fn)(VkInstance, T, const VkAllocationCallbacks *)) {
+	explicit VkPtr(VkPtr<VkInstance>& instance, VKAPI_ATTR void (VKAPI_CALL* destroy_fn)(VkInstance, T, const VkAllocationCallbacks *)) {
 		object = VK_NULL_HANDLE;
 		if (!destroy_fn) {
 			auto typeID = getTypeID_you_must_free_the_return_value();
@@ -86,7 +88,7 @@ public:
 
 	// Constructor that has a destroy_fn which takes 3 arguments: a VkDevice, the obj, and the allocator.
 	// Note that the VkDevice is wrapped in a VkPtr itself.
-	explicit VkPtr(VkPtr<VkDevice>& device, void (* destroy_fn)(VkDevice, T, const VkAllocationCallbacks *)) {
+	explicit VkPtr(VkPtr<VkDevice>& device, VKAPI_ATTR void (VKAPI_CALL* destroy_fn)(VkDevice, T, const VkAllocationCallbacks *)) {
 		object = VK_NULL_HANDLE;
 		if (!destroy_fn) {
 			auto typeID = getTypeID_you_must_free_the_return_value();
@@ -145,15 +147,21 @@ public:
 	T object;
 
 private:
-	void (* deleterT)(T, const VkAllocationCallbacks *);
-	void (* deleterInst)(VkInstance, T, const VkAllocationCallbacks *);
-	void (* deleterDev)(VkDevice, T, const VkAllocationCallbacks *);
+	VKAPI_ATTR void (VKAPI_CALL* deleterT)(T, const VkAllocationCallbacks *);
+	VKAPI_ATTR void (VKAPI_CALL* deleterInst)(VkInstance, T, const VkAllocationCallbacks *);
+	VKAPI_ATTR void (VKAPI_CALL* deleterDev)(VkDevice, T, const VkAllocationCallbacks *);
 	const VkAllocationCallbacks * allocator;
 	VkInstance * pInst;
 	VkDevice * pDev;
 
 	char * getTypeID_you_must_free_the_return_value() {
 		int status;
+#ifdef _MSC_VER
+		status = 0;
+		auto ct = typeid(T).name();
+		return strcpy( (char*)malloc(strlen(ct) + 1), ct );
+#else
 		return abi::__cxa_demangle(typeid(T).name(), 0, 0, &status);
+#endif
 	}
 };

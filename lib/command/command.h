@@ -48,6 +48,7 @@ typedef struct Shader {
 	int loadSPV(const std::vector<char>& spv) {
 		return loadSPV(&spv.begin()[0], &spv.end()[0]);
 	}
+	int Shader::loadSPV(std::string filename);
 
 	language::Device* dev;
 	VkPtr<VkShaderModule> vk;

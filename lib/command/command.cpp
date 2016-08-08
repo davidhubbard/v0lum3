@@ -1,6 +1,7 @@
 /* Copyright (c) David Hubbard 2016. Licensed under the GPLv3.
  */
 #include "command.h"
+#include <fstream>
 #include <lib/language/VkInit.h>
 
 #define VkOverwrite(x) language::internal::_VkInit(x)
@@ -22,6 +23,31 @@ int Shader::loadSPV(const void * spvBegin, const void * spvEnd) {
 	return 0;
 }
 
+int Shader::loadSPV(std::string filename) {
+	std::ifstream ifs(filename, std::ifstream::in | std::ifstream::binary);
+	if (!ifs.is_open()) {
+		fprintf( stderr, "SPIR-V shader file failed to open: %s\n", strerror(errno) );
+		return 1;
+	}
+	std::vector<char> shaderCode = std::vector<char>( std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>() /* EOS */ ); // should be aligned, but meh
+
+	if( shaderCode.empty() || shaderCode.size() % 4 != 0 /* per spec; % sizeof(uint32_t) presumably */ ){
+		fprintf( stderr, "SPIR-V shader file is invalid or read failed!" );
+		return 1;
+	}
+
+	VkShaderModuleCreateInfo VkInit(smci);
+	smci.codeSize = shaderCode.size();
+	smci.pCode = reinterpret_cast<const uint32_t *>(shaderCode.data());
+	VkResult r = vkCreateShaderModule(dev->dev, &smci, nullptr, &vk);
+	if (r != VK_SUCCESS) {
+		fprintf(stderr, "loadSPV(%s) vkCreateShaderModule returned %d\n",
+			filename.c_str(), r);
+		return 1;
+	}
+	return 0;
+}
+
 PipelineStage::PipelineStage() {
 	VkOverwrite(sci);
 }
@@ -36,16 +62,16 @@ PipelineCreateInfo::PipelineCreateInfo(language::Device& dev) : dev(dev)
 	VkOverwrite(viewsci);
 	VkExtent2D& scExtent = dev.swapchainExtent;
 	viewports.push_back(VkViewport{
-		x: 0.0f,
-		y: 0.0f,
-		width: (float) scExtent.width,
-		height: (float) scExtent.height,
-		minDepth: 0.0f,
-		maxDepth: 1.0f,
+		/*x:*/ 0.0f,
+		/*y:*/ 0.0f,
+		/*width:*/ (float) scExtent.width,
+		/*height:*/ (float) scExtent.height,
+		/*minDepth:*/ 0.0f,
+		/*maxDepth:*/ 1.0f,
 	});
 	scissors.push_back(VkRect2D{
-		offset: {0, 0},
-		extent: scExtent,
+		/*offset:*/ {0, 0},
+		/*extent:*/ scExtent,
 	});
 
 	VkOverwrite(rastersci);

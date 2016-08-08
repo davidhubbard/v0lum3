@@ -276,7 +276,7 @@ typedef struct Instance {
 	virtual int initPresentMode(Device& dev);
 
 	PFN_vkDestroyDebugReportCallbackEXT pDestroyDebugReportCallbackEXT = nullptr;
-	VkDebugReportCallbackEXT debugReport = nullptr;
+	VkDebugReportCallbackEXT debugReport = VK_NULL_HANDLE;
 
 	size_t devs_size() const { return devs.size(); };
 	Device& at(size_t i) { return devs.at(i); };
