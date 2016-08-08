@@ -41,8 +41,8 @@ VkExtent2D calculateSurfaceExtend2D(const VkSurfaceCapabilitiesKHR& scap,
 
 	const VkExtent2D& lo = scap.minImageExtent, hi = scap.maxImageExtent;
 	return {
-		width: std::max(lo.width, std::min(hi.width, surfaceSizeRequest.width)),
-		height: std::max(lo.height, std::min(hi.height, surfaceSizeRequest.height)),
+		/*width:*/ std::max(lo.width, std::min(hi.width, surfaceSizeRequest.width)),
+		/*height:*/ std::max(lo.height, std::min(hi.height, surfaceSizeRequest.height)),
 	};
 }
 
