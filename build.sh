@@ -45,18 +45,6 @@ Cflags: -I\${includedir} -I\${glm_includedir}
 EOF
 fi
 
-# A nice benefit of installing a new vulkan.pc is that pkg-config --exists vulkan
-# will run before even building VulkanSamples. On the other hand if the build does not succeed,
-# pkg-config will be lying about the presence of vulkan libs!
-if ! pkg-config --exists vulkan; then
-  echo "WARNING: lib/pkgconfig/vulkan.pc is not in \$PKG_CONFIG_PATH"
-  echo ""
-  echo "WARNING: Please type: \"export PKG_CONFIG_PATH=${PWD}/vendor/lib/pkgconfig\""
-  echo ""
-  echo "WARNING: Recommend adding the above line to your .bashrc / .cshrc / .zshrc etc."
-  exit 1
-fi
-
 # Get set up to build all the bits and bobs needed for Vulkan.
 PREFIX="${PWD}/vendor"
 NPROC=$( nproc )
@@ -80,7 +68,7 @@ cmake_it() {
 )
 
 # No need to build SPIRV-Headers here. It is used by SPIRV-Tools in source form.
-for submod in glslang SPIRV-Tools glfw VulkanSamples; do
+for submod in glfw glslang SPIRV-Tools VulkanSamples; do
   mkdir -p "vendor/${submod}/build"
   (
     cd "vendor/${submod}/build"
@@ -106,6 +94,20 @@ for submod in glslang SPIRV-Tools glfw VulkanSamples; do
     # calling make immediately is simplest in terms of debugging build issues.
     make -j$NPROC install
   )
+
+  if [ "${submod}" == "glfw" ]; then
+    # A nice benefit of installing a new vulkan.pc is that pkg-config --exists vulkan
+    # will run before even building VulkanSamples. On the other hand if the build does not succeed,
+    # pkg-config will be lying about the presence of vulkan libs!
+    if ! pkg-config --exists vulkan; then
+      echo "WARNING: lib/pkgconfig/vulkan.pc is not in \$PKG_CONFIG_PATH"
+      echo ""
+      echo "WARNING: Please type: \"export PKG_CONFIG_PATH=${PWD}/vendor/lib/pkgconfig\""
+      echo ""
+      echo "WARNING: Recommend adding the above line to your .bashrc / .cshrc / .zshrc etc."
+      exit 1
+    fi
+  fi
 done
 
 echo ""
