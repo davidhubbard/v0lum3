@@ -1,8 +1,12 @@
 /* Copyright (c) David Hubbard 2016. Licensed under the GPLv3.
  */
 #include "command.h"
-#include <fstream>
 #include <lib/language/VkInit.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
 
 #define VkOverwrite(x) language::internal::_VkInit(x)
 
@@ -13,6 +17,12 @@ int Shader::loadSPV(const void * spvBegin, const void * spvEnd) {
 	smci.codeSize =
 		reinterpret_cast<const char *>(spvEnd) -
 		reinterpret_cast<const char *>(spvBegin);
+	if (smci.codeSize % 4 != 0) {
+		fprintf(stderr, "LoadSPV(%p, %p) size %zu is invalid\n",
+			spvBegin, spvEnd, smci.codeSize);
+		return 1;
+	}
+
 	smci.pCode = reinterpret_cast<const uint32_t *>(spvBegin);
 	VkResult r = vkCreateShaderModule(dev->dev, &smci, nullptr, &vk);
 	if (r != VK_SUCCESS) {
@@ -23,29 +33,34 @@ int Shader::loadSPV(const void * spvBegin, const void * spvEnd) {
 	return 0;
 }
 
-int Shader::loadSPV(std::string filename) {
-	std::ifstream ifs(filename, std::ifstream::in | std::ifstream::binary);
-	if (!ifs.is_open()) {
-		fprintf( stderr, "SPIR-V shader file failed to open: %s\n", strerror(errno) );
+int Shader::loadSPV(const char * filename) {
+	int infile = open(filename, O_RDONLY);
+	if (infile < 0) {
+		fprintf(stderr, "loadSPV: open(%s) failed: %d %s\n", filename, errno, strerror(errno));
 		return 1;
 	}
-	std::vector<char> shaderCode = std::vector<char>( std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>() /* EOS */ ); // should be aligned, but meh
+	struct stat s;
+	if (fstat(infile, &s) == -1) {
+		fprintf(stderr, "loadSPV: fstat(%s) failed: %d %s\n", filename, errno, strerror(errno));
+		return 1;
+	}
+	char * map = (char *) mmap(0, s.st_size, PROT_READ, MAP_SHARED, infile, 0 /*offset*/);
+	if (!map) {
+		fprintf(stderr, "loadSPV: mmap(%s) failed: %d %s\n", filename, errno, strerror(errno));
+		close(infile);
+		return 1;
+	}
 
-	if( shaderCode.empty() || shaderCode.size() % 4 != 0 /* per spec; % sizeof(uint32_t) presumably */ ){
-		fprintf( stderr, "SPIR-V shader file is invalid or read failed!" );
+	int r = loadSPV(map, map + s.st_size);
+	if (munmap(map, s.st_size) < 0) {
+		fprintf(stderr, "loadSPV: munmap(%s) failed: %d %s\n", filename, errno, strerror(errno));
 		return 1;
 	}
-
-	VkShaderModuleCreateInfo VkInit(smci);
-	smci.codeSize = shaderCode.size();
-	smci.pCode = reinterpret_cast<const uint32_t *>(shaderCode.data());
-	VkResult r = vkCreateShaderModule(dev->dev, &smci, nullptr, &vk);
-	if (r != VK_SUCCESS) {
-		fprintf(stderr, "loadSPV(%s) vkCreateShaderModule returned %d\n",
-			filename.c_str(), r);
+	if (close(infile) < 0) {
+		fprintf(stderr, "loadSPV: close(%s) failed: %d %s\n", filename, errno, strerror(errno));
 		return 1;
 	}
-	return 0;
+	return r;
 }
 
 PipelineStage::PipelineStage() {
