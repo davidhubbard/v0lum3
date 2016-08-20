@@ -8,7 +8,6 @@ LIBS+=$(TOP)lib/command/libcommand.a
 SRCS=main.cpp
 HDRS=
 HDRS+=$(foreach f,language.h VkPtr.h VkEnum.h,$(TOP)lib/language/$(f))
-HDRS+=$(TOP)lib/science/science.h
 HDRS+=$(TOP)lib/command/command.h
 HDRS+=$(foreach f,include/GLFW/glfw3.h VulkanSamples/include/vulkan/vulkan.h,$(TOP)vendor/$(f))
 GLSL+=main.vert
