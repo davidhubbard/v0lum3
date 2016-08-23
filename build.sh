@@ -64,7 +64,10 @@ cmake_it() {
 
 (
   cd vendor/VulkanSamples
-  git apply ../VulkanSamples_*.patch.txt || true
+  if [ ! -f v0lum3-build-script-patches-done ];
+    git apply ../VulkanSamples_*.patch.txt
+    touch v0lum3-build-script-patches-done
+  fi
 )
 
 # No need to build SPIRV-Headers here. It is used by SPIRV-Tools in source form.
