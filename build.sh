@@ -64,7 +64,7 @@ cmake_it() {
 
 (
   cd vendor/VulkanSamples
-  if [ ! -f v0lum3-build-script-patches-done ];
+  if [ ! -f v0lum3-build-script-patches-done ]; then
     git apply ../VulkanSamples_*.patch.txt
     touch v0lum3-build-script-patches-done
   fi
