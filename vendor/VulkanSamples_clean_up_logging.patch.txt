@@ -1,238 +1,5 @@
-diff --git a/loader/loader.c b/loader/loader.c
-index d0cdc00..70c6353 100644
---- a/loader/loader.c
-+++ b/loader/loader.c
-@@ -2610,7 +2610,7 @@ static VkResult loader_get_manifest_files(
- 
-     // Print out the paths being searched if debugging is enabled
-     loader_log(inst, VK_DEBUG_REPORT_DEBUG_BIT_EXT, 0,
--               "Searching the following paths for manifest files: %s\n", loc);
-+               "Searching the following paths for manifest files: %s", loc);
- 
-     file = loc;
-     while (*file) {
-@@ -2732,7 +2732,7 @@ static VkResult loader_get_manifest_files(
- 
-                 loader_log(
-                     inst, VK_DEBUG_REPORT_DEBUG_BIT_EXT, 0,
--                    "Searching the following paths for manifest files: %s\n",
-+                    "Searching the following paths for manifest files: %s",
-                     home_loc);
-                 list_is_dirs = true;
-             }
-@@ -2880,7 +2880,7 @@ VkResult loader_icd_scan(const struct loader_instance *inst,
-                 // Print out the paths being searched if debugging is enabled
-                 loader_log(
-                     inst, VK_DEBUG_REPORT_DEBUG_BIT_EXT, 0,
--                    "Searching for ICD drivers named %s default dir %s\n",
-+                    "Searching for ICD drivers named %s default dir %s",
-                     library_path, DEFAULT_VK_DRIVERS_PATH);
-                 if (loader_platform_is_path(library_path)) {
-                     // a relative or absolute path
-diff --git a/loader/wsi.c b/loader/wsi.c
-index 9bac94b..1f28ab6 100644
---- a/loader/wsi.c
-+++ b/loader/wsi.c
-@@ -252,7 +252,7 @@ terminator_GetPhysicalDeviceSurfaceSupportKHR(VkPhysicalDevice physicalDevice,
-     if (!ptr_instance->wsi_surface_enabled) {
-         loader_log(ptr_instance, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
-                    "VK_KHR_VK_KHR_surface extension not enabled.  "
--                   "vkGetPhysicalDeviceSurfaceSupportKHR not executed!\n");
-+                   "vkGetPhysicalDeviceSurfaceSupportKHR not executed!");
-         return VK_SUCCESS;
-     }
- 
-@@ -304,7 +304,7 @@ terminator_GetPhysicalDeviceSurfaceCapabilitiesKHR(
-     if (!ptr_instance->wsi_surface_enabled) {
-         loader_log(ptr_instance, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
-                    "VK_KHR_surface extension not enabled.  "
--                   "vkGetPhysicalDeviceSurfaceCapabilitiesKHR not executed!\n");
-+                   "vkGetPhysicalDeviceSurfaceCapabilitiesKHR not executed!");
-         return VK_SUCCESS;
-     }
- 
-@@ -354,7 +354,7 @@ VKAPI_ATTR VkResult VKAPI_CALL terminator_GetPhysicalDeviceSurfaceFormatsKHR(
-     if (!ptr_instance->wsi_surface_enabled) {
-         loader_log(ptr_instance, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
-                    "VK_KHR_surface extension not enabled.  "
--                   "vkGetPhysicalDeviceSurfaceFormatsKHR not executed!\n");
-+                   "vkGetPhysicalDeviceSurfaceFormatsKHR not executed!");
-         return VK_SUCCESS;
-     }
- 
-@@ -406,7 +406,7 @@ terminator_GetPhysicalDeviceSurfacePresentModesKHR(
-     if (!ptr_instance->wsi_surface_enabled) {
-         loader_log(ptr_instance, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
-                    "VK_KHR_surface extension not enabled.  "
--                   "vkGetPhysicalDeviceSurfacePresentModesKHR not executed!\n");
-+                   "vkGetPhysicalDeviceSurfacePresentModesKHR not executed!");
-         return VK_SUCCESS;
-     }
- 
-@@ -529,7 +529,7 @@ VKAPI_ATTR VkResult VKAPI_CALL terminator_CreateWin32SurfaceKHR(
-     if (!ptr_instance->wsi_win32_surface_enabled) {
-         loader_log(ptr_instance, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
-                    "VK_KHR_win32_surface extension not enabled.  "
--                   "vkCreateWin32SurfaceKHR not executed!\n");
-+                   "vkCreateWin32SurfaceKHR not executed!");
-         return VK_ERROR_EXTENSION_NOT_PRESENT;
-     }
- 
-@@ -584,7 +584,7 @@ terminator_GetPhysicalDeviceWin32PresentationSupportKHR(
-         loader_log(
-             ptr_instance, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
-             "VK_KHR_win32_surface extension not enabled.  "
--            "vkGetPhysicalDeviceWin32PresentationSupportKHR not executed!\n");
-+            "vkGetPhysicalDeviceWin32PresentationSupportKHR not executed!");
-         return VK_SUCCESS;
-     }
- 
-@@ -634,7 +634,7 @@ VKAPI_ATTR VkResult VKAPI_CALL terminator_CreateMirSurfaceKHR(
-     if (!ptr_instance->wsi_mir_surface_enabled) {
-         loader_log(ptr_instance, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
-                    "VK_KHR_mir_surface extension not enabled.  "
--                   "vkCreateMirSurfaceKHR not executed!\n");
-+                   "vkCreateMirSurfaceKHR not executed!");
-         return VK_ERROR_EXTENSION_NOT_PRESENT;
-     }
- 
-@@ -691,7 +691,7 @@ terminator_GetPhysicalDeviceMirPresentationSupportKHR(
-         loader_log(
-             ptr_instance, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
-             "VK_KHR_mir_surface extension not enabled.  "
--            "vkGetPhysicalDeviceMirPresentationSupportKHR not executed!\n");
-+            "vkGetPhysicalDeviceMirPresentationSupportKHR not executed!");
-         return VK_SUCCESS;
-     }
- 
-@@ -743,7 +743,7 @@ VKAPI_ATTR VkResult VKAPI_CALL terminator_CreateWaylandSurfaceKHR(
-     if (!ptr_instance->wsi_wayland_surface_enabled) {
-         loader_log(ptr_instance, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
-                    "VK_KHR_wayland_surface extension not enabled.  "
--                   "vkCreateWaylandSurfaceKHR not executed!\n");
-+                   "vkCreateWaylandSurfaceKHR not executed!");
-         return VK_ERROR_EXTENSION_NOT_PRESENT;
-     }
- 
-@@ -800,7 +800,7 @@ terminator_GetPhysicalDeviceWaylandPresentationSupportKHR(
-         loader_log(
-             ptr_instance, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
-             "VK_KHR_wayland_surface extension not enabled.  "
--            "vkGetPhysicalDeviceWaylandPresentationSupportKHR not executed!\n");
-+            "vkGetPhysicalDeviceWaylandPresentationSupportKHR not executed!");
-         return VK_SUCCESS;
-     }
- 
-@@ -850,7 +850,7 @@ VKAPI_ATTR VkResult VKAPI_CALL terminator_CreateXcbSurfaceKHR(
-     if (!ptr_instance->wsi_xcb_surface_enabled) {
-         loader_log(ptr_instance, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
-                    "VK_KHR_xcb_surface extension not enabled.  "
--                   "vkCreateXcbSurfaceKHR not executed!\n");
-+                   "vkCreateXcbSurfaceKHR not executed!");
-         return VK_ERROR_EXTENSION_NOT_PRESENT;
-     }
- 
-@@ -908,7 +908,7 @@ terminator_GetPhysicalDeviceXcbPresentationSupportKHR(
-         loader_log(
-             ptr_instance, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
-             "VK_KHR_xcb_surface extension not enabled.  "
--            "vkGetPhysicalDeviceXcbPresentationSupportKHR not executed!\n");
-+            "vkGetPhysicalDeviceXcbPresentationSupportKHR not executed!");
-         return VK_SUCCESS;
-     }
- 
-@@ -958,7 +958,7 @@ VKAPI_ATTR VkResult VKAPI_CALL terminator_CreateXlibSurfaceKHR(
-     if (!ptr_instance->wsi_xlib_surface_enabled) {
-         loader_log(ptr_instance, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
-                    "VK_KHR_xlib_surface extension not enabled.  "
--                   "vkCreateXlibSurfaceKHR not executed!\n");
-+                   "vkCreateXlibSurfaceKHR not executed!");
-         return VK_ERROR_EXTENSION_NOT_PRESENT;
-     }
- 
-@@ -1015,7 +1015,7 @@ terminator_GetPhysicalDeviceXlibPresentationSupportKHR(
-         loader_log(
-             ptr_instance, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
-             "VK_KHR_xlib_surface extension not enabled.  "
--            "vkGetPhysicalDeviceXlibPresentationSupportKHR not executed!\n");
-+            "vkGetPhysicalDeviceXlibPresentationSupportKHR not executed!");
-         return VK_SUCCESS;
-     }
- 
-@@ -1064,7 +1064,7 @@ VKAPI_ATTR VkResult VKAPI_CALL terminator_CreateAndroidSurfaceKHR(
-     if (!ptr_instance->wsi_display_enabled) {
-         loader_log(ptr_instance, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
-                    "VK_KHR_display extension not enabled.  "
--                   "vkCreateAndroidSurfaceKHR not executed!\n");
-+                   "vkCreateAndroidSurfaceKHR not executed!");
-         return VK_ERROR_EXTENSION_NOT_PRESENT;
-     }
- 
-@@ -1116,7 +1116,7 @@ VKAPI_ATTR VkResult VKAPI_CALL terminator_GetPhysicalDeviceDisplayPropertiesKHR(
-     if (!ptr_instance->wsi_display_enabled) {
-         loader_log(ptr_instance, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
-                    "VK_KHR_display extension not enabled.  "
--                   "vkGetPhysicalDeviceDisplayPropertiesKHR not executed!\n");
-+                   "vkGetPhysicalDeviceDisplayPropertiesKHR not executed!");
-         return VK_SUCCESS;
-     }
- 
-@@ -1156,7 +1156,7 @@ terminator_GetPhysicalDeviceDisplayPlanePropertiesKHR(
-         loader_log(
-             ptr_instance, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
-             "VK_KHR_display extension not enabled.  "
--            "vkGetPhysicalDeviceDisplayPlanePropertiesKHR not executed!\n");
-+            "vkGetPhysicalDeviceDisplayPlanePropertiesKHR not executed!");
-         return VK_SUCCESS;
-     }
- 
-@@ -1198,7 +1198,7 @@ terminator_GetDisplayPlaneSupportedDisplaysKHR(VkPhysicalDevice physicalDevice,
-     if (!ptr_instance->wsi_display_enabled) {
-         loader_log(ptr_instance, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
-                    "VK_KHR_display extension not enabled.  "
--                   "vkGetDisplayPlaneSupportedDisplaysKHR not executed!\n");
-+                   "vkGetDisplayPlaneSupportedDisplaysKHR not executed!");
-         return VK_SUCCESS;
-     }
- 
-@@ -1236,7 +1236,7 @@ VKAPI_ATTR VkResult VKAPI_CALL terminator_GetDisplayModePropertiesKHR(
-     if (!ptr_instance->wsi_display_enabled) {
-         loader_log(ptr_instance, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
-                    "VK_KHR_display extension not enabled.  "
--                   "vkGetDisplayModePropertiesKHR not executed!\n");
-+                   "vkGetDisplayModePropertiesKHR not executed!");
-         return VK_SUCCESS;
-     }
- 
-@@ -1275,7 +1275,7 @@ VKAPI_ATTR VkResult VKAPI_CALL terminator_CreateDisplayModeKHR(
-     if (!ptr_instance->wsi_display_enabled) {
-         loader_log(ptr_instance, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
-                    "VK_KHR_display extension not enabled.  "
--                   "vkCreateDisplayModeKHR not executed!\n");
-+                   "vkCreateDisplayModeKHR not executed!");
-         return VK_ERROR_EXTENSION_NOT_PRESENT;
-     }
- 
-@@ -1313,7 +1313,7 @@ VKAPI_ATTR VkResult VKAPI_CALL terminator_GetDisplayPlaneCapabilitiesKHR(
-     if (!ptr_instance->wsi_display_enabled) {
-         loader_log(ptr_instance, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
-                    "VK_KHR_display extension not enabled.  "
--                   "vkGetDisplayPlaneCapabilitiesKHR not executed!\n");
-+                   "vkGetDisplayPlaneCapabilitiesKHR not executed!");
-         return VK_SUCCESS;
-     }
- 
-@@ -1348,7 +1348,7 @@ VKAPI_ATTR VkResult VKAPI_CALL terminator_CreateDisplayPlaneSurfaceKHR(
-     if (!inst->wsi_surface_enabled) {
-         loader_log(inst, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
-                    "VK_KHR_surface extension not enabled.  "
--                   "vkCreateDisplayPlaneSurfaceKHR not executed!\n");
-+                   "vkCreateDisplayPlaneSurfaceKHR not executed!");
-         return VK_ERROR_EXTENSION_NOT_PRESENT;
-     }
- 
 diff --git a/layers/core_validation.cpp b/layers/core_validation.cpp
-index a872457..26b84fa 100644
+index c04ec9f..c192160 100644
 --- a/layers/core_validation.cpp
 +++ b/layers/core_validation.cpp
 @@ -816,15 +816,15 @@ static bool get_mem_for_type(layer_data *dev_data, uint64_t handle, VkDebugRepor
@@ -267,9 +34,9 @@ index a872457..26b84fa 100644
 -        log_msg(dev_data->report_data, VK_DEBUG_REPORT_INFORMATION_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
 +        log_msg(dev_data->report_data, VK_DEBUG_REPORT_DEBUG_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
                  __LINE__, MEMTRACK_NONE, "MEM", "    Ref Count: " PRINTF_SIZE_T_SPECIFIER,
-                 mem_info->commandBufferBindings.size() + mem_info->objBindings.size());
-         if (0 != mem_info->allocInfo.allocationSize) {
-             string pAllocInfoMsg = vk_print_vkmemoryallocateinfo(&mem_info->allocInfo, "MEM(INFO):         ");
+                 mem_info->command_buffer_bindings.size() + mem_info->obj_bindings.size());
+         if (0 != mem_info->alloc_info.allocationSize) {
+             string pAllocInfoMsg = vk_print_vkmemoryallocateinfo(&mem_info->alloc_info, "MEM(INFO):         ");
 -            log_msg(dev_data->report_data, VK_DEBUG_REPORT_INFORMATION_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
 +            log_msg(dev_data->report_data, VK_DEBUG_REPORT_DEBUG_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
                      __LINE__, MEMTRACK_NONE, "MEM", "    Mem Alloc info:\n%s", pAllocInfoMsg.c_str());
@@ -282,9 +49,9 @@ index a872457..26b84fa 100644
 -        log_msg(dev_data->report_data, VK_DEBUG_REPORT_INFORMATION_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
 +        log_msg(dev_data->report_data, VK_DEBUG_REPORT_DEBUG_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
                  __LINE__, MEMTRACK_NONE, "MEM", "    VK OBJECT Binding list of size " PRINTF_SIZE_T_SPECIFIER " elements:",
-                 mem_info->objBindings.size());
-         if (mem_info->objBindings.size() > 0) {
-             for (auto obj : mem_info->objBindings) {
+                 mem_info->obj_bindings.size());
+         if (mem_info->obj_bindings.size() > 0) {
+             for (auto obj : mem_info->obj_bindings) {
 -                log_msg(dev_data->report_data, VK_DEBUG_REPORT_INFORMATION_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT,
 +                log_msg(dev_data->report_data, VK_DEBUG_REPORT_DEBUG_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT,
                          0, __LINE__, MEMTRACK_NONE, "MEM", "       VK OBJECT 0x%" PRIx64, obj.handle);
@@ -295,9 +62,9 @@ index a872457..26b84fa 100644
 +        log_msg(dev_data->report_data, VK_DEBUG_REPORT_DEBUG_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, 0,
                  __LINE__, MEMTRACK_NONE, "MEM",
                  "    VK Command Buffer (CB) binding list of size " PRINTF_SIZE_T_SPECIFIER " elements",
-                 mem_info->commandBufferBindings.size());
-         if (mem_info->commandBufferBindings.size() > 0) {
-             for (auto cb : mem_info->commandBufferBindings) {
+                 mem_info->command_buffer_bindings.size());
+         if (mem_info->command_buffer_bindings.size() > 0) {
+             for (auto cb : mem_info->command_buffer_bindings) {
 -                log_msg(dev_data->report_data, VK_DEBUG_REPORT_INFORMATION_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT,
 +                log_msg(dev_data->report_data, VK_DEBUG_REPORT_DEBUG_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT,
                          0, __LINE__, MEMTRACK_NONE, "MEM", "      VK CB 0x%p", cb);
@@ -337,7 +104,7 @@ index a872457..26b84fa 100644
                      __LINE__, MEMTRACK_NONE, "MEM", "      Mem obj 0x%" PRIx64, (uint64_t)obj);
          }
      }
-@@ -3976,7 +3976,7 @@ static bool printPipeline(layer_data *my_data, const VkCommandBuffer cb) {
+@@ -3987,7 +3987,7 @@ static bool printPipeline(layer_data *my_data, const VkCommandBuffer cb) {
          if (!pPipeTrav) {
              // nothing to print
          } else {
@@ -346,7 +113,7 @@ index a872457..26b84fa 100644
                                   __LINE__, DRAWSTATE_NONE, "DS", "%s",
                                   vk_print_vkgraphicspipelinecreateinfo(
                                       reinterpret_cast<const VkGraphicsPipelineCreateInfo *>(&pPipeTrav->graphicsPipelineCI), "{DS}")
-@@ -7080,7 +7087,7 @@ VKAPI_ATTR void VKAPI_CALL CmdDraw(VkCommandBuffer commandBuffer, uint32_t verte
+@@ -7101,7 +7101,7 @@ VKAPI_ATTR void VKAPI_CALL CmdDraw(VkCommandBuffer commandBuffer, uint32_t verte
          skip_call |= markStoreImagesAndBuffersAsWritten(dev_data, pCB);
          // TODO : Need to pass commandBuffer as srcObj here
          skip_call |=
