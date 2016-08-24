@@ -45,12 +45,12 @@ typedef struct Shader {
 	Shader(Shader&&) = default;
 	Shader(const Shader& other) = delete;
 
-	int loadSPV(const void * spvBegin, const void * spvEnd);
-	int loadSPV(const std::vector<char>& spv) {
+	WARN_UNUSED_RESULT int loadSPV(const void * spvBegin, const void * spvEnd);
+	WARN_UNUSED_RESULT int loadSPV(const std::vector<char>& spv) {
 		return loadSPV(&spv.begin()[0], &spv.end()[0]);
 	}
-	int loadSPV(const char * filename);
-	int loadSPV(std::string filename) {
+	WARN_UNUSED_RESULT int loadSPV(const char * filename);
+	WARN_UNUSED_RESULT int loadSPV(std::string filename) {
 		return loadSPV(filename.c_str());
 	}
 
@@ -170,7 +170,7 @@ protected:
 	// creates a VkPipeline. The parent renderPass and this Pipeline's
 	// index in it are passed in as parameters. This method should be
 	// called by RenderPass::init().
-	virtual int init(RenderPass& renderPass, size_t subpass_i,
+	WARN_UNUSED_RESULT virtual int init(RenderPass& renderPass, size_t subpass_i,
 		PipelineCreateInfo& pci);
 } Pipeline;
 
@@ -206,7 +206,7 @@ typedef struct RenderPass {
 	// Pipeline: addShader() on the first pipeline, then make a copy of the
 	// PipelineStage object for all remaining Pipeline.
 	//
-	// WARNING: Return reference Shader& is invalidated by the next
+	// WARNING: Returned reference Shader& is invalidated by the next
 	// operation on the shaders vector.
 	Shader& addShader(PipelineCreateInfo& pci, VkShaderStageFlagBits stage,
 		std::string entryPointName);
@@ -218,13 +218,13 @@ typedef struct RenderPass {
 
 	// Override this function to customize the subpass dependencies.
 	// The default just executes subpasses serially (in order).
-	virtual int getSubpassDeps(size_t subpass_i,
+	WARN_UNUSED_RESULT virtual int getSubpassDeps(size_t subpass_i,
 		const std::vector<PipelineCreateInfo>& pcis,
 		std::vector<VkSubpassDependency>& subpassdeps);
 
 	// init() initializes the pipelines with the supplied vector of
 	// PipelineCreateInfo objects.
-	int init(std::vector<PipelineCreateInfo> pcis);
+	WARN_UNUSED_RESULT int init(std::vector<PipelineCreateInfo> pcis);
 
 	VkPtr<VkRenderPass> vk;
 } RenderPass;
@@ -232,7 +232,8 @@ typedef struct RenderPass {
 // Semaphore represents a GPU-only synchronization operation vs. Fence, below.
 typedef struct Semaphore {
 	Semaphore(language::Device& dev) : vk{dev.dev, vkDestroySemaphore} {};
-	int ctor(language::Device& dev);
+	// Two-stage constructor: check the return code of ctorError().
+	WARN_UNUSED_RESULT int ctorError(language::Device& dev);
 
 	VkPtr<VkSemaphore> vk;
 } Semaphore;
@@ -240,7 +241,8 @@ typedef struct Semaphore {
 // Fence represents a GPU-to-CPU synchronization operation vs. Semaphore.
 typedef struct Fence {
 	Fence(language::Device& dev) : vk{dev.dev, vkDestroyFence} {};
-	int ctor(language::Device& dev);
+	// Two-stage constructor: check the return code of ctorError().
+	WARN_UNUSED_RESULT int ctorError(language::Device& dev);
 
 	VkPtr<VkFence> vk;
 } Fence;
@@ -255,9 +257,11 @@ typedef struct CommandPool {
 	CommandPool(CommandPool&&) = default;
 	CommandPool(const CommandPool&) = delete;
 
-	int ctor(language::Device& dev, VkCommandPoolCreateFlags flags =
-		VK_COMMAND_POOL_CREATE_TRANSIENT_BIT |
-		VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+	// Two-stage constructor: check the return code of ctorError().
+	WARN_UNUSED_RESULT int ctorError(language::Device& dev,
+		VkCommandPoolCreateFlags flags =
+			VK_COMMAND_POOL_CREATE_TRANSIENT_BIT |
+			VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
 	const size_t qfam_i;
 	VkPtr<VkCommandPool> vk;

@@ -257,14 +257,15 @@ public:
 	std::vector<QueueRequest> requestQfams(
 		size_t dev_i, std::set<SurfaceSupport> support);
 
-	virtual int initDebug();
-
 	// pDestroyDebugReportCallbackEXT is located in the vulkan library at startup.
 	PFN_vkDestroyDebugReportCallbackEXT pDestroyDebugReportCallbackEXT = nullptr;
 
 	VkDebugReportCallbackEXT debugReport = VK_NULL_HANDLE;
 
 protected:
+	// Override initDebug() if your app needs different debug settings.
+	virtual int initDebug();
+
 	// After the devs vector is created in open(), it must not be resized. Any
 	// operation on the vector that causes it to reallocate its storage will
 	// invalidate references held to the individual Device instances.

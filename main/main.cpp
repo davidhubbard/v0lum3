@@ -70,7 +70,7 @@ static int mainLoop(GLFWwindow * window, language::Instance& inst) {
 		return 1;
 	}
 	command::CommandPool cpool(dev, graphics_i);
-	if (cpool.ctor(dev, 0)) {
+	if (cpool.ctorError(dev, 0)) {
 		return 1;
 	}
 	std::vector<VkCommandBuffer> commandBuffers;
@@ -124,11 +124,11 @@ static int mainLoop(GLFWwindow * window, language::Instance& inst) {
 	}
 
 	command::Semaphore imageAvailableSemaphore(dev);
-	if (imageAvailableSemaphore.ctor(dev)) {
+	if (imageAvailableSemaphore.ctorError(dev)) {
 		return 1;
 	}
 	command::Semaphore renderFinishedSemaphore(dev);
-	if (renderFinishedSemaphore.ctor(dev)) {
+	if (renderFinishedSemaphore.ctorError(dev)) {
 		return 1;
 	}
 
@@ -182,17 +182,6 @@ static int mainLoop(GLFWwindow * window, language::Instance& inst) {
 			return 1;
 		}
 		fprintf(stderr, "vkQueuePresentKHR done, end of loop %d\n", count);
-		//
-		// Probability of vkDeviceWaitIdle() failing with error:
-		// "W ParameterValidation: code9: vkDeviceWaitIdle: returned VK_ERROR_DEVICE_LOST, indicating
-		// that the logical device has been lost"
-		// "vkDeviceWaitIdle returned -4"
-		// 0 <= count <= 664: 0%
-		// 0 <= count <= 665: 5%
-		// 0 <= count <= 666: 100%
-		//
-		count++;
-		if (count > 805) break;
 	}
 
 	fprintf(stderr, "vkDeviceWaitIdle\n");
@@ -204,38 +193,21 @@ static int mainLoop(GLFWwindow * window, language::Instance& inst) {
 	return 0;
 }
 
+// Wrap glfwCreateWindowSurface for type safety.
+static VkResult createWindowSurface(language::Instance& inst, void * window) {
+	return glfwCreateWindowSurface(inst.vk, (GLFWwindow *) window, nullptr /*allocator*/,
+		&inst.surface);
+}
+
 static int runLanguage(GLFWwindow * window) {
 	unsigned int glfwExtensionCount = 0;
 	const char ** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 	language::Instance inst;
-	if (inst.ctorError(glfwExtensions, glfwExtensionCount)) {
+	if (inst.ctorError(glfwExtensions, glfwExtensionCount, createWindowSurface, window)) {
 		return 1;
 	}
 
-	VkResult v = glfwCreateWindowSurface(inst.vk, window, nullptr /*allocator*/,
-		&inst.surface);
-	if (v != VK_SUCCESS) {
-		fprintf(stderr, "glfwCreateWindowSurface() returned %d\n", v);
-		return 1;
-	}
-
-	int r = inst.open({WIN_W, WIN_H},
-	[&](std::vector<language::QueueRequest>& request) -> int {
-		// Search for a single device that can do both PRESENT and GRAPHICS.
-		bool foundQueue = false;
-		for (size_t dev_i = 0; dev_i < inst.devs_size(); dev_i++) {
-			auto selectedQfams =
-				inst.requestQfams(dev_i, {language::PRESENT, language::GRAPHICS});
-			foundQueue |= selectedQfams.size() > 0;
-			request.insert(request.end(),
-				selectedQfams.begin(), selectedQfams.end());
-		}
-		if (!foundQueue) {
-			fprintf(stderr, "Error: no device has both PRESENT and GRAPHICS queues.\n");
-			return 1;
-		}
-		return 0;
-	});
+	int r = inst.open({WIN_W, WIN_H});
 	if (r) {
 		return r;
 	}

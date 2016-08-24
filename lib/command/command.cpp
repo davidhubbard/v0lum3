@@ -389,7 +389,7 @@ int RenderPass::init(std::vector<PipelineCreateInfo> pcis) {
 	return 0;
 }
 
-int Semaphore::ctor(language::Device& dev) {
+int Semaphore::ctorError(language::Device& dev) {
 	VkSemaphoreCreateInfo VkInit(sci);
 	VkResult v = vkCreateSemaphore(dev.dev, &sci, nullptr, &vk);
 	if (v != VK_SUCCESS) {
@@ -399,7 +399,7 @@ int Semaphore::ctor(language::Device& dev) {
 	return 0;
 }
 
-int Fence::ctor(language::Device& dev) {
+int Fence::ctorError(language::Device& dev) {
 	VkFenceCreateInfo VkInit(fci);
 	VkResult v = vkCreateFence(dev.dev, &fci, nullptr, &vk);
 	if (v != VK_SUCCESS) {
@@ -409,7 +409,7 @@ int Fence::ctor(language::Device& dev) {
 	return 0;
 }
 
-int CommandPool::ctor(language::Device& dev, VkCommandPoolCreateFlags flags)
+int CommandPool::ctorError(language::Device& dev, VkCommandPoolCreateFlags flags)
 {
 	VkCommandPoolCreateInfo VkInit(cpci);
 	cpci.queueFamilyIndex = qfam_i;
