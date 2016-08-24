@@ -1,4 +1,6 @@
 /* Copyright (c) David Hubbard 2016. Licensed under the GPLv3.
+ *
+ * This is Instance::open(), though it is broken into a few different methods.
  */
 #include "language.h"
 #include "VkInit.h"
@@ -9,150 +11,25 @@
 namespace language {
 using namespace VkEnum;
 
-namespace {  // use an anonymous namespace to hide all its contents (only reachable from this file)
-
-static const char * requiredDeviceExtensions[] = {
-	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-};
-
-struct InstanceInternal : public Instance {
-	int initSupportedQueues(std::vector<VkQueueFamilyProperties>& vkQFams, Device& dev) {
-		VkBool32 oneQueueWithPresentSupported = false;
-		for (size_t q_i = 0; q_i < vkQFams.size(); q_i++) {
-			VkBool32 isPresentSupported = false;
-			VkResult v = vkGetPhysicalDeviceSurfaceSupportKHR(dev.phys, q_i, this->surface,
-				&isPresentSupported);
-			if (v != VK_SUCCESS) {
-				fprintf(stderr, "dev %zu qfam %zu: vkGetPhysicalDeviceSurfaceSupportKHR returned %d\n",
-					this->devs.size(), q_i, v);
-				return 1;
-			}
-			oneQueueWithPresentSupported |= isPresentSupported;
-
-			dev.qfams.emplace_back(vkQFams.at(q_i), isPresentSupported ? PRESENT : NONE);
-		}
-
-		auto* devExtensions = Vk::getDeviceExtensions(dev.phys);
-		if (!devExtensions) {
-			return 1;
-		}
-		dev.availableExtensions = *devExtensions;
-		delete devExtensions;
-		devExtensions = nullptr;
-
-		if (oneQueueWithPresentSupported) {
-			// A device with a queue with PRESENT support should have all of
-			// requiredDeviceExtensions. You can delete this block of code if your app has
-			// different device extension logic -- e.g. check the device in devQuery().
-			for (size_t i = 0, j; i < sizeof(requiredDeviceExtensions)/sizeof(requiredDeviceExtensions[0]); i++) {
-				for (j = 0; j < dev.availableExtensions.size(); j++) {
-					if (!strcmp(dev.availableExtensions.at(j).extensionName, requiredDeviceExtensions[i])) {
-						dev.extensionRequests.push_back(requiredDeviceExtensions[i]);
-						break;
-					}
-				}
-				if (j >= dev.availableExtensions.size()) {
-					// Do not add dev: it claims oneQueueWithPresentSupported but it cannot
-					// support a required extension. (If it does not do PRESENT at all, it is
-					// assumed the device would not be used in the swap chain anyway, so go
-					// ahead and let devQuery() look at it.)
-					return 0;
-				}
-			}
-
-			auto* surfaceFormats = Vk::getSurfaceFormats(dev.phys, this->surface);
-			if (!surfaceFormats) {
-				return 1;
-			}
-			dev.surfaceFormats = *surfaceFormats;
-			delete surfaceFormats;
-			surfaceFormats = nullptr;
-
-			auto* presentModes = Vk::getPresentModes(dev.phys, this->surface);
-			if (!presentModes) {
-				return 1;
-			}
-			dev.presentModes = *presentModes;
-			delete presentModes;
-			presentModes = nullptr;
-
-			if (dev.surfaceFormats.size() == 0 || dev.presentModes.size() == 0) {
-				// Do not add dev: it claims oneQueueWithPresentSupported but it has no
-				// surfaceFormats -- or no presentModes.
-				return 0;
-			}
-			int r = this->initSurfaceFormat(dev);
-			if (r) {
-				return r;
-			}
-			if ((r = this->initPresentMode(dev)) != 0) {
-				return r;
-			}
-		}
-
-		return 0;
+int Instance::initQueues(std::vector<QueueRequest>& request) {
+	// Search for a single device that can do both PRESENT and GRAPHICS.
+	bool foundQueue = false;
+	for (size_t dev_i = 0; dev_i < devs_size(); dev_i++) {
+		auto selectedQfams = requestQfams(dev_i, {language::PRESENT, language::GRAPHICS});
+		foundQueue |= selectedQfams.size() > 0;
+		request.insert(request.end(), selectedQfams.begin(), selectedQfams.end());
 	}
-
-	int initSupportedDevices(std::vector<VkPhysicalDevice>& physDevs) {
-		for (const auto& phys : physDevs) {
-			auto* vkQFams = Vk::getQueueFamilies(phys);
-			if (vkQFams == nullptr) {
-				return 1;
-			}
-
-			// Construct dev in place. emplace_back(Device{}) produced this error:
-			// "sorry, unimplemented: non-trivial designated initializers not supported"
-			//
-			// Be careful to also call pop_back() unless initSupportQueues() succeeded.
-			this->devs.resize(this->devs.size() + 1);
-			Device& dev = *(this->devs.end() - 1);
-			dev.phys = phys;
-			int r = initSupportedQueues(*vkQFams, dev);
-			delete vkQFams;
-			vkQFams = nullptr;
-			if (r) {
-				this->devs.pop_back();
-				return r;
-			}
-		}
-		return 0;
-	}
-};
-
-}  // anonymous namespace
-
-int Instance::open(VkExtent2D surfaceSizeRequest,
-		devQueryFn devQuery) {
-	std::vector<VkPhysicalDevice> * physDevs = Vk::getDevices(vk);
-	if (physDevs == nullptr) {
+	if (!foundQueue) {
+		fprintf(stderr, "Error: no device has both PRESENT and GRAPHICS queues.\n");
 		return 1;
 	}
+	return 0;
+}
 
-	InstanceInternal * ii = reinterpret_cast<InstanceInternal *>(this);
-	int r = ii->initSupportedDevices(*physDevs);
-	delete physDevs;
-	physDevs = nullptr;
-	if (r) {
-		return r;
-	}
-
-	if (devs.size() == 0) {
-		fprintf(stderr, "No Vulkan-capable devices found on your system. Try running vulkaninfo to troubleshoot.\n");
-		return 1;
-	}
-
-	if (dbg_lvl > 0) {
-		printf("%zu physical device%s:\n", devs.size(), devs.size() != 1 ? "s" : "");
-		for (size_t n = 0; n < devs.size(); n++) {
-			const auto& phys = devs.at(n).phys;
-			VkPhysicalDeviceProperties props;
-			vkGetPhysicalDeviceProperties(phys, &props);
-			printf("  [%zu] \"%s\"\n", n, props.deviceName);
-		}
-	}
-
+int Instance::open(VkExtent2D surfaceSizeRequest) {
 	std::vector<QueueRequest> request;
-	if ((r = devQuery(request)) != 0) {
+	int r = initQueues(request);
+	if (r != 0) {
 		return r;
 	}
 

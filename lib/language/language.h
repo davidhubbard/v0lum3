@@ -39,21 +39,7 @@
  *     cerr << "glfwCreateWindowSurface() failed" << endl;
  *     exit(1);
  *   }
- *   int r = inst.open({WIDTH, HEIGHT},
- *     [&](std::vector<language::QueueRequest>& request) -> int {
- *       bool foundQueue = false;
- *       for (size_t dev_i = 0; dev_i < inst.devs.size(); dev_i++) {
- *         auto selected = inst.requestQfams(
- *             dev_i, {language::PRESENT, language::GRAPHICS});
- *         foundQueue |= selected.size();
- *         request.insert(request.end(), selected.begin(), selected.end());
- *       }
- *       if (!foundQueue) {
- *         cerr << "Error: no device has a suitable PRESENT queue." << endl;
- *         return 1;
- *       }
- *       return 0;
- *     });
+ *   int r = inst.open({WIDTH, HEIGHT});
  *   if (r != 0) exit(1);
  *   while(!glfwWindowShouldClose(window)) {
  *     glfwPollEvents();
@@ -111,8 +97,8 @@ enum SurfaceSupport {
 };
 
 // QueueRequest communicates the physical device and queue family (within the device)
-// being requested by devQuery() (passed to open(), below). devQuery() should push
-// one QueueRequest instance per queue you want created.
+// being requested by initQueues() (below). initQueues() should push one QueueRequest
+// instance per queue you want created.
 typedef struct QueueRequest {
 	uint32_t dev_index;
 	uint32_t dev_qfam_index;
@@ -149,48 +135,41 @@ typedef struct QueueFamily {
 } QueueFamily;
 
 // Forward declaration of Instance for Device.
-struct Instance;
+class Instance;
 
 // Device wraps the Vulkan logical and physical devices and a list of QueueFamily
-// supported by the physical device. When devQuery() is called, Instance::devs are
-// populated with phys and qfams, but dev (the logical device) and qfams.queues
-// are not populated.
+// supported by the physical device. When initQueues() is called, Instance::devs
+// are populated with phys and qfams, but Device::dev (the logical device) and
+// Device::qfams.queues are not populated.
 //
-// devQuery() should push the QueueRequest instances suitable for your app.
+// initQueues() pushes QueueRequest instances for the queues your app needs.
 //
-// devQuery() should also get available device extensions and call
+// initQueues() should also get available device extensions and call
 // extensionRequests.push_back() to enable any extensions for your app.
 //
-// Instance::open() uses devQuery() to set up each Device. When devQuery() returns,
-// the QueueRequest vector is used to create Device::dev (the logical device).
-// open() then populates Device::qfams.queues and returns.
-//
-// surfaceFormats and presentModes are populated before devQuery() if the device
-// claims to have a queue that supports PRESENT (and has the right extensions to
-// do a swapchain). devQuery() may choose a different format or mode. But
-// format and mode should just work automatically...devQuery() does not have
-// to handle that.
+// initQueues() populates a QueueRequest vector used to create Device::dev (the
+// logical device). open() then populates Device::qfams.queues.
 typedef struct Device {
 	Device() = default;
 	Device(Device&&) = default;
 	Device(const Device&) = delete;
 
-	// Logical Device. Unpopulated during devQuery().
+	// Logical Device. Unpopulated until after open().
 	VkPtr<VkDevice> dev{vkDestroyDevice};
 
-	// Physical Device. Populated for devQuery().
+	// Physical Device. Populated after ctorError().
 	VkPhysicalDevice phys = VK_NULL_HANDLE;
 
-	// Extensions devQuery() can choose from. Populated for devQuery().
+	// Device extensions to choose from. Populated after ctorError().
 	std::vector<VkExtensionProperties> availableExtensions;
 
-	// qfams is populated for devQuery() but qfams.queue is unpopulated.
+	// qfams is populated after ctorError() but qfams.queue is unpopulated.
 	std::vector<QueueFamily> qfams;
 	// getQfamI() is a convenience method to get the queue family index that
 	// supports the given SurfaceSupport. Returns (size_t) -1 on error.
 	size_t getQfamI(SurfaceSupport support) const;
 
-	// devQuery() can request extension names by adding to extensionRequests.
+	// Request device extensions by adding to extensionRequests before open().
 	std::vector<const char *> extensionRequests;
 
 	std::vector<VkSurfaceFormatKHR> surfaceFormats;
@@ -199,42 +178,36 @@ typedef struct Device {
 	VkPresentModeKHR mode = (VkPresentModeKHR) 0;
 	VkExtent2D swapchainExtent;
 
-	// Unpopulated during devQuery().
+	// Populate after open().
 	VkPtr<VkSwapchainKHR> swapchain{dev, vkDestroySwapchainKHR};
 	std::vector<VkImage> images;
 	std::vector<Framebuf> framebufs;
 } Device;
 
-// Type signature for devQuery():
-// devQuery() should call request.push_back() for at least one QueueRequest.
-typedef std::function<int(std::vector<QueueRequest>& request)> devQueryFn;
-
-// Instance holds the top level state of the Vulkan pipeline. Construct with
-// ctorError() and abort if the return value is non-zero.
-//
-// The correct initialization procedure is:
+// Instance holds the root of the Vulkan pipeline. Constructor (ctor) is a
+// 3-phase process:
 // 1. Create an Instance object
-// 2. Call ctorError() which loads requiredExtensions. Check the return value.
+// 2. Call ctorError() -- phase 2 of the ctor -- always check the error return.
 // 3. Construct a VkSurfaceKHR using your choice of windowing library.
-// 4. Call Instance::open() to initialize devices and queue families.
-//    open() calls your devQuery() function.
-// 5. Run the main loop.
+// 4. Call open() -- phase 3 of the ctor -- to init devices and queues.
+// 5. Instance is now fully constructed.
+//
+// Some discussion about setting up queues:
 //
 // In many cases it only makes sense to use 1 CPU thread to submit to GPU queues
-// even though the GPU consumes the commands out of the queue in parallel.
-// Typically this happens if the GPU implements a single hardware port and the
-// driver is forced to multiplex commands to that single port if the app uses
-// multiple queues. In other words, the GPU is the bottleneck and is essentially
-// single-threaded.
+// even though the GPU can execute the commands in parallel. What happens is the
+// GPU only has a single hardware port and Vulkan is forced to multiplex commands
+// to that single port when the app starts using multiple queues. In other words,
+// the GPU hardware port may be "single-threaded."
 //
 // Web resources: https://lunarg.com/faqs/command-multi-thread-vulkan/
-//                https://www.reddit.com/r/vulkan
+//                https://forums.khronos.org/showthread.php/13172
 //
 // lib/language does not enforce a limit of 1 GRAPHICS queue because Vulkan
-// has not limit either. The tradeoff is a slightly more verbose initialization
-// in terms of juggling multiple instances of QueueRequest. The example code is
-// a demonstration of how to skip all this if it is not relevant to your app.
-typedef struct Instance {
+// has no limit either. To try out multiple queues, override Instance::initQueues()
+// and add multiple instances of QueueRequest to the request vector.
+class Instance {
+public:
 	Instance() = default;
 	Instance(Instance&&) = delete;
 	Instance(const Instance&) = delete;
@@ -242,18 +215,23 @@ typedef struct Instance {
 	VkPtr<VkInstance> vk{vkDestroyInstance};
 	VkPtr<VkSurfaceKHR> surface{vk, vkDestroySurfaceKHR};
 
-	// This is the actual constructor (and can return an error if Vulkan indicates an error).
+	// This is also the constructor: vulkan errors are returned from ctorError().
+	// requiredExtentions is an array of strings naming any required extensions
+	// (e.g. glfwGetRequiredInstanceExtensions, the SDL story is not as well
+	// defined yet but might be SDL_GetVulkanInstanceExtensions)
 	WARN_UNUSED_RESULT int ctorError(const char ** requiredExtensions, size_t requiredExtensionCount);
 
-	// open() enumerates devs and queue families and calls devQuery(). devQuery() should call
-	// request.push_back() for at least one QueueRequest.
-	// surfaceSizeRequest should be the size of the window.
-	WARN_UNUSED_RESULT int open(VkExtent2D surfaceSizeRequest,
-		devQueryFn devQuery);
+	// open() is the third phase of the ctor. Call open() after initializing
+	// 'surface' in your app (e.g. glfwCreateWindowSurface, SDL_CreateVulkanSurface)
+	// surfaceSizeRequest is the initial size of the window.
+	WARN_UNUSED_RESULT int open(VkExtent2D surfaceSizeRequest);
 
 	virtual ~Instance();
 
-	// requestQfams() is a convenience function that selects the minimal list of
+	size_t devs_size() const { return devs.size(); };
+	Device& at(size_t i) { return devs.at(i); };
+
+	// requestQfams() is a convenience function. It selects the minimal list of
 	// QueueFamily instances from Device dev_i and returns a vector of
 	// QueueRequest that cover the requested support.
 	//
@@ -265,29 +243,29 @@ typedef struct Instance {
 	std::vector<QueueRequest> requestQfams(
 		size_t dev_i, std::set<SurfaceSupport> support);
 
-	// INTERNAL: Avoid calling initSurfaceFormat() directly.
-	// Override initSurfaceFormat() if your app needs a different default.
-	// Note: devQueryFn() can also change the format.
-	virtual int initSurfaceFormat(Device& dev);
-
-	// INTERNAL: Avoid calling initPresentMode() directly.
-	// Override initPresentMode() if your app needs a different default.
-	// Note: devQueryFn() can also change the mode.
-	virtual int initPresentMode(Device& dev);
-
+	virtual int initDebug();
+	// pDestroyDebugReportCallbackEXT is located in the vulkan library at startup.
 	PFN_vkDestroyDebugReportCallbackEXT pDestroyDebugReportCallbackEXT = nullptr;
 	VkDebugReportCallbackEXT debugReport = VK_NULL_HANDLE;
 
-	size_t devs_size() const { return devs.size(); };
-	Device& at(size_t i) { return devs.at(i); };
 protected:
-	// After the devs vector is created, it must not be resized because any
-	// operation on the vector that causes it to reallocate its storage
-	// will invalidate references held to the individual Device instances.
+	// After the devs vector is created in open(), it must not be resized. Any
+	// operation on the vector that causes it to reallocate its storage will
+	// invalidate references held to the individual Device instances.
 	std::vector<Device> devs;
+
+	// Override initQueues() if you app needs more than one queue.
+	// initQueues() should call request.push_back() for at least one QueueRequest.
+	virtual int initQueues(std::vector<QueueRequest>& request);
+
+	// Override initSurfaceFormat() if your app needs a different default.
+	virtual int initSurfaceFormat(Device& dev);
+
+	// Override initPresentMode() if your app needs a different default.
+	virtual int initPresentMode(Device& dev);
 
 	// Override createSwapchain() if your app needs a different swapchain.
 	virtual int createSwapchain(size_t dev_i, VkExtent2D surfaceSizeRequest);
-} Instance;
+};
 
 } // namespace language

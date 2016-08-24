@@ -9,8 +9,9 @@ HDRS+=VkPtr.h
 HDRS+=VkInit.h
 HDRS+=VkEnum.h
 
-SRCS+=deviceinit.cpp
+SRCS+=debug.cpp
 SRCS+=language.cpp
+SRCS+=queues.cpp
 SRCS+=requestqfams.cpp
 SRCS+=swapchain.cpp
 SRCS+=VkEnum.cpp

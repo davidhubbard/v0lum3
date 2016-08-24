@@ -1,4 +1,6 @@
 /* Copyright (c) David Hubbard 2016. Licensed under the GPLv3.
+ *
+ * This is Instance::ctorError(), though it is broken into a few different methods.
  */
 #include "language.h"
 #include "VkInit.h"
@@ -7,194 +9,195 @@
 namespace language {
 using namespace VkEnum;
 
+const char VK_LAYER_LUNARG_standard_validation[] = "VK_LAYER_LUNARG_standard_validation";
+//static const char VK_LAYER_LUNARG_core_validation[] = "VK_LAYER_LUNARG_core_validation";
+//static const char VK_LAYER_LUNARG_object_tracker[] = "VK_LAYER_LUNARG_object_tracker";
+//static const char VK_LAYER_LUNARG_parameter_validation[] = "VK_LAYER_LUNARG_parameter_validation";
+//static const char VK_LAYER_LUNARG_image[] = "VK_LAYER_LUNARG_image";
+//static const char VK_LAYER_LUNARG_swapchain[] = "VK_LAYER_LUNARG_swapchain";
+
 namespace {  // use an anonymous namespace to hide all its contents (only reachable from this file)
 
-static uint64_t debugLineCount = 0;
-static uint32_t extensionListSuppress = 0;
-static VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(VkFlags msgFlags, VkDebugReportObjectTypeEXT objType, uint64_t srcObject,
-		size_t location, int32_t msgCode, const char *pLayerPrefix, const char *pMsg, void *pUserData) {
-	(void) objType;
-	(void) srcObject;
-	(void) location;
-	(void) pUserData;
-	debugLineCount++;
+struct InstanceInternal : public Instance {
+	int initInstance(const char ** requiredExtensions, size_t requiredExtensionCount,
+			std::vector<VkExtensionProperties>& extensions,
+			std::vector<VkLayerProperties>& layers) {
+		std::vector<const char *> enabledExtensions;
+		for (const auto& ext : extensions) {
+			unsigned int i = 0;
+			for (; i < requiredExtensionCount; i++) if (!strcmp(requiredExtensions[i], ext.extensionName)) {
+				enabledExtensions.push_back(requiredExtensions[i]);
+				break;
+			}
+		}
 
-	// Suppress the most common log messages.
-	if (!strcmp(pLayerPrefix, "DebugReport")) {
-		if (!strcmp(pMsg, "Added callback")) {
-			return false;
+		std::vector<const char *> enabledLayers;
+		for (const auto& layerprop : layers) {
+			// Enable instance layer "VK_LAYER_LUNARG_standard_validation"
+			// Note: Modify this code to suit your application.
+			//
+			// Getting validation working involves more than just enabling the layer!
+			// https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/tree/master/layers
+			// 1. Copy libVkLayer_<name>.so to the same dir as your binary, or
+			//    set VK_LAYER_PATH to point to where the libVkLayer_<name>.so is.
+			// 2. Create a vk_layer_settings.txt file next to libVkLayer_<name>.so.
+			// 3. Set the environment variable VK_INSTANCE_LAYERS to activate layers:
+			//    export VK_INSTANCE_LAYERS=VK_LAYER_LUNARG_standard_validation
+			if (!strcmp(VK_LAYER_LUNARG_standard_validation, layerprop.layerName)) {
+				enabledLayers.push_back(layerprop.layerName);
+			}
 		}
-	} else if (!strcmp(pLayerPrefix, "loader")) {
-		if (strstr(pMsg, "manifest file") && debugLineCount < 20) {
-			return false;
-		}
-		if (strstr(pMsg, VK_LAYER_LUNARG_standard_validation) && debugLineCount < 30) {
-			return false;
-		}
-		if (!strcmp(pMsg, "Build ICD instance extension list")) {
-			extensionListSuppress = 1;
-			return false;
-		}
-		if (extensionListSuppress && !strncmp(pMsg, "Instance Extension:", 19)) {
-			return false;
-		}
-		if (!strncmp(pMsg, "Searching for ICD drivers named", 31)) {
-			return false;
-		}
-		if (!strncmp(pMsg, "Chain: instance: Loading layer library", 38)) {
-			return false;
-		}
-		extensionListSuppress = 0;
-	}
-	extensionListSuppress = 0;
 
-	char level[16];
-	char * plevel = &level[0];
-	if (msgFlags & VK_DEBUG_REPORT_WARNING_BIT_EXT)             *plevel++ = 'W';
-	if (msgFlags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT)         *plevel++ = 'I';
-	if (msgFlags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) *plevel++ = 'P';
-	if (msgFlags & VK_DEBUG_REPORT_ERROR_BIT_EXT)               *plevel++ = 'E';
-	if (msgFlags & VK_DEBUG_REPORT_DEBUG_BIT_EXT)               *plevel++ = 'D';
-	*plevel = 0;
-	fprintf(stderr, "%s %s: code%d: %s\n", level, pLayerPrefix, msgCode, pMsg);
-	/*
-	 * false indicates that layer should not bail-out of an
-	 * API call that had validation failures. This may mean that the
-	 * app dies inside the driver due to invalid parameter(s).
-	 * That's what would happen without validation layers, so we'll
-	 * keep that behavior here.
-	 */
-	return false;
-}
-
-static const char VK_LAYER_LUNARG_core_validation[] = "VK_LAYER_LUNARG_core_validation";
-static const char VK_LAYER_LUNARG_object_tracker[] = "VK_LAYER_LUNARG_object_tracker";
-static const char VK_LAYER_LUNARG_parameter_validation[] = "VK_LAYER_LUNARG_parameter_validation";
-static const char VK_LAYER_LUNARG_image[] = "VK_LAYER_LUNARG_image";
-static const char VK_LAYER_LUNARG_swapchain[] = "VK_LAYER_LUNARG_swapchain";
-
-static int initInstance(Instance* inst, const char ** requiredExtensions, size_t requiredExtensionCount,
-		std::vector<VkExtensionProperties>& extensions,
-		std::vector<VkLayerProperties>& layers) {
-	std::vector<const char *> enabledExtensions;
-	std::vector<const char *> disabledExtensions;
-	for (const auto& ext : extensions) {
-		unsigned int i = 0;
-		for (; i < requiredExtensionCount; i++) if (!strcmp(requiredExtensions[i], ext.extensionName)) {
-			enabledExtensions.push_back(requiredExtensions[i]);
-			break;
-		}
-		if (i >= requiredExtensionCount) {
-			disabledExtensions.push_back(ext.extensionName);
-		}
-	}
-
-	std::vector<const char *> enabledLayers;
-	for (const auto& layerprop : layers) {
-		// Enable instance layer "VK_LAYER_LUNARG_standard_validation"
+		// Enable extension "VK_EXT_debug_report".
 		// Note: Modify this code to suit your application.
+		enabledExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+
+		char appname[2048];
+		snprintf(appname, sizeof(appname), "TODO: " __FILE__ ":%d: choose ApplicationName", __LINE__);
+
+		VkApplicationInfo VkInit(app);
+		app.apiVersion = VK_API_VERSION_1_0;
+		app.pApplicationName = appname;
+		app.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+		app.pEngineName = "v0lum3";
+
+		VkInstanceCreateInfo VkInit(iinfo);
+		iinfo.pApplicationInfo = &app;
+		iinfo.enabledExtensionCount = enabledExtensions.size();
+		iinfo.ppEnabledExtensionNames = enabledExtensions.data();
+		iinfo.enabledLayerCount = enabledLayers.size();
+		iinfo.ppEnabledLayerNames = enabledLayers.data();
+		iinfo.enabledLayerCount = 0;
 		//
-		// Getting validation working involves more than just enabling the layer!
-		// https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/tree/master/layers
-		// 1. Copy libVkLayer_<name>.so to the same dir as your binary, or
-		//    set VK_LAYER_PATH to point to where the libVkLayer_<name>.so is.
-		// 2. Create a vk_layer_settings.txt file next to libVkLayer_<name>.so.
-		// 3. Set the environment variable VK_INSTANCE_LAYERS to activate layers:
-		//    export VK_INSTANCE_LAYERS=VK_LAYER_LUNARG_standard_validation
-		if (!strcmp(VK_LAYER_LUNARG_standard_validation, layerprop.layerName)) {
-			enabledLayers.push_back(layerprop.layerName);
+		// There is this clever trick in the vulkaninfo source code:
+		// iinfo.pNext = &dinfo;
+		//
+		// That is  amazing use of pNext. But it triggers a memory leak in
+		// loader/loader.c: loader_instance_heap_free()
+		// The OBJTRACK layer prints this out right before the double free():
+		// "OBJ_STAT Destroy VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT obj 0x775d790 "
+		// " (1 total objs remain & 0 VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT objs)"
+		//
+		// So manually call vkCreateDebugReportCallbackEXT() instead of using pNext.
+
+		VkResult v = vkCreateInstance(&iinfo, nullptr, &this->vk);
+		if (v != VK_SUCCESS) {
+			fprintf(stderr, "vkCreateInstance returned %d\n", v);
+			return 1;
 		}
-		if (0 && !strcmp(VK_LAYER_LUNARG_core_validation, layerprop.layerName)) {
-			enabledLayers.push_back(layerprop.layerName);
-		}
-		if (0 && !strcmp(VK_LAYER_LUNARG_object_tracker, layerprop.layerName)) {
-			enabledLayers.push_back(layerprop.layerName);
-		}
-		if (0 && !strcmp(VK_LAYER_LUNARG_parameter_validation, layerprop.layerName)) {
-			enabledLayers.push_back(layerprop.layerName);
-		}
-		if (0 && !strcmp(VK_LAYER_LUNARG_image, layerprop.layerName)) {
-			enabledLayers.push_back(layerprop.layerName);
-		}
-		if (0 && !strcmp(VK_LAYER_LUNARG_swapchain, layerprop.layerName)) {
-			enabledLayers.push_back(layerprop.layerName);
-		}
+		return 0;
 	}
 
-	// Enable extension "VK_EXT_debug_report".
-	// Note: Modify this code to suit your application.
-	enabledExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+	int initSupportedQueues(std::vector<VkQueueFamilyProperties>& vkQFams, Device& dev) {
+		VkBool32 oneQueueWithPresentSupported = false;
+		for (size_t q_i = 0; q_i < vkQFams.size(); q_i++) {
+			VkBool32 isPresentSupported = false;
+			VkResult v = vkGetPhysicalDeviceSurfaceSupportKHR(dev.phys, q_i, this->surface,
+				&isPresentSupported);
+			if (v != VK_SUCCESS) {
+				fprintf(stderr, "dev %zu qfam %zu: vkGetPhysicalDeviceSurfaceSupportKHR returned %d\n",
+					this->devs.size(), q_i, v);
+				return 1;
+			}
+			oneQueueWithPresentSupported |= isPresentSupported;
 
-	//
-	// Vulkan app instance creation process:
-	// 1. VkApplicationInfo
-	// 2. VkInstanceCreateInfo
-	// (optional step): VkDebugReportCallbackCreateInfoEXT
-	// 3. call VkCreateInstance()
-	//
-	char appname[2048];
-	snprintf(appname, sizeof(appname), "TODO: " __FILE__ ":%d: choose ApplicationName", __LINE__);
+			dev.qfams.emplace_back(vkQFams.at(q_i), isPresentSupported ? PRESENT : NONE);
+		}
 
-	VkApplicationInfo VkInit(app);
-	app.apiVersion = VK_API_VERSION_1_0;
-	app.pApplicationName = appname;
-	app.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-	app.pEngineName = "v0lum3";
+		auto* devExtensions = Vk::getDeviceExtensions(dev.phys);
+		if (!devExtensions) {
+			return 1;
+		}
+		dev.availableExtensions = *devExtensions;
+		delete devExtensions;
+		devExtensions = nullptr;
 
-	VkInstanceCreateInfo VkInit(iinfo);
-	iinfo.pApplicationInfo = &app;
-	iinfo.enabledExtensionCount = enabledExtensions.size();
-	iinfo.ppEnabledExtensionNames = enabledExtensions.data();
-	iinfo.enabledLayerCount = enabledLayers.size();
-	iinfo.ppEnabledLayerNames = enabledLayers.data();
-	iinfo.enabledLayerCount = 0;
+		if (!oneQueueWithPresentSupported) {
+			return 0;
+		}
 
-	VkDebugReportCallbackCreateInfoEXT VkInit(dinfo);
-	dinfo.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT |
-		VK_DEBUG_REPORT_WARNING_BIT_EXT |
-		VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT |
-		VK_DEBUG_REPORT_INFORMATION_BIT_EXT |
-		VK_DEBUG_REPORT_DEBUG_BIT_EXT;
-	dinfo.pfnCallback = debugReportCallback;
-	//
-	// There is this clever trick in vulkaninfo:
-	// iinfo.pNext = &dinfo;
-	// Amazing use of pNext. But it triggers a memory leak in
-	// loader/loader.c: loader_instance_heap_free()
-	// The OBJTRACK layer prints this out right before the double free():
-	// "OBJ_STAT Destroy VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT obj 0x775d790 "
-	// " (1 total objs remain & 0 VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT objs)"
-	//
-	// The workaround is to manually call vkCreateDebugReportCallbackEXT().
+		// A device with a queue with PRESENT support should have all of
+		// deviceWithPresentRequiredExts.
+		static const char * deviceWithPresentRequiredExts[] = {
+			VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+		};
 
-	VkResult v = vkCreateInstance(&iinfo, nullptr, &inst->vk);
-	if (v != VK_SUCCESS) {
-		fprintf(stderr, "vkCreateInstance returned %d\n", v);
-		return 1;
+		size_t i = 0, j;
+		for (; i < sizeof(deviceWithPresentRequiredExts)/sizeof(deviceWithPresentRequiredExts[0]); i++) {
+			for (j = 0; j < dev.availableExtensions.size(); j++) {
+				if (!strcmp(dev.availableExtensions.at(j).extensionName, deviceWithPresentRequiredExts[i])) {
+					dev.extensionRequests.push_back(deviceWithPresentRequiredExts[i]);
+					break;
+				}
+			}
+			if (j >= dev.availableExtensions.size()) {
+				// Do not add dev: it claims oneQueueWithPresentSupported but it lacks
+				// required extensions. (If it does not do PRESENT at all, it is
+				// assumed the device would not be used in the swap chain anyway, so it
+				// is not removed.)
+				this->devs.pop_back();
+				return 0;
+			}
+		}
+
+		auto* surfaceFormats = Vk::getSurfaceFormats(dev.phys, this->surface);
+		if (!surfaceFormats) {
+			return 1;
+		}
+		dev.surfaceFormats = *surfaceFormats;
+		delete surfaceFormats;
+		surfaceFormats = nullptr;
+
+		auto* presentModes = Vk::getPresentModes(dev.phys, this->surface);
+		if (!presentModes) {
+			return 1;
+		}
+		dev.presentModes = *presentModes;
+		delete presentModes;
+		presentModes = nullptr;
+
+		if (dev.surfaceFormats.size() == 0 || dev.presentModes.size() == 0) {
+			// Do not add dev: it claims oneQueueWithPresentSupported but it has no
+			// surfaceFormats -- or no presentModes.
+			this->devs.pop_back();
+			return 0;
+		}
+
+		int r = this->initSurfaceFormat(dev);
+		if (r) {
+			return r;
+		}
+		if ((r = this->initPresentMode(dev)) != 0) {
+			return r;
+		}
+		return 0;
 	}
 
-	auto pCreateDebugReportCallback = (PFN_vkCreateDebugReportCallbackEXT)
-		vkGetInstanceProcAddr(inst->vk, "vkCreateDebugReportCallbackEXT");
-	if (!pCreateDebugReportCallback) {
-		fprintf(stderr, "Failed to dlsym(vkCreateDebugReportCallbackEXT)\n");
-		return 1;
-	}
+	int initSupportedDevices(std::vector<VkPhysicalDevice>& physDevs) {
+		for (const auto& phys : physDevs) {
+			auto* vkQFams = Vk::getQueueFamilies(phys);
+			if (vkQFams == nullptr) {
+				return 1;
+			}
 
-	inst->pDestroyDebugReportCallbackEXT = (PFN_vkDestroyDebugReportCallbackEXT)
-		vkGetInstanceProcAddr(inst->vk, "vkDestroyDebugReportCallbackEXT");
-	if (!inst->pDestroyDebugReportCallbackEXT) {
-		fprintf(stderr, "Failed to dlsym(vkDestroyDebugReportCallbackEXT)\n");
-		return 1;
+			// Construct dev in place. emplace_back(Device{}) produced this error:
+			// "sorry, unimplemented: non-trivial designated initializers not supported"
+			//
+			// Be careful to also call pop_back() unless initSupportQueues() succeeded.
+			this->devs.resize(this->devs.size() + 1);
+			Device& dev = *(this->devs.end() - 1);
+			dev.phys = phys;
+			int r = initSupportedQueues(*vkQFams, dev);
+			delete vkQFams;
+			vkQFams = nullptr;
+			if (r) {
+				this->devs.pop_back();
+				return r;
+			}
+		}
+		return 0;
 	}
-
-	v = pCreateDebugReportCallback(inst->vk, &dinfo, nullptr /*allocator*/,
-		&inst->debugReport);
-	if (v != VK_SUCCESS) {
-		fprintf(stderr, "pCreateDebugReportCallback returned %d\n", v);
-		return 1;
-	}
-	return 0;
-}
+};
 
 }  // anonymous namespace
 
@@ -210,19 +213,48 @@ int Instance::ctorError(const char ** requiredExtensions, size_t requiredExtensi
 		return 1;
 	}
 
-	int r = initInstance(this, requiredExtensions, requiredExtensionCount, *extensions, *layers);
+	InstanceInternal * ii = reinterpret_cast<InstanceInternal *>(this);
+	int r = ii->initInstance(requiredExtensions, requiredExtensionCount, *extensions, *layers);
 	delete extensions;
+	extensions = nullptr;
 	delete layers;
+	layers = nullptr;
+	if (r) {
+		return r;
+	}
+
+	r = ii->initDebug();
+	if (r) {
+		return r;
+	}
+
+	std::vector<VkPhysicalDevice> * physDevs = Vk::getDevices(vk);
+	if (physDevs == nullptr) {
+		return 1;
+	}
+
+	r = ii->initSupportedDevices(*physDevs);
+	delete physDevs;
+	physDevs = nullptr;
+	if (r) {
+		return r;
+	}
+
+	if (devs.size() == 0) {
+		fprintf(stderr, "No Vulkan-capable devices found on your system. Try running vulkaninfo to troubleshoot.\n");
+		return 1;
+	}
+
+	if (dbg_lvl > 0) {
+		printf("%zu physical device%s:\n", devs.size(), devs.size() != 1 ? "s" : "");
+		for (size_t n = 0; n < devs.size(); n++) {
+			const auto& phys = devs.at(n).phys;
+			VkPhysicalDeviceProperties props;
+			vkGetPhysicalDeviceProperties(phys, &props);
+			printf("  [%zu] \"%s\"\n", n, props.deviceName);
+		}
+	}
 	return r;
 }
-
-Instance::~Instance() {
-	if (pDestroyDebugReportCallbackEXT) {
-		pDestroyDebugReportCallbackEXT(vk, debugReport, nullptr /*allocator*/);
-	}
-}
-
-int dbg_lvl = 0;
-const char VK_LAYER_LUNARG_standard_validation[] = "VK_LAYER_LUNARG_standard_validation";
 
 }  // namespace language
