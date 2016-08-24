@@ -16,6 +16,6 @@ it may be useful if you want to quickly create a clean Vulkan dev environment:
 
 1. Clone this repo
 
-2. Throw away everything but the vendor dir and the build.sh script.
+2. Throw away everything but `vendor`, `.gitmodules` and `build.sh`.
 
 3. Profit!
