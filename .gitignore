@@ -4,6 +4,9 @@ vendor/include
 vendor/lib
 main/v
 
+vendor/LunarGLASS
+vendor/VulkanTools
+
 CMakeCache.txt
 CMakeLists.txt.user
 cmake_install.cmake
