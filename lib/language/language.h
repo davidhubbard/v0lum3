@@ -27,17 +27,21 @@
  * // yourprogram.cpp:
  * #include <lib/language/language.h>
  *
+ * // Wrap glfwCreateWindowSurface for type safety.
+ * static VkResult createWindowSurface(language::Instance& inst, void * window)
+ * {
+ *   return glfwCreateWindowSurface(inst.vk, (GLFWwindow *) window, nullptr,
+ *     &inst.surface);
+ * }
+ *
  * int main() {
  *   const int WIDTH = 800, HEIGHT = 600;
  *   GLFWwindow * window = glfwCreateWindow(WIDTH, HEIGHT...);
  *   unsigned int glfwExtCount = 0;
  *   const char ** glfwExts = glfwGetRequiredInstanceExtensions(&glfwExtCount);
  *   language::Instance inst;
- *   if (inst.ctorError(glfwExts, glfwExtCount)) return 1;
- *   if (glfwCreateWindowSurface(inst.vk, window, nullptr, &inst.surface)
- *       != VK_SUCCESS) {
- *     cerr << "glfwCreateWindowSurface() failed" << endl;
- *     exit(1);
+ *   if (inst.ctorError(glfwExts, glfwExtCount, createWindowSurface, window)) {
+ *     return 1;
  *   }
  *   int r = inst.open({WIDTH, HEIGHT});
  *   if (r != 0) exit(1);
@@ -51,7 +55,6 @@
 
 #include <vector>
 #include <set>
-#include <functional>
 #include <vulkan/vulkan.h>
 #include "VkPtr.h"
 
@@ -76,7 +79,7 @@ struct Device;
 
 // Framebuffer references the presented pixels and manages the memory behind them.
 typedef struct Framebuf {
-	Framebuf(Device& dev);
+	Framebuf(Device& dev);  // ctor defined in swapchain.cpp, needs full Device definition.
 	Framebuf(Framebuf&&) = default;
 	Framebuf(const Framebuf&) = delete;
 
@@ -184,6 +187,8 @@ typedef struct Device {
 	std::vector<Framebuf> framebufs;
 } Device;
 
+typedef VkResult (* CreateWindowSurfaceFn)(Instance& instance, void *window);
+
 // Instance holds the root of the Vulkan pipeline. Constructor (ctor) is a
 // 3-phase process:
 // 1. Create an Instance object
@@ -217,12 +222,21 @@ public:
 
 	// This is also the constructor: vulkan errors are returned from ctorError().
 	// requiredExtentions is an array of strings naming any required extensions
-	// (e.g. glfwGetRequiredInstanceExtensions, the SDL story is not as well
-	// defined yet but might be SDL_GetVulkanInstanceExtensions)
-	WARN_UNUSED_RESULT int ctorError(const char ** requiredExtensions, size_t requiredExtensionCount);
+	// (e.g. glfwGetRequiredInstanceExtensions, the SDL API is not as well
+	// defined yet but might be SDL_GetVulkanInstanceExtensions).
+	//
+	// createWindowSurface is a function that is called to initialize
+	// Instance::surface. (e.g. glfwCreateWindowSurface, SDL_CreateVulkanSurface).
+	//
+	// window is an opaque pointer used only to call createWindowSurface.
+	WARN_UNUSED_RESULT int ctorError(
+		const char ** requiredExtensions,
+		size_t requiredExtensionCount,
+		CreateWindowSurfaceFn createWindowSurface,
+		void *window);
 
-	// open() is the third phase of the ctor. Call open() after initializing
-	// 'surface' in your app (e.g. glfwCreateWindowSurface, SDL_CreateVulkanSurface)
+	// open() is the third phase of the ctor. Call open() after modifying
+	// Device::extensionRequests, Device::surfaceFormats, or Device::presentModes.
 	// surfaceSizeRequest is the initial size of the window.
 	WARN_UNUSED_RESULT int open(VkExtent2D surfaceSizeRequest);
 
@@ -244,8 +258,10 @@ public:
 		size_t dev_i, std::set<SurfaceSupport> support);
 
 	virtual int initDebug();
+
 	// pDestroyDebugReportCallbackEXT is located in the vulkan library at startup.
 	PFN_vkDestroyDebugReportCallbackEXT pDestroyDebugReportCallbackEXT = nullptr;
+
 	VkDebugReportCallbackEXT debugReport = VK_NULL_HANDLE;
 
 protected:
@@ -258,11 +274,9 @@ protected:
 	// initQueues() should call request.push_back() for at least one QueueRequest.
 	virtual int initQueues(std::vector<QueueRequest>& request);
 
-	// Override initSurfaceFormat() if your app needs a different default.
-	virtual int initSurfaceFormat(Device& dev);
-
-	// Override initPresentMode() if your app needs a different default.
-	virtual int initPresentMode(Device& dev);
+	// Override initSurfaceFormatAndPresentMode() or just modify Device::surfaceFormats
+	// and Device::presentModes before calling open().
+	virtual int initSurfaceFormatAndPresentMode(Device& dev);
 
 	// Override createSwapchain() if your app needs a different swapchain.
 	virtual int createSwapchain(size_t dev_i, VkExtent2D surfaceSizeRequest);

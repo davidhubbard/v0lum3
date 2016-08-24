@@ -15,6 +15,7 @@
  */
 
 #include <lib/language/language.h>
+#include <string>
 
 #pragma once
 

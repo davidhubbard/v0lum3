@@ -1,5 +1,6 @@
 /* Copyright (c) David Hubbard 2016. Licensed under the GPLv3.
  */
+#include <stdio.h>
 #include <stdlib.h>
 #include <typeinfo>
 #ifndef _MSC_VER

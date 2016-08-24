@@ -140,35 +140,16 @@ struct InstanceInternal : public Instance {
 			}
 		}
 
-		auto* surfaceFormats = Vk::getSurfaceFormats(dev.phys, this->surface);
-		if (!surfaceFormats) {
-			return 1;
+		// Init dev.surfaceFormats and dev.presentModes early. Your app can inspect
+		// and modify them and then call open().
+		int r = this->initSurfaceFormatAndPresentMode(dev);
+		if (r) {
+			return r;
 		}
-		dev.surfaceFormats = *surfaceFormats;
-		delete surfaceFormats;
-		surfaceFormats = nullptr;
-
-		auto* presentModes = Vk::getPresentModes(dev.phys, this->surface);
-		if (!presentModes) {
-			return 1;
-		}
-		dev.presentModes = *presentModes;
-		delete presentModes;
-		presentModes = nullptr;
-
 		if (dev.surfaceFormats.size() == 0 || dev.presentModes.size() == 0) {
 			// Do not add dev: it claims oneQueueWithPresentSupported but it has no
 			// surfaceFormats -- or no presentModes.
 			this->devs.pop_back();
-			return 0;
-		}
-
-		int r = this->initSurfaceFormat(dev);
-		if (r) {
-			return r;
-		}
-		if ((r = this->initPresentMode(dev)) != 0) {
-			return r;
 		}
 		return 0;
 	}
@@ -201,7 +182,8 @@ struct InstanceInternal : public Instance {
 
 }  // anonymous namespace
 
-int Instance::ctorError(const char ** requiredExtensions, size_t requiredExtensionCount) {
+int Instance::ctorError(const char ** requiredExtensions, size_t requiredExtensionCount,
+		CreateWindowSurfaceFn createWindowSurface, void *window) {
 	auto * extensions = Vk::getExtensions();
 	if (extensions == nullptr) {
 		return 1;
@@ -226,6 +208,12 @@ int Instance::ctorError(const char ** requiredExtensions, size_t requiredExtensi
 	r = ii->initDebug();
 	if (r) {
 		return r;
+	}
+
+	VkResult v = createWindowSurface(*this, window);
+	if (v != VK_SUCCESS) {
+		fprintf(stderr, "createWindowSurface (the user-provided fn) failed: %d", v);
+		return 1;
 	}
 
 	std::vector<VkPhysicalDevice> * physDevs = Vk::getDevices(vk);
