@@ -137,7 +137,6 @@ static int mainLoop(GLFWwindow * window, language::Instance& inst) {
 	while(!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 
-		fprintf(stderr, "vkAcquireNextImageKHR\n");
 		uint32_t next_image_i;
 		if (vkAcquireNextImageKHR(dev.dev, dev.swapchain, std::numeric_limits<uint64_t>::max(),
 				imageAvailableSemaphore.vk, VK_NULL_HANDLE, &next_image_i) != VK_SUCCESS) {
@@ -160,7 +159,6 @@ static int mainLoop(GLFWwindow * window, language::Instance& inst) {
 		VkSemaphore signalSemaphores[] = {renderFinishedSemaphore.vk};
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = signalSemaphores;
-		fprintf(stderr, "vkQueueSubmit\n");
 		VkResult v = vkQueueSubmit(dev.qfams.at(graphics_i).queues.at(0), 1, &submitInfo, VK_NULL_HANDLE);
 		if (v != VK_SUCCESS) {
 			fprintf(stderr, "vkQueueSubmit returned %d\n", v);
@@ -175,13 +173,11 @@ static int mainLoop(GLFWwindow * window, language::Instance& inst) {
 		presentInfo.pSwapchains = swapChains;
 		presentInfo.pImageIndices = &next_image_i;
 
-		fprintf(stderr, "vkQueuePresentKHR\n");
 		v = vkQueuePresentKHR(dev.qfams.at(present_i).queues.at(0), &presentInfo);
 		if (v != VK_SUCCESS) {
 			fprintf(stderr, "vkQueuePresentKHR returned error\n");
 			return 1;
 		}
-		fprintf(stderr, "vkQueuePresentKHR done, end of loop %d\n", count);
 	}
 
 	fprintf(stderr, "vkDeviceWaitIdle\n");
