@@ -12,7 +12,7 @@ watch_progress()
   exec 2>&-
   tail --pid=$BASHPID -F "$file" | awk "{
     if (NR % 10) next
-    printf \"\\r\\x1b[K\" NR \"K/$maxlines $msg\" > \"/proc/self/fd/4\"
+    printf \"\\r\\x1b[K\" NR \"/$maxlines $msg\" > \"/proc/self/fd/4\"
   }"
 }
 
@@ -28,6 +28,11 @@ echo ""
 
 if [ $R -ne 0 ]; then
   echo "build.sh exit code: $R, log is /tmp/build.sh.log"
+  exit $R
+fi
+if [ ! -f ../vendor/bin/glslangValidator ]; then
+  echo "build.sh: something fishy is going on, log is /tmp/build.sh.log"
+  exit 1
 fi
 
 watch_progress "running vulkantools.sh" /tmp/vulkantools.sh.log 232400 &
@@ -42,4 +47,8 @@ echo ""
 
 if [ $R -ne 0]; then
   echo "vulkantools.sh exit code: $R, log is /tmp/vulkantools.sh.log"
+  exit $R
+fi
+if [ ! -f ../vendor/bin/vktrace ]; then
+  echo "vulkantools.sh: something fishy is going on, log is /tmp/vulkantools.sh.log"
 fi
