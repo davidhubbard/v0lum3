@@ -11,20 +11,26 @@ watch_progress()
   exec 4>&2
   exec 2>&-
   tail --pid=$BASHPID -F "$file" | awk "{
-    if (NR % 10) next
     printf \"\\r\\x1b[K\" NR \"/$maxlines $msg\" > \"/proc/self/fd/4\"
   }"
 }
 
-watch_progress "running build.sh" /tmp/build.sh.log 232400 &
+watch_progress "building" /tmp/build.log $(( 900 + 4600 )) &
 watch_pid=$!
 
-../build.sh > /tmp/build.sh.log 2>&1
+echo "===== build.sh:" > /tmp/build.log
+../build.sh >> /tmp/build.log 2>&1
 R=$?
+
+if [ $R -eq 0 ]; then
+  echo "===== vulkantools.sh:" >> /tmp/build.log
+  ../vendor/vulkantools.sh >> /tmp/build.log 2>&1
+  Q=$?
+fi
 
 pkill -P $watch_pid
 wait $watch_pid
-echo ""
+echo -e "\r\e[Ksuccess."
 
 if [ $R -ne 0 ]; then
   echo "build.sh exit code: $R, log is /tmp/build.sh.log"
@@ -35,19 +41,9 @@ if [ ! -f ../vendor/bin/glslangValidator ]; then
   exit 1
 fi
 
-watch_progress "running vulkantools.sh" /tmp/vulkantools.sh.log 232400 &
-watch_pid=$!
-
-../vendor/vulkantools.sh > /tmp/vulkantools.sh.log 2>&1
-R=$?
-
-pkill -P $watch_pid
-wait $watch_pid
-echo ""
-
-if [ $R -ne 0]; then
-  echo "vulkantools.sh exit code: $R, log is /tmp/vulkantools.sh.log"
-  exit $R
+if [ $Q -ne 0 ]; then
+  echo "vulkantools.sh exit code: $Q, log is /tmp/vulkantools.sh.log"
+  exit $Q
 fi
 if [ ! -f ../vendor/bin/vktrace ]; then
   echo "vulkantools.sh: something fishy is going on, log is /tmp/vulkantools.sh.log"
