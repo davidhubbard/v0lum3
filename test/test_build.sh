@@ -2,6 +2,8 @@
 #
 # This script just runs build.sh and vulkantools.sh and checks the result
 
+cd $( dirname $0 )
+
 watch_progress()
 {
   msg="$1"
@@ -33,18 +35,18 @@ wait $watch_pid
 echo -e "\r\e[Ksuccess."
 
 if [ $R -ne 0 ]; then
-  echo "build.sh exit code: $R, log is /tmp/build.sh.log"
+  echo "build.sh exit code: $R, log is /tmp/build.log"
   exit $R
 fi
 if [ ! -f ../vendor/bin/glslangValidator ]; then
-  echo "build.sh: something fishy is going on, log is /tmp/build.sh.log"
+  echo "build.sh: something fishy is going on, log is /tmp/build.log"
   exit 1
 fi
 
 if [ $Q -ne 0 ]; then
-  echo "vulkantools.sh exit code: $Q, log is /tmp/vulkantools.sh.log"
+  echo "vulkantools.sh exit code: $Q, log is /tmp/build.log"
   exit $Q
 fi
 if [ ! -f ../vendor/bin/vktrace ]; then
-  echo "vulkantools.sh: something fishy is going on, log is /tmp/vulkantools.sh.log"
+  echo "vulkantools.sh: something fishy is going on, log is /tmp/build.log"
 fi
