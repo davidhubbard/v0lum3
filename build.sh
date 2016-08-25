@@ -6,6 +6,8 @@
 
 set -e
 
+cd $( dirname $0 )
+
 # See if submodules are up to date.
 N=$( /bin/ls -1 vendor/glfw | wc -l )
 if [ "$N" -eq "0" ]; then
