@@ -84,10 +84,6 @@ for submod in glfw glslang SPIRV-Tools VulkanSamples; do
           cmake_it Release -D SPIRV-Headers_SOURCE_DIR=${PREFIX}/SPIRV-Headers
           ;;
         "glslang")
-          (
-            cd ..
-            git apply ../VulkanSamples/glslang_revert_a5c33d.patch.txt
-          )
           cmake_it Release
           ;;
         *)
