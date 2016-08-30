@@ -5,8 +5,6 @@
 #include <lib/command/command.h>
 #include <GLFW/glfw3.h>
 #include <lib/language/VkPtr.h>
-//#include <lib/language/VkEnum.h>
-// TODO: VkInit.h probably not needed anymore.
 #include <lib/language/VkInit.h>
 
 #define GLM_FORCE_RADIANS
@@ -17,22 +15,6 @@
 
 const int WIN_W = 800;
 const int WIN_H = 600;
-
-void hexdump(const char * start, const char * end) {
-	auto* p = start;
-	size_t line_ofs = 0;
-	size_t ofs = (size_t) p;
-	for (; p < end; p++, ofs++) {
-		if ((ofs & ~15) != line_ofs) {
-			line_ofs = ofs & ~15;
-			fprintf(stderr, "%08zx:", line_ofs);
-			while (line_ofs < ofs) fprintf(stderr, "   ");
-		}
-		fprintf(stderr, " %02x", (unsigned) (unsigned char) *p);
-		if ((ofs & 15) == 15) fprintf(stderr, "\n");
-	}
-	if ((ofs & 15) != 0) fprintf(stderr, "\n");
-}
 
 static int mainLoop(GLFWwindow * window, language::Instance& inst) {
 	if (!inst.devs_size()) {
@@ -133,7 +115,6 @@ static int mainLoop(GLFWwindow * window, language::Instance& inst) {
 	}
 
 	fprintf(stderr, "start main loop\n");
-	int count = 0;
 	while(!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 
