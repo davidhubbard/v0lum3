@@ -135,7 +135,7 @@ static int mainLoop(GLFWwindow * window, language::Instance& inst) {
 		submitInfo.pWaitDstStageMask = waitStages;
 
 		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &commandBuffers[next_image_i];
+		submitInfo.pCommandBuffers = &commandBuffers.at(next_image_i);
 
 		VkSemaphore signalSemaphores[] = {renderFinishedSemaphore.vk};
 		submitInfo.signalSemaphoreCount = 1;

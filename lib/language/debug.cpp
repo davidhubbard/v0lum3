@@ -68,6 +68,18 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(VkFlags msgFlags, VkDe
 } // anonymous namespace
 
 int Instance::initDebug() {
+	//
+	// There is this clever trick in the vulkaninfo source code:
+	// iinfo.pNext = &dinfo;
+	//
+	// That is  amazing use of pNext. But it triggers a memory leak in
+	// loader/loader.c: loader_instance_heap_free()
+	// The OBJTRACK layer prints this out right before the double free():
+	// "OBJ_STAT Destroy VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT obj 0x775d790 "
+	// " (1 total objs remain & 0 VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT objs)"
+	//
+	// So manually call vkCreateDebugReportCallbackEXT() instead of using pNext.
+
 	VkDebugReportCallbackCreateInfoEXT VkInit(dinfo);
 	dinfo.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT |
 		VK_DEBUG_REPORT_WARNING_BIT_EXT |

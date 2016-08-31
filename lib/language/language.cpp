@@ -68,17 +68,6 @@ struct InstanceInternal : public Instance {
 		iinfo.enabledLayerCount = enabledLayers.size();
 		iinfo.ppEnabledLayerNames = enabledLayers.data();
 		iinfo.enabledLayerCount = 0;
-		//
-		// There is this clever trick in the vulkaninfo source code:
-		// iinfo.pNext = &dinfo;
-		//
-		// That is  amazing use of pNext. But it triggers a memory leak in
-		// loader/loader.c: loader_instance_heap_free()
-		// The OBJTRACK layer prints this out right before the double free():
-		// "OBJ_STAT Destroy VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT obj 0x775d790 "
-		// " (1 total objs remain & 0 VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT objs)"
-		//
-		// So manually call vkCreateDebugReportCallbackEXT() instead of using pNext.
 
 		VkResult v = vkCreateInstance(&iinfo, nullptr, &this->vk);
 		if (v != VK_SUCCESS) {
@@ -156,6 +145,9 @@ struct InstanceInternal : public Instance {
 
 	int initSupportedDevices(std::vector<VkPhysicalDevice>& physDevs) {
 		for (const auto& phys : physDevs) {
+			//VkPhysicalDeviceProperties gpu_props;
+			//vkGetPhysicalDeviceProperties(phys, &gpu_props);
+
 			auto* vkQFams = Vk::getQueueFamilies(phys);
 			if (vkQFams == nullptr) {
 				return 1;
@@ -168,6 +160,10 @@ struct InstanceInternal : public Instance {
 			this->devs.resize(this->devs.size() + 1);
 			Device& dev = *(this->devs.end() - 1);
 			dev.phys = phys;
+
+			//VkPhysicalDeviceFeatures physDevFeatures;
+			//vkGetPhysicalDeviceFeatures(phys, &physDevFeatures);
+
 			int r = initSupportedQueues(*vkQFams, dev);
 			delete vkQFams;
 			vkQFams = nullptr;
