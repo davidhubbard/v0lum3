@@ -66,6 +66,11 @@ fi
   # install VkLayer files that are VulkanTools layers
   # (VulkanTools is built on Vulkan-LoaderAndValidationLayers and re-builds dups of those layers)
   #
+  # use sed because the api_version line may change (has changed before)
+  # and it broke the patch...so this is a bad candidate for a patchfile.
+  sed -i -e 's/"library_path": "..\/vktrace\/libVkLayer_vktrace_layer.so"/"library_path": ".\/libVkLayer_vktrace_layer.so"/' \
+      vktrace/src/vktrace_layer/linux/VkLayer_vktrace_layer.json
+  # use patch for the rest
   patch -p1 <<EOF
 diff --git a/layersvt/CMakeLists.txt b/layersvt/CMakeLists.txt
 index 32ee1c4..b6414c3 100644
@@ -130,19 +135,6 @@ index c2f5d35..b6f5c1d 100644
 +
 +install (FILES \${src_json} DESTINATION etc/vulkan/explicit_layer.d)
 +install(TARGETS VkLayer_vktrace_layer DESTINATION etc/vulkan/explicit_layer.d)
-diff --git a/vktrace/src/vktrace_layer/linux/VkLayer_vktrace_layer.json b/vktrace/src/vktrace_layer/linux/VkLayer_vktrace_layer.json
-index 0dcdc6b..07661f8 100644
---- a/vktrace/src/vktrace_layer/linux/VkLayer_vktrace_layer.json
-+++ b/vktrace/src/vktrace_layer/linux/VkLayer_vktrace_layer.json
-@@ -3,7 +3,7 @@
-     "layer" : {
-         "name": "VK_LAYER_LUNARG_vktrace",
-         "type": "GLOBAL",
--        "library_path": "../vktrace/libVkLayer_vktrace_layer.so",
-+        "library_path": "./libVkLayer_vktrace_layer.so",
-         "api_version": "1.0.21",
-         "implementation_version": "1",
-         "description": "Vktrace tracing library",
 EOF
 
 
