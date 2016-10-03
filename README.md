@@ -57,3 +57,7 @@ It is a design goal that this repo is easily converted over to using
 LVL directly. It is also possible to bypass LVL and write your own
 loader, but tests have not shown that to be a significant performance
 gain.
+
+## Notes
+
+Should probably take a look at [CUDA Voxelizer 0.1](https://github.com/Forceflow/cuda_voxelizer)
