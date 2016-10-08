@@ -1,8 +1,8 @@
 diff --git a/layers/core_validation.cpp b/layers/core_validation.cpp
-index c04ec9f..c192160 100644
+index 1edaa2c..9902796 100644
 --- a/layers/core_validation.cpp
 +++ b/layers/core_validation.cpp
-@@ -816,15 +816,15 @@ static bool get_mem_for_type(layer_data *dev_data, uint64_t handle, VkDebugRepor
+@@ -918,15 +918,15 @@ static bool get_mem_for_type(layer_data *dev_data, uint64_t handle, VkDebugRepor
  // Print details of MemObjInfo list
  static void print_mem_list(layer_data *dev_data) {
      // Early out if info is not requested
@@ -21,7 +21,7 @@ index c04ec9f..c192160 100644
              MEMTRACK_NONE, "MEM", "=============================");
  
      if (dev_data->memObjMap.size() <= 0)
-@@ -833,39 +833,39 @@ static void print_mem_list(layer_data *dev_data) {
+@@ -935,39 +935,39 @@ static void print_mem_list(layer_data *dev_data) {
      for (auto ii = dev_data->memObjMap.begin(); ii != dev_data->memObjMap.end(); ++ii) {
          auto mem_info = (*ii).second.get();
  
@@ -70,7 +70,7 @@ index c04ec9f..c192160 100644
                          0, __LINE__, MEMTRACK_NONE, "MEM", "      VK CB 0x%p", cb);
              }
          }
-@@ -876,14 +876,14 @@ static void printCBList(layer_data *my_data) {
+@@ -978,14 +978,14 @@ static void printCBList(layer_data *my_data) {
      GLOBAL_CB_NODE *pCBInfo = NULL;
  
      // Early out if info is not requested
@@ -88,7 +88,7 @@ index c04ec9f..c192160 100644
              MEMTRACK_NONE, "MEM", "==================");
  
      if (my_data->commandBufferMap.size() <= 0)
-@@ -892,13 +892,13 @@ static void printCBList(layer_data *my_data) {
+@@ -994,13 +994,13 @@ static void printCBList(layer_data *my_data) {
      for (auto &cb_node : my_data->commandBufferMap) {
          pCBInfo = cb_node.second;
  
@@ -104,7 +104,7 @@ index c04ec9f..c192160 100644
                      __LINE__, MEMTRACK_NONE, "MEM", "      Mem obj 0x%" PRIx64, (uint64_t)obj);
          }
      }
-@@ -3987,7 +3987,7 @@ static bool printPipeline(layer_data *my_data, const VkCommandBuffer cb) {
+@@ -4216,7 +4216,7 @@ static bool printPipeline(layer_data *my_data, const VkCommandBuffer cb) {
          if (!pPipeTrav) {
              // nothing to print
          } else {
@@ -113,7 +113,7 @@ index c04ec9f..c192160 100644
                                   __LINE__, DRAWSTATE_NONE, "DS", "%s",
                                   vk_print_vkgraphicspipelinecreateinfo(
                                       reinterpret_cast<const VkGraphicsPipelineCreateInfo *>(&pPipeTrav->graphicsPipelineCI), "{DS}")
-@@ -7101,7 +7101,7 @@ VKAPI_ATTR void VKAPI_CALL CmdDraw(VkCommandBuffer commandBuffer, uint32_t verte
+@@ -7573,7 +7573,7 @@ VKAPI_ATTR void VKAPI_CALL CmdDraw(VkCommandBuffer commandBuffer, uint32_t verte
          skip_call |= markStoreImagesAndBuffersAsWritten(dev_data, pCB);
          // TODO : Need to pass commandBuffer as srcObj here
          skip_call |=

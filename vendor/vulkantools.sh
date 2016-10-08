@@ -135,6 +135,19 @@ index c2f5d35..b6f5c1d 100644
 +
 +install (FILES \${src_json} DESTINATION etc/vulkan/explicit_layer.d)
 +install(TARGETS VkLayer_vktrace_layer DESTINATION etc/vulkan/explicit_layer.d)
+diff --git a/layers/CMakeLists.txt b/layers/CMakeLists.txt
+index 0ccfc87..04f0cb7 100644
+--- a/layers/CMakeLists.txt
++++ b/layers/CMakeLists.txt
+@@ -71,7 +71,7 @@ if(UNIX)
+             VERBATIM
+             DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/linux/${config_file}.json
+             )
+-        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/staging-json/${config_file}.json DESTINATION /etc/vulkan/explicit_layer.d)
++        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/staging-json/${config_file}.json DESTINATION etc/vulkan/explicit_layer.d)
+     endforeach(config_file)
+ endif()
+ 
 EOF
 
 
