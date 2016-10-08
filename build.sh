@@ -49,6 +49,7 @@ fi
 
 # Get set up to build all the bits and bobs needed for Vulkan.
 PREFIX="${PWD}/vendor"
+NPROC=$( nproc )
 
 cmake_it() {
   CMD="cmake -D CMAKE_INSTALL_PREFIX=${PREFIX} -D CMAKE_BUILD_TYPE="
@@ -92,7 +93,7 @@ for submod in glfw glslang SPIRV-Tools VulkanSamples; do
     fi
     # Though tempting to write a makefile that does sub-makes for each of the targets,
     # calling make immediately is simplest in terms of debugging build issues.
-    make -j install
+    make -j$NPROC install
   )
 
   if [ "${submod}" == "glfw" ]; then
@@ -113,4 +114,4 @@ done
 echo ""
 echo "Success. Things to try next:"
 echo "  vendor/VulkanSamples/build/demos/vulkaninfo 2>&1 | head -n40"
-echo "  make -j"
+echo "  make -j$NPROC"
