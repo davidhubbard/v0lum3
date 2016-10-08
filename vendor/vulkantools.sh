@@ -141,10 +141,10 @@ index 0ccfc87..04f0cb7 100644
 +++ b/layers/CMakeLists.txt
 @@ -71,7 +71,7 @@ if(UNIX)
              VERBATIM
-             DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/linux/${config_file}.json
+             DEPENDS \${CMAKE_CURRENT_SOURCE_DIR}/linux/\${config_file}.json
              )
--        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/staging-json/${config_file}.json DESTINATION /etc/vulkan/explicit_layer.d)
-+        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/staging-json/${config_file}.json DESTINATION etc/vulkan/explicit_layer.d)
+-        install(FILES \${CMAKE_CURRENT_BINARY_DIR}/staging-json/\${config_file}.json DESTINATION /etc/vulkan/explicit_layer.d)
++        install(FILES \${CMAKE_CURRENT_BINARY_DIR}/staging-json/\${config_file}.json DESTINATION etc/vulkan/explicit_layer.d)
      endforeach(config_file)
  endif()
  
