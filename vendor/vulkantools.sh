@@ -45,7 +45,7 @@ else
     mkdir -p build
     cd build
     ../configure --enable-terminfo=no --enable-curses=no
-    REQUIRES_RTTI=1 make -j $(nproc)
+    REQUIRES_RTTI=1 make -j
     make install DESTDIR="${PWD}"/install
   )
 
@@ -53,7 +53,7 @@ else
     cd LunarGLASS
     cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Release "-DGLSLANGLIBS=${PREFIX}/lib" "-DCMAKE_INSTALL_PREFIX=${PREFIX}"
     cd build
-    make -j $(nproc) install
+    make -j install
   )
 fi
 
@@ -208,5 +208,5 @@ EOF
 
   cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_INSTALL_PREFIX=${PREFIX}" -DBUILD_WSI_XLIB_SUPPORT=Off -DBUILD_VKTRACEVIEWER=On
   cd build
-  make -j $(nproc) install
+  make -j install
 )
