@@ -148,7 +148,7 @@ int Instance::createSwapchain(size_t dev_i, VkExtent2D surfaceSizeRequest) {
 	VkSurfaceCapabilitiesKHR scap;
 	VkResult v = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(dev.phys, surface, &scap);
 	if (v != VK_SUCCESS) {
-		fprintf(stderr, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR() returned %d\n", v);
+		fprintf(stderr, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR() returned %d (%s)\n", v, string_VkResult(v));
 		return 1;
 	}
 

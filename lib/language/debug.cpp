@@ -105,7 +105,7 @@ int Instance::initDebug() {
 	VkResult v = pCreateDebugReportCallback(this->vk, &dinfo, nullptr /*allocator*/,
 		&this->debugReport);
 	if (v != VK_SUCCESS) {
-		fprintf(stderr, "pCreateDebugReportCallback returned %d\n", v);
+		fprintf(stderr, "pCreateDebugReportCallback returned %d (%s)\n", v, string_VkResult(v));
 		return 1;
 	}
 	return 0;

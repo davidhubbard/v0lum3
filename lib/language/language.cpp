@@ -73,7 +73,11 @@ struct InstanceInternal : public Instance {
 
 		VkResult v = vkCreateInstance(&iinfo, nullptr, &this->vk);
 		if (v != VK_SUCCESS) {
-			fprintf(stderr, "vkCreateInstance returned %d\n", v);
+			fprintf(stderr, "vkCreateInstance failed: %d (%s)\n", v, string_VkResult(v));
+			if (v == VK_ERROR_INCOMPATIBLE_DRIVER) {
+				fprintf(stderr, "Most likely cause: your GPU does not support Vulkan yet.\n"
+					"You may try updating your graphics driver.\n");
+			}
 			return 1;
 		}
 		return 0;
@@ -86,8 +90,8 @@ struct InstanceInternal : public Instance {
 			VkResult v = vkGetPhysicalDeviceSurfaceSupportKHR(dev.phys, q_i, this->surface,
 				&isPresentSupported);
 			if (v != VK_SUCCESS) {
-				fprintf(stderr, "dev %zu qfam %zu: vkGetPhysicalDeviceSurfaceSupportKHR returned %d\n",
-					this->devs.size(), q_i, v);
+				fprintf(stderr, "dev %zu qfam %zu: vkGetPhysicalDeviceSurfaceSupportKHR returned %d (%s)\n",
+					this->devs.size(), q_i, v, string_VkResult(v));
 				return 1;
 			}
 			oneQueueWithPresentSupported |= isPresentSupported;
@@ -210,7 +214,7 @@ int Instance::ctorError(const char ** requiredExtensions, size_t requiredExtensi
 
 	VkResult v = createWindowSurface(*this, window);
 	if (v != VK_SUCCESS) {
-		fprintf(stderr, "createWindowSurface (the user-provided fn) failed: %d", v);
+		fprintf(stderr, "createWindowSurface (the user-provided fn) failed: %d (%s)", v, string_VkResult(v));
 		return 1;
 	}
 

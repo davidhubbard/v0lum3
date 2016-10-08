@@ -96,7 +96,7 @@ int Instance::open(VkExtent2D surfaceSizeRequest) {
 
 		VkResult v = vkCreateDevice(dev.phys, &dCreateInfo, nullptr /*allocator*/, &dev.dev);
 		if (v != VK_SUCCESS) {
-			fprintf(stderr, "dev_i=%zu VkCreateDevice() returned %d\n", (size_t) kv.first, v);
+			fprintf(stderr, "dev_i=%zu VkCreateDevice() returned %d (%s)\n", (size_t) kv.first, v, string_VkResult(v));
 			return 1;
 		}
 	}

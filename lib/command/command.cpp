@@ -26,8 +26,8 @@ int Shader::loadSPV(const void * spvBegin, const void * spvEnd) {
 	smci.pCode = reinterpret_cast<const uint32_t *>(spvBegin);
 	VkResult r = vkCreateShaderModule(dev->dev, &smci, nullptr, &vk);
 	if (r != VK_SUCCESS) {
-		fprintf(stderr, "loadSPV(%p, %p) vkCreateShaderModule returned %d\n",
-			spvBegin, spvEnd, r);
+		fprintf(stderr, "loadSPV(%p, %p) vkCreateShaderModule returned %d (%s)\n",
+			spvBegin, spvEnd, r, string_VkResult(r));
 		return 1;
 	}
 	return 0;
@@ -187,7 +187,7 @@ int Pipeline::init(RenderPass& renderPass, size_t subpass_i, PipelineCreateInfo&
 	//
 	VkResult v = vkCreatePipelineLayout(pci.dev.dev, &pci.plci, nullptr, &pipelineLayout);
 	if (v != VK_SUCCESS) {
-		fprintf(stderr, "vkCreatePipelineLayout() returned %d\n", v);
+		fprintf(stderr, "vkCreatePipelineLayout() returned %d (%s)\n", v, string_VkResult(v));
 		return 1;
 	}
 
@@ -211,7 +211,7 @@ int Pipeline::init(RenderPass& renderPass, size_t subpass_i, PipelineCreateInfo&
 	p.subpass = subpass_i;
 	v = vkCreateGraphicsPipelines(pci.dev.dev, VK_NULL_HANDLE, 1, &p, nullptr, &vk);
 	if (v != VK_SUCCESS) {
-		fprintf(stderr, "vkCreateGraphicsPipelines() returned %d\n", v);
+		fprintf(stderr, "vkCreateGraphicsPipelines() returned %d (%s)\n", v, string_VkResult(v));
 		return 1;
 	}
 
@@ -232,7 +232,7 @@ int Pipeline::init(RenderPass& renderPass, size_t subpass_i, PipelineCreateInfo&
 
 		v = vkCreateFramebuffer(pci.dev.dev, &fbci, nullptr, &framebuf.vk);
 		if (v != VK_SUCCESS) {
-			fprintf(stderr, "vkCreateFramebuffer() returned %d\n", v);
+			fprintf(stderr, "vkCreateFramebuffer() returned %d (%s)\n", v, string_VkResult(v));
 			return 1;
 		}
 	}
@@ -374,7 +374,7 @@ int RenderPass::init(std::vector<PipelineCreateInfo> pcis) {
 
 	VkResult v = vkCreateRenderPass(checkDevice->dev, &rpci, nullptr, &vk);
 	if (v != VK_SUCCESS) {
-		fprintf(stderr, "vkCreateRenderPass() returned %d\n", v);
+		fprintf(stderr, "vkCreateRenderPass() returned %d (%s)\n", v, string_VkResult(v));
 		return 1;
 	}
 
@@ -393,7 +393,7 @@ int Semaphore::ctorError(language::Device& dev) {
 	VkSemaphoreCreateInfo VkInit(sci);
 	VkResult v = vkCreateSemaphore(dev.dev, &sci, nullptr, &vk);
 	if (v != VK_SUCCESS) {
-		fprintf(stderr, "vkCreateSemaphore returned %d\n", v);
+		fprintf(stderr, "vkCreateSemaphore returned %d (%s)\n", v, string_VkResult(v));
 		return 1;
 	}
 	return 0;
@@ -403,7 +403,7 @@ int Fence::ctorError(language::Device& dev) {
 	VkFenceCreateInfo VkInit(fci);
 	VkResult v = vkCreateFence(dev.dev, &fci, nullptr, &vk);
 	if (v != VK_SUCCESS) {
-		fprintf(stderr, "vkCreateFence returned %d\n", v);
+		fprintf(stderr, "vkCreateFence returned %d (%s)\n", v, string_VkResult(v));
 		return 1;
 	}
 	return 0;
@@ -416,7 +416,7 @@ int CommandPool::ctorError(language::Device& dev, VkCommandPoolCreateFlags flags
 	cpci.flags = flags;
 	VkResult v = vkCreateCommandPool(dev.dev, &cpci, nullptr, &vk);
 	if (v != VK_SUCCESS) {
-		fprintf(stderr, "vkCreateCommandPool returned %d\n", v);
+		fprintf(stderr, "vkCreateCommandPool returned %d (%s)\n", v, string_VkResult(v));
 		return 1;
 	}
 	return 0;
