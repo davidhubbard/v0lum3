@@ -25,9 +25,11 @@ struct InstanceInternal : public Instance {
 		std::vector<const char *> enabledExtensions;
 		for (const auto& ext : extensions) {
 			unsigned int i = 0;
-			for (; i < requiredExtensionCount; i++) if (!strcmp(requiredExtensions[i], ext.extensionName)) {
-				enabledExtensions.push_back(requiredExtensions[i]);
-				break;
+			for (; i < requiredExtensionCount; i++) {
+				if (requiredExtensions[i] != nullptr && !strcmp(requiredExtensions[i], ext.extensionName)) {
+					enabledExtensions.push_back(requiredExtensions[i]);
+					break;
+				}
 			}
 		}
 
