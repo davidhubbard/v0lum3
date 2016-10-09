@@ -77,6 +77,11 @@ struct InstanceInternal : public Instance {
 			if (v == VK_ERROR_INCOMPATIBLE_DRIVER) {
 				fprintf(stderr, "Most likely cause: your GPU does not support Vulkan yet.\n"
 					"You may try updating your graphics driver.\n");
+			} else if (v == VK_ERROR_OUT_OF_HOST_MEMORY) {
+				fprintf(stderr, "Primary cause: you *might* be out of memory (unlikely).\n"
+					"Secondary causes: conflicting vulkan drivers installed.\n"
+					"Secondary causes: broken driver installation.\n"
+					"You may want to search the web for more information.\n");
 			}
 			return 1;
 		}
