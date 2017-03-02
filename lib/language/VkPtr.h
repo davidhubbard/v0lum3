@@ -41,6 +41,11 @@ public:
 		pInst = other.pInst;
 		pDev = other.pDev;
 
+		// The difference between VK_NULL_HANDLE and nullptr comes down to 64-bit vs 32-bit:
+		// https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VK_DEFINE_HANDLE.html
+		// claims VK_DEFINE_HANDLE is a macro for typedef struct object##_T* object
+		// but this is apparently not true for 32-bit x86, where VK_DEFINE_HANDLE is a macro
+		// for uint64_t. And the compiler rejects assigning uint64_t object = nullptr.
 		other.object = VK_NULL_HANDLE;
 		other.deleterT = nullptr;
 		other.deleterInst = nullptr;
