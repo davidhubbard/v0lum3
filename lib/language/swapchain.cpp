@@ -142,7 +142,7 @@ int Instance::initSurfaceFormatAndPresentMode(Device& dev) {
 	return 0;
 }
 
-int Instance::createSwapchain(size_t dev_i, VkExtent2D surfaceSizeRequest) {
+int Instance::createSwapchain(size_t dev_i, VkExtent2D sizeRequest) {
 	Device& dev = devs.at(dev_i);
 
 	VkSurfaceCapabilitiesKHR scap;
@@ -152,7 +152,7 @@ int Instance::createSwapchain(size_t dev_i, VkExtent2D surfaceSizeRequest) {
 		return 1;
 	}
 
-	dev.swapchainExtent = calculateSurfaceExtend2D(scap, surfaceSizeRequest);
+	dev.swapchainExtent = calculateSurfaceExtend2D(scap, sizeRequest);
 	VkSwapchainCreateInfoKHR VkInit(scci);
 	scci.surface = surface;
 	scci.minImageCount = calculateMinRequestedImages(scap);

@@ -4,14 +4,6 @@
  * lib/command is part of the v0lum3 project.
  * This library is called "command" as a homage to Star Trek First Contact.
  * Like the Vulcan High Command, this library sends out the commands.
- *
- * Note: lib/command is designed to be used in source form! The functions
- * are kept short and sweet, so there are very likely some things your app
- * needs that are not exposed by the lib/command API. Clone lib/command
- * to your own repo and make changes.
- *
- * The v0lum3 project is happy to incorporate useful changes back into the
- * upstream code.
  */
 
 #include <lib/language/language.h>

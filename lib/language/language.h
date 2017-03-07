@@ -9,25 +9,19 @@
  * initialization of the VkInstance, devices, queue selection, and extension
  * selection.
  *
- * Note: lib/language is designed to be used in source form! The functions
- * are kept short and sweet, so there are very likely some things your app
- * needs that are not exposed by the lib/language API. Clone lib/language
- * to your own repo and make changes. For example:
- * 1. Change the app name reported to vulkan.
- * 2. Use your app's logging facility instead of fprintf(stderr).
- * 3. Enable instance-level extensions. Or blacklist extensions.
- * 4. Use a custom allocator.
- * etc.
- *
- * The v0lum3 project is happy to incorporate useful changes back into the
- * upstream code.
+ * Note: lib/language attempts to avoid needing a "whole app INI or config"
+ *       solution. These are some config choices you may want to edit directly:
+ * 1. in lib/language.cpp: app.pEngineName and app.applicationVersion
+ * 2. a logging library instead of fprintf(stderr)
+ * 3. a custom allocator
+ * 4. enable instance-level extensions or blacklist some extensions
  *
  * Example usage:
  *
- * // yourprogram.cpp:
+ * // this file is yourprogram.cpp:
  * #include <lib/language/language.h>
  *
- * // Wrap glfwCreateWindowSurface for type safety.
+ * // Wrap the function glfwCreateWindowSurface for Instance::ctorError():
  * static VkResult createWindowSurface(language::Instance& inst, void * window)
  * {
  *   return glfwCreateWindowSurface(inst.vk, (GLFWwindow *) window, nullptr,
@@ -192,26 +186,33 @@ typedef VkResult (* CreateWindowSurfaceFn)(Instance& instance, void *window);
 
 // Instance holds the root of the Vulkan pipeline. Constructor (ctor) is a
 // 3-phase process:
-// 1. Create an Instance object
-// 2. Call ctorError() -- phase 2 of the ctor -- always check the error return.
-// 3. Construct a VkSurfaceKHR using your choice of windowing library.
-// 4. Call open() -- phase 3 of the ctor -- to init devices and queues.
-// 5. Instance is now fully constructed.
+// 1. Create an Instance object (step 1 of the constructor)
+// 2. Call ctorError() (step 2 of the constructor)
+//    *** Always check the error return ***
+// 3. Construct a VkSurfaceKHR using your choice of windowing library
+// 4. Call open() (step 3 of the constructor) to init devices and queues
+// 5. Use the Instance instance in your application
+// 6. The destructor will release all resources
 //
 // Some discussion about setting up queues:
 //
-// In many cases it only makes sense to use 1 CPU thread to submit to GPU queues
-// even though the GPU can execute the commands in parallel. What happens is the
-// GPU only has a single hardware port and Vulkan is forced to multiplex commands
-// to that single port when the app starts using multiple queues. In other words,
-// the GPU hardware port may be "single-threaded."
+// In many cases it only makes sense to use 1 CPU thread to submit to GPU
+// queues even though the GPU can execute the commands in parallel. What
+// happens is the GPU only has a single hardware port and Vulkan is forced to
+// multiplex commands to that single port when the app starts using multiple
+// queues. In other words, the GPU hardware port may be "single-threaded."
 //
 // Web resources: https://lunarg.com/faqs/command-multi-thread-vulkan/
 //                https://forums.khronos.org/showthread.php/13172
 //
 // lib/language does not enforce a limit of 1 GRAPHICS queue because Vulkan
-// has no limit either. To try out multiple queues, override Instance::initQueues()
-// and add multiple instances of QueueRequest to the request vector.
+// has no limit either. To try out multiple queues, override
+// Instance::initQueues() and add multiple instances of QueueRequest to the
+// request vector.
+//
+// It is still a good idea to use multiple threads to build command queues. And
+// a multi-GPU system could in theory have multiple GRAPHICS queues (though
+// Vulkan support for multi-GPU is still not very widespread...ymmv).
 class Instance {
 public:
 	Instance() = default;
@@ -221,23 +222,30 @@ public:
 	VkPtr<VkInstance> vk{vkDestroyInstance};
 	VkPtr<VkSurfaceKHR> surface{vk, vkDestroySurfaceKHR};
 
-	// This is also the constructor: vulkan errors are returned from ctorError().
-	// requiredExtentions is an array of strings naming any required extensions
-	// (e.g. glfwGetRequiredInstanceExtensions, the SDL API is not as well
-	// defined yet but might be SDL_GetVulkanInstanceExtensions).
+	// ctorError is step 2 of the constructor (see class comments above).
+	// Vulkan errors are returned from ctorError().
+	//
+	// requiredExtentions is an array of strings naming any required
+	// extensions (e.g. glfwGetRequiredInstanceExtensions for glfw).
+	// [The SDL API is not as well defined yet but might be
+	// SDL_GetVulkanInstanceExtensions]
 	//
 	// createWindowSurface is a function that is called to initialize
-	// Instance::surface. (e.g. glfwCreateWindowSurface, SDL_CreateVulkanSurface).
+	// Instance::surface. (e.g. glfwCreateWindowSurface or
+	// SDL_CreateVulkanSurface).
 	//
-	// window is an opaque pointer used only to call createWindowSurface.
+	// window is an opaque pointer used only in the call to
+	// createWindowSurface.
 	WARN_UNUSED_RESULT int ctorError(
 		const char ** requiredExtensions,
 		size_t requiredExtensionCount,
 		CreateWindowSurfaceFn createWindowSurface,
 		void *window);
 
-	// open() is the third phase of the ctor. Call open() after modifying
-	// Device::extensionRequests, Device::surfaceFormats, or Device::presentModes.
+	// open() is step 3 of the constructor. Call open() after modifying
+	// Device::extensionRequests, Device::surfaceFormats, or
+	// Device::presentModes.
+	//
 	// surfaceSizeRequest is the initial size of the window.
 	WARN_UNUSED_RESULT int open(VkExtent2D surfaceSizeRequest);
 
@@ -246,19 +254,21 @@ public:
 	size_t devs_size() const { return devs.size(); };
 	Device& at(size_t i) { return devs.at(i); };
 
-	// requestQfams() is a convenience function. It selects the minimal list of
-	// QueueFamily instances from Device dev_i and returns a vector of
-	// QueueRequest that cover the requested support.
+	// requestQfams() is a convenience function. It selects the minimal
+	// list of QueueFamily instances from Device dev_i and returns a
+	// vector of QueueRequest that cover the requested support.
 	//
 	// For example:
-	// auto r = dev.requestQfams(dev_i, {language::PRESENT, language::GRAPHICS});
+	// auto r = dev.requestQfams(dev_i, {language::PRESENT,
+	//                                   language::GRAPHICS});
 	//
-	// After requestQfams() returns, multiple queues can be obtained by adding
-	// the QueueRequest multiple times in devQuery().
+	// After requestQfams() returns, multiple queues can be obtained by
+	// adding the QueueRequest multiple times in devQuery().
 	std::vector<QueueRequest> requestQfams(
 		size_t dev_i, std::set<SurfaceSupport> support);
 
-	// pDestroyDebugReportCallbackEXT is located in the vulkan library at startup.
+	// pDestroyDebugReportCallbackEXT is loaded from the vulkan library at
+	// startup (i.e. a .dll / .so function symbol lookup).
 	PFN_vkDestroyDebugReportCallbackEXT pDestroyDebugReportCallbackEXT = nullptr;
 
 	VkDebugReportCallbackEXT debugReport = VK_NULL_HANDLE;
@@ -267,21 +277,24 @@ protected:
 	// Override initDebug() if your app needs different debug settings.
 	virtual int initDebug();
 
-	// After the devs vector is created in open(), it must not be resized. Any
-	// operation on the vector that causes it to reallocate its storage will
-	// invalidate references held to the individual Device instances.
+	// After the devs vector is created in open(), it must not be resized.
+	// Any operation on the vector that causes it to reallocate its storage
+	// will invalidate references held to the individual Device instances,
+	// likely causing a segfault.
 	std::vector<Device> devs;
 
-	// Override initQueues() if you app needs more than one queue.
-	// initQueues() should call request.push_back() for at least one QueueRequest.
+	// Override initQueues() if your app needs more than one queue.
+	// initQueues() should call request.push_back() for at least one
+	// QueueRequest.
 	virtual int initQueues(std::vector<QueueRequest>& request);
 
-	// Override initSurfaceFormatAndPresentMode() or just modify Device::surfaceFormats
-	// and Device::presentModes before calling open().
+	// Override initSurfaceFormatAndPresentMode() or just modify
+	// Device::surfaceFormats and Device::presentModes before calling
+	// open().
 	virtual int initSurfaceFormatAndPresentMode(Device& dev);
 
 	// Override createSwapchain() if your app needs a different swapchain.
-	virtual int createSwapchain(size_t dev_i, VkExtent2D surfaceSizeRequest);
+	virtual int createSwapchain(size_t dev_i, VkExtent2D sizeRequest);
 };
 
 } // namespace language
