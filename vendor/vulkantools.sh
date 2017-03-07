@@ -26,6 +26,12 @@ if ! pkg-config --cflags --libs xcb-keysyms > /dev/null 2>&1; then
   exit 1
 fi
 
+if [ ! -d glslang/build ]; then
+  echo "Please run build.sh from the top-level directory first."
+  echo "  (Missing glslang dependency)"
+  exit 1
+fi
+
 git clone https://github.com/LunarG/VulkanTools
 PREFIX="${PWD}"
 
