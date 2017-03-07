@@ -20,7 +20,7 @@ for anyone who wants to quickly create a clean Vulkan dev environment:
 
 3. Profit!
 
-## vulkantools.sh
+## vulkantools.sh and lunarglass.sh
 
 Oh yeah, if you want to run:
 
@@ -32,6 +32,9 @@ Oh yeah, if you want to run:
 
 Then type `vendor/vulkantools.sh` and those will be built and installed
 in `vendor/bin` next to `glslangValidator` and friends.
+
+For [LunarGLASS](https://github.com/LunarG/LunarGLASS) type
+`vendor/lunarglass.sh` and it will be built in `vendor/LunarGLASS`.
 
 ## Why VulkanSamples and not Vulkan-LoaderAndValidationLayers?
 
