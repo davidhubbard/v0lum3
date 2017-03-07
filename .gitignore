@@ -2,6 +2,7 @@ vendor/bin
 vendor/etc
 vendor/include
 vendor/lib
+vendor/jsoncpp
 main/v
 
 vendor/LunarGLASS
