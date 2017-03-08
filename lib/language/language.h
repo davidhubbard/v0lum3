@@ -215,7 +215,8 @@ typedef VkResult (* CreateWindowSurfaceFn)(Instance& instance, void *window);
 //
 // It is still a good idea to use multiple threads to build command queues. And
 // a multi-GPU system could in theory have multiple GRAPHICS queues (though
-// Vulkan support for multi-GPU is still not very widespread...ymmv).
+// Vulkan 1.0 does not support multi-GPU:
+// https://lunarg.com/faqs/vulkan-multiple-gpus-acceleration/ )
 class Instance {
 public:
 	Instance() = default;
