@@ -29,9 +29,8 @@ fi
 # The entire tree under vendor/lib is in .gitignore.
 # VulkanSamples does not ship with a .pc file, so throw one in there.
 PC=vendor/lib/pkgconfig/vulkan.pc
-if [ ! -f "${PC}" ]; then
-  mkdir -p vendor/lib/pkgconfig
-  cat <<EOF >"${PC}"
+mkdir -p vendor/lib/pkgconfig
+cat <<EOF >"${PC}"
 prefix=${PWD}/vendor/VulkanSamples
 includedir=\${prefix}/include
 glm_includedir=\${prefix}/libs
@@ -46,7 +45,6 @@ Libs: -L\${loaderdir} -lvulkan -Wl,-rpath=\${loaderdir}
 Libs.private: -lrt -lm -ldl
 Cflags: -I\${includedir} -I\${glm_includedir}
 EOF
-fi
 
 # Get set up to build all the bits and bobs needed for Vulkan.
 PREFIX="${PWD}/vendor"
@@ -86,6 +84,9 @@ for submod in glfw glslang SPIRV-Tools VulkanSamples; do
           ;;
         "glslang")
           cmake_it Release
+          ;;
+        "VulkanSamples")
+          cmake_it Debug -DBUILD_WSI_MIR_SUPPORT=0 -DBUILD_WSI_WAYLAND_SUPPORT=0
           ;;
         *)
           cmake_it Debug
