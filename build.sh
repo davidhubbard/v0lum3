@@ -28,9 +28,10 @@ fi
 
 # The entire tree under vendor/lib is in .gitignore.
 # VulkanSamples does not ship with a .pc file, so throw one in there.
-if [ ! -f vendor/lib/pkgconfig/vulkan.pc ]; then
+PC=vendor/lib/pkgconfig/vulkan.pc
+if [ ! -f "${PC}" ]; then
   mkdir -p vendor/lib/pkgconfig
-  cat <<EOF >vendor/lib/pkgconfig/vulkan.pc
+  cat <<EOF >"${PC}"
 prefix=${PWD}/vendor/VulkanSamples
 includedir=\${prefix}/include
 glm_includedir=\${prefix}/libs
@@ -111,7 +112,26 @@ for submod in glfw glslang SPIRV-Tools VulkanSamples; do
   fi
 done
 
+# update vulkan.pc with C_DEFINES generate by cmake
+VSB=vendor/VulkanSamples/build
+FLAGS="${VSB}/loader/CMakeFiles/vulkan.dir/flags.make"
+if ! grep -q ^C_DEFINES "${FLAGS}"; then
+  echo "Fatal: did VulkanSamples build?"
+  echo "  ${FLAGS}: C_DEFINES not found"
+  exit 1
+fi
+CFLAGS=$(sed -e 's/^C_DEFINES = //p;d' "${FLAGS}")
+
+sed -e "s|^\\(Cflags:.*\\)$|\\1 ${CFLAGS}|" "${PC}" \
+	> /tmp/vulkan.pc.tmp
+if diff /tmp/vulkan.pc.tmp "${PC}" >/dev/null 2>&1; then
+  echo "Fatal: unable to patch Cflags: line in ${PC}"
+  rm /tmp/vulkan.pc.tmp
+  exit 1
+fi
+mv /tmp/vulkan.pc.tmp "${PC}"
+
 echo ""
 echo "Success. Things to try next:"
-echo "  vendor/VulkanSamples/build/demos/vulkaninfo 2>&1 | head -n40"
+echo "  ${VSB}/demos/vulkaninfo 2>&1 | head -n40"
 echo "  make -j$NPROC"

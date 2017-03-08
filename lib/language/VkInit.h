@@ -167,5 +167,12 @@ inline void _VkInit(VkPresentInfoKHR &pik) {
 	pik.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 }
 
+#ifdef VK_KHR_XCB_SURFACE_EXTENSION_NAME
+inline void _VkInit(VkXcbSurfaceCreateInfoKHR &xcb) {
+	memset(&xcb, 0, sizeof(xcb));
+	xcb.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
+}
+#endif
+
 }  // namespace internal
 }  // namespace language
