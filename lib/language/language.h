@@ -10,11 +10,13 @@
  * selection.
  *
  * Note: lib/language attempts to avoid needing a "whole app INI or config"
- *       solution. These are some config choices you may want to edit directly:
+ *       solution. These are some config choices you may want to edit directly
+ *       in the source:
  * 1. in lib/language.cpp: app.pEngineName and app.applicationVersion
  * 2. a logging library instead of fprintf(stderr)
  * 3. a custom allocator
  * 4. enable instance-level extensions or blacklist some extensions
+ * 5. enable device layers or blacklist device layers
  *
  * Example usage:
  *
@@ -57,7 +59,7 @@
 
 namespace language {
 
-#if defined(COMPILER_GCC)
+#if defined(COMPILER_GCC) || defined(__clang__)
 #define WARN_UNUSED_RESULT __attribute__((warn_unused_result))
 #elif defined(COMPILER_MSVC)
 #define WARN_UNUSED_RESULT _Check_return_
@@ -190,6 +192,7 @@ typedef VkResult (* CreateWindowSurfaceFn)(Instance& instance, void *window);
 // 2. Call ctorError() (step 2 of the constructor)
 //    *** Always check the error return ***
 // 3. Construct a VkSurfaceKHR using your choice of windowing library
+//    and optionally choose devices, queues, surface formats, or extensions
 // 4. Call open() (step 3 of the constructor) to init devices and queues
 // 5. Use the Instance instance in your application
 // 6. The destructor will release all resources
@@ -263,7 +266,7 @@ public:
 	//                                   language::GRAPHICS});
 	//
 	// After requestQfams() returns, multiple queues can be obtained by
-	// adding the QueueRequest multiple times in devQuery().
+	// adding the QueueRequest multiple times in initQueues().
 	std::vector<QueueRequest> requestQfams(
 		size_t dev_i, std::set<SurfaceSupport> support);
 
@@ -277,7 +280,7 @@ protected:
 	// Override initDebug() if your app needs different debug settings.
 	virtual int initDebug();
 
-	// After the devs vector is created in open(), it must not be resized.
+	// After devs is initialized in ctorError(), it must not be resized.
 	// Any operation on the vector that causes it to reallocate its storage
 	// will invalidate references held to the individual Device instances,
 	// likely causing a segfault.
