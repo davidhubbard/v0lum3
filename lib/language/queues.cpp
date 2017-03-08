@@ -34,8 +34,7 @@ int Instance::open(VkExtent2D surfaceSizeRequest) {
 	}
 
 	// Split up QueueRequest by device index. This has the side effect of
-	// ignoring any device for which there is no QueueRequest. Use a std::map
-	// instead of a std::multimap to be able to iterator over keys.
+	// ignoring any device for which there is no QueueRequest.
 	std::map<uint32_t, std::vector<QueueRequest>> requested_devs;
 	for (auto& req : request) {
 		auto it = requested_devs.find(req.dev_index);
@@ -46,22 +45,24 @@ int Instance::open(VkExtent2D surfaceSizeRequest) {
 		it->second.push_back(req);
 	}
 
+	// For each device that has one or more queues requested, call vkCreateDevice()
+	// i.e. dispatch each queue request's dev_index (devs.at(dev_index)) to vkCreateDevice()
 	for (const auto& kv : requested_devs) {
 		auto& dev = devs.at(kv.first);
 		std::vector<VkDeviceQueueCreateInfo> allQci;
 
-		// Vulkan wants the number of queues by queue family (per device).
-		// kv.second (vector<QueueRequest>) has a list of dev_qfam_index (per device).
-		// This loop groups QueueRequest by dev_qfam_index == q_i.
+		// Vulkan wants the queues grouped by queue family (and also grouped by device).
+		// kv.second (a vector<QueueRequest>) has an unordered list of dev_qfam_index.
+		// Assemble QueueRequests by brute force looking for each dev_qfam_index.
 		for (size_t q_i = 0; q_i < dev.qfams.size(); q_i++) {
 			auto& qfam = dev.qfams.at(q_i);
 			for (const auto& qr : kv.second) {
 				if (qr.dev_qfam_index == q_i) {
+					// prios vector size() is the number of requests for this qfam
 					qfam.prios.push_back(qr.priority);
 				}
 			}
 
-			// Now have c.prios.size() == how many queues to create of this queue family.
 			if (qfam.prios.size() < 1) {
 				continue;  // This qfam is not being requested on this dev.
 			} else if (qfam.prios.size() > qfam.vk.queueCount) {
@@ -81,7 +82,6 @@ int Instance::open(VkExtent2D surfaceSizeRequest) {
 		// TODO: add deviceFeatures.
 
 		// Enable device layer "VK_LAYER_LUNARG_standard_validation"
-		// Note: Modify this code to suit your application.
 		std::vector<const char *> enabledLayers;
 		enabledLayers.push_back(VK_LAYER_LUNARG_standard_validation);
 
