@@ -78,8 +78,9 @@ int Instance::open(VkExtent2D surfaceSizeRequest) {
 			allQci.push_back(dqci);
 		}
 
-		VkPhysicalDeviceFeatures VkInit(deviceFeatures);
-		// TODO: add deviceFeatures.
+		//VkPhysicalDeviceFeatures VkInit(physDevFeatures);
+		//vkGetPhysicalDeviceFeatures(dev.phys, &physDevFeatures);
+		VkPhysicalDeviceFeatures VkInit(enabledFeatures);
 
 		// Enable device layer "VK_LAYER_LUNARG_standard_validation"
 		std::vector<const char *> enabledLayers;
@@ -88,7 +89,7 @@ int Instance::open(VkExtent2D surfaceSizeRequest) {
 		VkDeviceCreateInfo VkInit(dCreateInfo);
 		dCreateInfo.queueCreateInfoCount = allQci.size();
 		dCreateInfo.pQueueCreateInfos = allQci.data();
-		dCreateInfo.pEnabledFeatures = &deviceFeatures;
+		dCreateInfo.pEnabledFeatures = &enabledFeatures;
 		dCreateInfo.enabledExtensionCount = dev.extensionRequests.size();
 		dCreateInfo.ppEnabledExtensionNames = dev.extensionRequests.data();
 		dCreateInfo.enabledLayerCount = enabledLayers.size();
