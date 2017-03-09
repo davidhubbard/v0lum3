@@ -18,7 +18,7 @@ for anyone who wants to quickly create a clean Vulkan dev environment:
 
 2. Throw away everything but `vendor`, `.gitmodules` and `build.sh`.
 
-3. Profit!
+3. Use it for your own application
 
 ## vulkantools.sh and lunarglass.sh
 
@@ -38,14 +38,18 @@ For [LunarGLASS](https://github.com/LunarG/LunarGLASS) type
 
 ## Vulkan Conformance Test Suite (CTS)
 
-For the [Vulkan CTS](https://github.com/KhronosGroup/VK-GL-CTS/)
+To run the [Vulkan CTS](https://github.com/KhronosGroup/VK-GL-CTS/)
 type `vendor/vulkancts.sh` and it will be built in `vendor/cts`.
+After a successful build, `vendor/vulkancts.sh` prints instructions
+on running the CTS.
 
+A full run takes about 2 hours. To avoid running all cases again,
+locate the test log and look for results that are not
+`StatusCode="Pass"` or `StatusCode="NotImplemented"`.
 
-
-The CTS takes about 2 hours to run all the default supplied tests. Failing
-test cases would ideally be listed in a separate text file. Specify the text
-file of test cases with the `--deqp-caselist-file=` parameter. (See
+Then put just these interesting test cases in a separate text file,
+so that the CTS does not take as long to run. Specify a text file of
+test cases with the `--deqp-caselist-file=` parameter. (See
 `vendor/vulkancts.sh` for more information.)
 
 ## Why VulkanSamples and not Vulkan-LoaderAndValidationLayers?
