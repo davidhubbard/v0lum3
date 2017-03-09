@@ -36,6 +36,18 @@ in `vendor/bin` next to `glslangValidator` and friends.
 For [LunarGLASS](https://github.com/LunarG/LunarGLASS) type
 `vendor/lunarglass.sh` and it will be built in `vendor/LunarGLASS`.
 
+## Vulkan Conformance Test Suite (CTS)
+
+For the [Vulkan CTS](https://github.com/KhronosGroup/VK-GL-CTS/)
+type `vendor/vulkancts.sh` and it will be built in `vendor/cts`.
+
+
+
+The CTS takes about 2 hours to run all the default supplied tests. Failing
+test cases would ideally be listed in a separate text file. Specify the text
+file of test cases with the `--deqp-caselist-file=` parameter. (See
+`vendor/vulkancts.sh` for more information.)
+
 ## Why VulkanSamples and not Vulkan-LoaderAndValidationLayers?
 
 Two reasons:
