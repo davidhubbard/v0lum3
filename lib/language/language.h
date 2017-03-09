@@ -160,6 +160,9 @@ typedef struct Device {
 	// Physical Device. Populated after ctorError().
 	VkPhysicalDevice phys = VK_NULL_HANDLE;
 
+	// Properties, like device name. Populated after ctorError().
+	VkPhysicalDeviceProperties physProp;
+
 	// Device extensions to choose from. Populated after ctorError().
 	std::vector<VkExtensionProperties> availableExtensions;
 

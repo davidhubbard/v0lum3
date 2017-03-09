@@ -156,9 +156,6 @@ struct InstanceInternal : public Instance {
 
 	int initSupportedDevices(std::vector<VkPhysicalDevice>& physDevs) {
 		for (const auto& phys : physDevs) {
-			//VkPhysicalDeviceProperties gpu_props;
-			//vkGetPhysicalDeviceProperties(phys, &gpu_props);
-
 			auto* vkQFams = Vk::getQueueFamilies(phys);
 			if (vkQFams == nullptr) {
 				return 1;
@@ -171,6 +168,7 @@ struct InstanceInternal : public Instance {
 			this->devs.resize(this->devs.size() + 1);
 			Device& dev = *(this->devs.end() - 1);
 			dev.phys = phys;
+			vkGetPhysicalDeviceProperties(phys, &dev.physProp);
 
 			int r = initSupportedQueues(*vkQFams, dev);
 			delete vkQFams;
@@ -240,10 +238,7 @@ int Instance::ctorError(const char ** requiredExtensions, size_t requiredExtensi
 	if (dbg_lvl > 0) {
 		printf("%zu physical device%s:\n", devs.size(), devs.size() != 1 ? "s" : "");
 		for (size_t n = 0; n < devs.size(); n++) {
-			const auto& phys = devs.at(n).phys;
-			VkPhysicalDeviceProperties props;
-			vkGetPhysicalDeviceProperties(phys, &props);
-			printf("  [%zu] \"%s\"\n", n, props.deviceName);
+			printf("  [%zu] \"%s\"\n", n, devs.at(n).physProp.deviceName);
 		}
 	}
 	return r;
