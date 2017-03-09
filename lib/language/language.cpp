@@ -23,13 +23,23 @@ struct InstanceInternal : public Instance {
 			std::vector<VkExtensionProperties>& extensions,
 			std::vector<VkLayerProperties>& layers) {
 		std::vector<const char *> enabledExtensions;
-		for (const auto& ext : extensions) {
-			unsigned int i = 0;
-			for (; i < requiredExtensionCount; i++) {
-				if (requiredExtensions[i] != nullptr && !strcmp(requiredExtensions[i], ext.extensionName)) {
+		for (size_t i = 0; i < requiredExtensionCount; i++) {
+			if (requiredExtensions[i] == nullptr) {
+				fprintf(stderr, "invalid requiredExtensions[%zu]\n", i);
+				return 1;
+			}
+			bool found = true;
+			for (const auto& ext : extensions) {
+				if (!strcmp(requiredExtensions[i], ext.extensionName)) {
 					enabledExtensions.push_back(requiredExtensions[i]);
+					found = true;
 					break;
 				}
+			}
+			if (!found) {
+				fprintf(stderr, "requiredExtensions[%zu]=\"%s\": "
+					"no devices with this extension found.\n",
+					i, requiredExtensions[i]);
 			}
 		}
 
