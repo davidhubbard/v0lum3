@@ -90,8 +90,10 @@ int Instance::open(VkExtent2D surfaceSizeRequest) {
 		dCreateInfo.queueCreateInfoCount = allQci.size();
 		dCreateInfo.pQueueCreateInfos = allQci.data();
 		dCreateInfo.pEnabledFeatures = &enabledFeatures;
-		dCreateInfo.enabledExtensionCount = dev.extensionRequests.size();
-		dCreateInfo.ppEnabledExtensionNames = dev.extensionRequests.data();
+		if (dev.extensionRequests.size()) {
+			dCreateInfo.enabledExtensionCount = dev.extensionRequests.size();
+			dCreateInfo.ppEnabledExtensionNames = dev.extensionRequests.data();
+		}
 		dCreateInfo.enabledLayerCount = enabledLayers.size();
 		dCreateInfo.ppEnabledLayerNames = enabledLayers.data();
 

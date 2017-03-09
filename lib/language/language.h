@@ -108,7 +108,7 @@ typedef struct QueueRequest {
 	QueueRequest(uint32_t dev_i, uint32_t dev_qfam_i) {
 		dev_index = dev_i;
 		dev_qfam_index = dev_qfam_i;
-		priority = 1.0;
+		priority = 0.0;
 	}
 	virtual ~QueueRequest() {};
 } QueueRequest;

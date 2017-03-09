@@ -46,7 +46,7 @@ struct InstanceInternal : public Instance {
 		std::vector<const char *> enabledLayers;
 		for (const auto& layerprop : layers) {
 			// Enable instance layer "VK_LAYER_LUNARG_standard_validation"
-			// Note: Modify this code to suit your application.
+			// TODO: permit customization of the enabled instance layers.
 			//
 			// Getting validation working involves more than just enabling the layer!
 			// https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/tree/master/layers
@@ -75,8 +75,10 @@ struct InstanceInternal : public Instance {
 
 		VkInstanceCreateInfo VkInit(iinfo);
 		iinfo.pApplicationInfo = &app;
-		iinfo.enabledExtensionCount = enabledExtensions.size();
-		iinfo.ppEnabledExtensionNames = enabledExtensions.data();
+		if (enabledExtensions.size()) {
+			iinfo.enabledExtensionCount = enabledExtensions.size();
+			iinfo.ppEnabledExtensionNames = enabledExtensions.data();
+		}
 		iinfo.enabledLayerCount = enabledLayers.size();
 		iinfo.ppEnabledLayerNames = enabledLayers.data();
 		iinfo.enabledLayerCount = 0;
