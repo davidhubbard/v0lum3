@@ -45,7 +45,7 @@ on running the CTS.
 
 A full run takes about 2 hours. To avoid running all cases again,
 locate the test log and look for results that are not
-`StatusCode="Pass"` or `StatusCode="NotImplemented"`.
+`StatusCode="Pass"` or `StatusCode="NotSupported"`.
 
 Then put just these interesting test cases in a separate text file,
 so that the CTS does not take as long to run. Specify a text file of
