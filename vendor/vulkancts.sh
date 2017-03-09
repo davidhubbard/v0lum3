@@ -57,7 +57,7 @@ echo "    ./deqp-vk --deqp-caselist-file=\"\${TESTLIST}\" --deqp-log-images=disa
 echo ""
 echo " 3. View the results:"
 echo ""
-echo "    less \"\${CTSCTS}/modules/vulkan/TestResults.qpa"
+echo "    less \"\${CTSCTS}/modules/vulkan/TestResults.qpa\""
 echo ""
 echo "    (search using the \"/\" key and this regexp:)"
 echo "      StatusCode=\"[^P][^o]"
