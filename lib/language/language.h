@@ -134,9 +134,6 @@ typedef struct QueueFamily {
 	std::vector<VkQueue> queues;
 } QueueFamily;
 
-// Forward declaration of Instance for Device.
-class Instance;
-
 // Device wraps the Vulkan logical and physical devices and a list of QueueFamily
 // supported by the physical device. When initQueues() is called, Instance::devs
 // are populated with phys and qfams, but Device::dev (the logical device) and
@@ -187,8 +184,6 @@ typedef struct Device {
 	std::vector<Framebuf> framebufs;
 } Device;
 
-typedef VkResult (* CreateWindowSurfaceFn)(Instance& instance, void *window);
-
 // Instance holds the root of the Vulkan pipeline. Constructor (ctor) is a
 // 3-phase process:
 // 1. Create an Instance object (step 1 of the constructor)
@@ -229,6 +224,14 @@ public:
 	VkPtr<VkInstance> vk{vkDestroyInstance};
 	VkPtr<VkSurfaceKHR> surface{vk, vkDestroySurfaceKHR};
 
+	// CreateWindowSurfaceFn defines the function signature for the
+	// function that is called to initialize Instance::surface.
+	// (e.g. glfwCreateWindowSurface, vkCreateXcbSurfaceKHR, or
+	// SDL_CreateVulkanSurface).
+	//
+	// window is an opaque pointer used only to call this function.
+	typedef VkResult (* CreateWindowSurfaceFn)(Instance& instance, void *window);
+
 	// ctorError is step 2 of the constructor (see class comments above).
 	// Vulkan errors are returned from ctorError().
 	//
@@ -238,8 +241,8 @@ public:
 	// SDL_GetVulkanInstanceExtensions]
 	//
 	// createWindowSurface is a function that is called to initialize
-	// Instance::surface. (e.g. glfwCreateWindowSurface or
-	// SDL_CreateVulkanSurface).
+	// Instance::surface. It is called exactly once inside ctorError and
+	// not retained.
 	//
 	// window is an opaque pointer used only in the call to
 	// createWindowSurface.
