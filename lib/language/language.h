@@ -18,7 +18,7 @@
  * 4. enable instance-level extensions or blacklist some extensions
  * 5. enable device layers or blacklist device layers
  *
- * Example usage:
+ * Example program:
  *
  * // this file is yourprogram.cpp:
  * #include <lib/language/language.h>
@@ -80,6 +80,8 @@ typedef struct Framebuf {
 	Framebuf(Framebuf&&) = default;
 	Framebuf(const Framebuf&) = delete;
 
+	// VkImage has no VkDestroyImage function.
+	VkImage image;
 	VkPtr<VkImageView> imageView;
 	VkPtr<VkFramebuffer> vk;
 } Framebuf;
@@ -104,7 +106,7 @@ typedef struct QueueRequest {
 	uint32_t dev_qfam_index;
 	float priority;
 
-	// The default priority is the highest possible (1.0), but can be changed.
+	// The default priority is the lowest possible (0.0), but can be changed.
 	QueueRequest(uint32_t dev_i, uint32_t dev_qfam_i) {
 		dev_index = dev_i;
 		dev_qfam_index = dev_qfam_i;
@@ -129,8 +131,9 @@ typedef struct QueueFamily {
 		return vk.queueFlags & VK_QUEUE_GRAPHICS_BIT;
 	};
 
-	// populated only for mainloop.
+	// Populated only after open().
 	std::vector<float> prios;
+	// Populated only after open().
 	std::vector<VkQueue> queues;
 } QueueFamily;
 
@@ -151,7 +154,7 @@ typedef struct Device {
 	Device(Device&&) = default;
 	Device(const Device&) = delete;
 
-	// Logical Device. Unpopulated until after open().
+	// Logical Device. Populated only after open().
 	VkPtr<VkDevice> dev{vkDestroyDevice};
 
 	// Physical Device. Populated after ctorError().
@@ -163,7 +166,8 @@ typedef struct Device {
 	// Device extensions to choose from. Populated after ctorError().
 	std::vector<VkExtensionProperties> availableExtensions;
 
-	// qfams is populated after ctorError() but qfams.queue is unpopulated.
+	// qfams is populated after ctorError() but qfams.queue is populated
+	// only after open().
 	std::vector<QueueFamily> qfams;
 	// getQfamI() is a convenience method to get the queue family index that
 	// supports the given SurfaceSupport. Returns (size_t) -1 on error.
@@ -175,12 +179,15 @@ typedef struct Device {
 	std::vector<VkSurfaceFormatKHR> surfaceFormats;
 	std::vector<VkPresentModeKHR> presentModes;
 	VkSurfaceFormatKHR format = { (VkFormat) 0, (VkColorSpaceKHR) 0 };
-	VkPresentModeKHR mode = (VkPresentModeKHR) 0;
+	// Present mode to use if vsync is off / freerun mode. Populated after
+	// ctorError().
+	VkPresentModeKHR freerunMode = (VkPresentModeKHR) 0;
+	// Present mode to use if vsync is on. Populated after ctorError().
+	VkPresentModeKHR vsyncMode = (VkPresentModeKHR) 0;
 	VkExtent2D swapchainExtent;
 
-	// Populate after open().
+	// Populated after open().
 	VkPtr<VkSwapchainKHR> swapchain{dev, vkDestroySwapchainKHR};
-	std::vector<VkImage> images;
 	std::vector<Framebuf> framebufs;
 } Device;
 
@@ -189,31 +196,40 @@ typedef struct Device {
 // 1. Create an Instance object (step 1 of the constructor)
 // 2. Call ctorError() (step 2 of the constructor)
 //    *** Always check the error return ***
-// 3. Construct a VkSurfaceKHR using your choice of windowing library
-//    and optionally choose devices, queues, surface formats, or extensions
-// 4. Call open() (step 3 of the constructor) to init devices and queues
-// 5. Use the Instance instance in your application
-// 6. The destructor will release all resources
+//    ctorError() calls your CreateWindowSurfaceFn to create a VkSurfaceKHR
+//    (windowing library-specific code, up to you to choose how to implement)
+// 3. Optionally choose the number and type of queues (queue requests are how
+//    queues are created, and a device with no queues is considered ignored).
+//    Choose surface formats, extensions, or present mode. Finally,
+//    call open() (step 3 of the constructor) to finish setting up Vulkan:
+//    surfaces, queues, and a swapchain.
 //
-// Some discussion about setting up queues:
+// Afterward, look at lib/command/command.h to display things in the swapchain.
+//
+// * Why so many steps?
+//
+// Vulkan is pretty verbose. This is an attempt to reduce the amount of
+// boilerplate needed to get up and running. The Instance contructor is just
+// the default constructor. Then ctorError() actually creates the instance,
+// populating as much as possible without any configuration. Finally, open()
+// uses all the optional settings to get to a complete swapchain.
+//
+// * Some discussion about setting up queues:
 //
 // In many cases it only makes sense to use 1 CPU thread to submit to GPU
 // queues even though the GPU can execute the commands in parallel. What
 // happens is the GPU only has a single hardware port and Vulkan is forced to
 // multiplex commands to that single port when the app starts using multiple
 // queues. In other words, the GPU hardware port may be "single-threaded."
+// lib/language does not enforce a limit of 1 GRAPHICS queue though: Vulkan
+// itself has no such limit.
 //
-// Web resources: https://lunarg.com/faqs/command-multi-thread-vulkan/
-//                https://forums.khronos.org/showthread.php/13172
+//   Web resources: https://lunarg.com/faqs/command-multi-thread-vulkan/
+//                  https://forums.khronos.org/showthread.php/13172
 //
-// lib/language does not enforce a limit of 1 GRAPHICS queue because Vulkan
-// has no limit either. To try out multiple queues, override
-// Instance::initQueues() and add multiple instances of QueueRequest to the
-// request vector.
-//
-// It is still a good idea to use multiple threads to build command queues. And
-// a multi-GPU system could in theory have multiple GRAPHICS queues (though
-// Vulkan 1.0 does not support multi-GPU:
+// It _is_ a good idea however to use multiple threads to build command queues.
+// And a multi-GPU system could in theory have multiple GRAPHICS queues (but
+// Vulkan 1.0 does not have multi-GPU support:
 // https://lunarg.com/faqs/vulkan-multiple-gpus-acceleration/ )
 class Instance {
 public:
@@ -235,7 +251,7 @@ public:
 	// ctorError is step 2 of the constructor (see class comments above).
 	// Vulkan errors are returned from ctorError().
 	//
-	// requiredExtentions is an array of strings naming any required
+	// requiredExtensions is an array of strings naming any required
 	// extensions (e.g. glfwGetRequiredInstanceExtensions for glfw).
 	// [The SDL API is not as well defined yet but might be
 	// SDL_GetVulkanInstanceExtensions]

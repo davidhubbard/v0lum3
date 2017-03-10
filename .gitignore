@@ -3,6 +3,7 @@ vendor/etc
 vendor/include
 vendor/lib
 vendor/jsoncpp
+vendor/cts
 main/v
 
 vendor/LunarGLASS
