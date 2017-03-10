@@ -67,7 +67,8 @@ PipelineStage::PipelineStage() {
 	VkOverwrite(sci);
 }
 
-PipelineCreateInfo::PipelineCreateInfo(language::Device& dev) : dev(dev)
+PipelineCreateInfo::PipelineCreateInfo(language::Device& dev,
+		RenderPass& renderPass) : dev(dev), renderPass(renderPass)
 {
 	VkOverwrite(vertsci);
 	VkOverwrite(asci);
@@ -122,6 +123,20 @@ PipelineCreateInfo::PipelineCreateInfo(language::Device& dev) : dev(dev)
 	VkOverwrite(subpassDesc);
 	subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 };
+
+Shader& PipelineCreateInfo::addShader(VkShaderStageFlagBits stageBits,
+		std::string entryPointName) {
+	renderPass.shaders.emplace_back(dev);
+	auto& shader = *(renderPass.shaders.end() - 1);
+
+	stages.emplace_back();
+	auto& pipelinestage = *(stages.end() - 1);
+	pipelinestage.sci.stage = stageBits;
+	pipelinestage.shader_i = renderPass.shaders.size() - 1;
+	pipelinestage.entryPointName = entryPointName;
+
+	return shader;
+}
 
 VkPipelineColorBlendAttachmentState PipelineCreateInfo::withDisabledAlpha() {
 	VkPipelineColorBlendAttachmentState VkInit(state);
@@ -196,6 +211,8 @@ int Pipeline::init(RenderPass& renderPass, size_t subpass_i, PipelineCreateInfo&
 	for (auto& stage : pci.stages) {
 		stage.sci.module = renderPass.shaders.at(stage.shader_i).vk;
 		stage.sci.pName = stage.entryPointName.c_str();
+		fprintf(stderr, "Pipeline::init: stage[%zu] \"%p\"\n", stagecis.size(), stage.sci.pName);
+		fprintf(stderr, "Pipeline::init:      [%zu] \"%s\"\n", stagecis.size(), stage.sci.pName);
 		stagecis.push_back(stage.sci);
 	}
 	p.stageCount = stagecis.size();
@@ -253,20 +270,6 @@ RenderPass::RenderPass(language::Device& dev)
 	colorAttaches.push_back(ad);
 
 	VkOverwrite(rpci);
-}
-
-Shader& RenderPass::addShader(PipelineCreateInfo& pci,
-		VkShaderStageFlagBits stage, std::string entryPointName) {
-	shaders.emplace_back(pci.dev);
-	auto& shader = *(shaders.end() - 1);
-
-	pci.stages.emplace_back();
-	auto& pipelinestage = *(pci.stages.end() - 1);
-	pipelinestage.sci.stage = stage;
-	pipelinestage.shader_i = shaders.size() - 1;
-	pipelinestage.entryPointName = entryPointName;
-
-	return shader;
 }
 
 int RenderPass::getSubpassDeps(size_t subpass_i,

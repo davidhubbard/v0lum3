@@ -75,6 +75,9 @@ typedef struct PipelineStage {
 	VkPipelineShaderStageCreateInfo sci;
 } PipelineStage;
 
+// Forward declaration of RenderPass for Pipeline and PipelineCreateInfo.
+struct RenderPass;
+
 // Vulkan defines a render pipeline in terms of the following stages:
 // 1. Input assembly: fixed function, reads input data.
 // 2. Vertex shader: programmable, operates on input vertices, uniforms, etc.
@@ -96,12 +99,26 @@ typedef struct PipelineStage {
 // 4. Make any other desired changes to PipelineCreateInfo.
 // 5. Call Pipeline.init(PipelineCreateInfo).
 typedef struct PipelineCreateInfo {
-	PipelineCreateInfo(language::Device& dev);
+	PipelineCreateInfo(language::Device& dev, RenderPass& renderPass);
 	PipelineCreateInfo(PipelineCreateInfo&&) = default;
 	PipelineCreateInfo(const PipelineCreateInfo& other) = default;
 
 	language::Device& dev;
+	RenderPass& renderPass;
 	std::vector<PipelineStage> stages;
+
+	// Helper function to instantiate a Shader, add a PipelineStage to stages,
+	// add a link to the shader in renderPass, then return a reference to it.
+	//
+	// To use the Shader for more than one Pipeline: call addShader() on
+	// the first pipeline, then make copies of *(stages.end() - 1),
+	// by calling pipelineCreateInfo2.stages.emplace_back(
+	//   *(pipelineCreateInfo1.stages.end() - 1));
+	//
+	// WARNING: Returned reference Shader& is invalidated by the next
+	// operation on the shaders vector.
+	Shader& addShader(VkShaderStageFlagBits stageBits,
+		std::string entryPointName);
 
 	// Helper function to create a blend state of "just write these pixels."
 	static VkPipelineColorBlendAttachmentState withDisabledAlpha();
@@ -124,7 +141,7 @@ typedef struct PipelineCreateInfo {
 	VkPipelineMultisampleStateCreateInfo multisci;
 	VkPipelineDepthStencilStateCreateInfo depthsci;
 
-	// Note: Since uniforms are not yet working, please leave this member alone
+	// TODO: Since uniforms are not yet working, please leave this member alone
 	// for now. (Or proceed at your own risk?)
 	VkPipelineLayoutCreateInfo plci;
 
@@ -138,9 +155,6 @@ typedef struct PipelineCreateInfo {
 	std::vector<VkAttachmentReference> colorAttaches;
 	VkSubpassDescription subpassDesc;
 } PipelineCreateInfo;
-
-// Forward declaration of RenderPass for Pipeline.
-struct RenderPass;
 
 // Pipeline stores the created Pipeline after RenderPass::init() has completed.
 typedef struct Pipeline {
@@ -171,13 +185,13 @@ protected:
 //
 // To create a RenderPass:
 // 1. Instantiate the RenderPass:     RenderPass renderPass(dev);
-// 2. Instantiate PipelineCreateInfo: PipelineCreateInfo p(dev);
+// 2. Instantiate PipelineCreateInfo: PipelineCreateInfo p(dev, renderPass);
 // 3. Modify p as needed.
 // 4. Instantiate and load the SPV binary code into the shaders:
-//    auto& vs = renderPass.addShader(p, VK_SHADER_STAGE_VERTEX_BIT, "main");
+//    auto& vs = p.addShader(VK_SHADER_STAGE_VERTEX_BIT, "main");
 //    vs.loadSPV(...);
 //    // vs becomes invalid when .addShader() is called again.
-//    auto& fs = renderPass.addShader(p, VK_SHADER_STAGE_FRAGMENT_BIT, "main");
+//    auto& fs = p.addShader(VK_SHADER_STAGE_FRAGMENT_BIT, "main");
 //    fs.loadSPV(...);
 // 5. Instantiate the pipeline:       renderPass.pipelines.emplace_back(dev);
 // 6. Init the renderPass, passing in one PipelineCreateInfo for each
@@ -190,18 +204,6 @@ typedef struct RenderPass {
 
 	std::vector<Shader> shaders;
 	std::vector<Pipeline> pipelines;
-
-	// Helper function to instantiate a Shader, add it to shaders, add it
-	// to PipelineCreateInfo, then return a reference to it.
-	//
-	// This is also useful if the Shader will be used by more than one
-	// Pipeline: addShader() on the first pipeline, then make a copy of the
-	// PipelineStage object for all remaining Pipeline.
-	//
-	// WARNING: Returned reference Shader& is invalidated by the next
-	// operation on the shaders vector.
-	Shader& addShader(PipelineCreateInfo& pci, VkShaderStageFlagBits stage,
-		std::string entryPointName);
 
 	// Optionally modify these structures before calling Pipeline::init().
 	// colorAttaches will be written to rpci by Pipeline::init().
