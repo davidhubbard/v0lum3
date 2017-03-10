@@ -244,7 +244,10 @@ typedef struct Fence {
 // CommandPool holds a reference to the VkCommandPool from which commands are
 // allocated. Create a CommandPool instance in each thread that submits
 // commands to qfam_i.
-typedef struct CommandPool {
+class CommandPool {
+protected:
+	language::QueueFamily * qf_ = nullptr;
+public:
 	CommandPool(language::Device& dev, language::SurfaceSupport queueFamily)
 		: queueFamily(queueFamily)
 		, vk{dev.dev, vkDestroyCommandPool} {};
@@ -258,12 +261,27 @@ typedef struct CommandPool {
 			VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
 	const language::SurfaceSupport queueFamily;
+	VkQueue q(size_t i) {
+		return qf_->queues.at(i);
+	};
 	VkPtr<VkCommandPool> vk;
-} CommandPool;
+};
 
-// CommandSwapchain simplifies setting up the Command Buffers to rotate through
-// the swapchain.
-typedef struct CommandSwapchain {
-} CommandSwapchain;
+// PresentSemaphore is a special Semaphore that adds the present() method.
+class PresentSemaphore : public Semaphore {
+public:
+	language::Device& dev;
+	VkQueue q;
+	VkSemaphore semaphores[1];
+	VkSwapchainKHR swapChains[1];
+public:
+	PresentSemaphore(language::Device& dev) : Semaphore(dev), dev(dev) {};
+	// Two-stage constructor: check the return code of ctorError().
+	WARN_UNUSED_RESULT int ctorError();
+
+	// present() submits the given swapchain image_i to Device dev's screen
+	// using the correct language::PRESENT queue and synchronization.
+	int present(uint32_t image_i);
+};
 
 }  // namespace command

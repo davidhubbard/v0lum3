@@ -418,12 +418,57 @@ int CommandPool::ctorError(language::Device& dev, VkCommandPoolCreateFlags flags
 	if (qfam_i == (decltype(qfam_i)) -1) {
 		return 1;
 	}
+
+	// Cache QueueFamily, as all commands in this pool must be submitted here.
+	qf_ = &dev.qfams.at(qfam_i);
+
 	VkCommandPoolCreateInfo VkInit(cpci);
 	cpci.queueFamilyIndex = qfam_i;
 	cpci.flags = flags;
 	VkResult v = vkCreateCommandPool(dev.dev, &cpci, nullptr, &vk);
 	if (v != VK_SUCCESS) {
 		fprintf(stderr, "vkCreateCommandPool returned %d (%s)\n", v, string_VkResult(v));
+		return 1;
+	}
+	return 0;
+};
+
+int PresentSemaphore::ctorError() {
+	if (Semaphore::ctorError(dev)) {
+		return 1;
+	}
+
+	auto qfam_i = dev.getQfamI(language::PRESENT);
+	if (qfam_i == (decltype(qfam_i)) -1) {
+		return 1;
+	}
+	auto& qfam = dev.qfams.at(qfam_i);
+	if (qfam.queues.size() < 1) {
+		fprintf(stderr, "BUG: queue family PRESENT with %zu queues\n",
+			qfam.queues.size());
+		return 1;
+	}
+
+	// Assume that any queue in this family is acceptable.
+	q = *(qfam.queues.end() - 1);
+
+	semaphores[0] = vk;
+	return 0;
+};
+
+int PresentSemaphore::present(uint32_t image_i) {
+	swapChains[0] = dev.swapchain;
+
+	VkPresentInfoKHR VkInit(presentInfo);
+	presentInfo.waitSemaphoreCount = sizeof(semaphores)/sizeof(semaphores[0]);
+	presentInfo.pWaitSemaphores = semaphores;
+	presentInfo.swapchainCount = sizeof(swapChains)/sizeof(swapChains[0]);
+	presentInfo.pSwapchains = swapChains;
+	presentInfo.pImageIndices = &image_i;
+
+	VkResult v = vkQueuePresentKHR(q, &presentInfo);
+	if (v != VK_SUCCESS) {
+		fprintf(stderr, "vkQueuePresentKHR returned %d (%s)\n", v, string_VkResult(v));
 		return 1;
 	}
 	return 0;
