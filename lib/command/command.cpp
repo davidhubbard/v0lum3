@@ -414,6 +414,10 @@ int Fence::ctorError(language::Device& dev) {
 
 int CommandPool::ctorError(language::Device& dev, VkCommandPoolCreateFlags flags)
 {
+	auto qfam_i = dev.getQfamI(queueFamily);
+	if (qfam_i == (decltype(qfam_i)) -1) {
+		return 1;
+	}
 	VkCommandPoolCreateInfo VkInit(cpci);
 	cpci.queueFamilyIndex = qfam_i;
 	cpci.flags = flags;

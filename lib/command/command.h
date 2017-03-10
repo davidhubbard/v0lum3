@@ -245,8 +245,8 @@ typedef struct Fence {
 // allocated. Create a CommandPool instance in each thread that submits
 // commands to qfam_i.
 typedef struct CommandPool {
-	CommandPool(language::Device& dev, size_t qfam_i_)
-		: qfam_i(qfam_i_)
+	CommandPool(language::Device& dev, language::SurfaceSupport queueFamily)
+		: queueFamily(queueFamily)
 		, vk{dev.dev, vkDestroyCommandPool} {};
 	CommandPool(CommandPool&&) = default;
 	CommandPool(const CommandPool&) = delete;
@@ -257,7 +257,7 @@ typedef struct CommandPool {
 			VK_COMMAND_POOL_CREATE_TRANSIENT_BIT |
 			VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
-	const size_t qfam_i;
+	const language::SurfaceSupport queueFamily;
 	VkPtr<VkCommandPool> vk;
 } CommandPool;
 
