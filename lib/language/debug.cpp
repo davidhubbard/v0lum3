@@ -8,7 +8,7 @@ namespace language {
 namespace {  // use an anonymous namespace to hide all its contents (only reachable from this file)
 
 static uint64_t debugLineCount = 0;
-static uint32_t extensionListSuppress = 0;
+static uint32_t suppressState = 0;
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(VkFlags msgFlags, VkDebugReportObjectTypeEXT objType, uint64_t srcObject,
 		size_t location, int32_t msgCode, const char *pLayerPrefix, const char *pMsg, void *pUserData) {
 	(void) objType;
@@ -30,10 +30,10 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(VkFlags msgFlags, VkDe
 			return false;
 		}
 		if (!strcmp(pMsg, "Build ICD instance extension list")) {
-			extensionListSuppress = 1;
+			suppressState = 1;
 			return false;
 		}
-		if (extensionListSuppress && !strncmp(pMsg, "Instance Extension:", 19)) {
+		if (suppressState == 1 && !strncmp(pMsg, "Instance Extension:", 19)) {
 			return false;
 		}
 		if (!strncmp(pMsg, "Searching for ICD drivers named", 31)) {
@@ -42,9 +42,20 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(VkFlags msgFlags, VkDe
 		if (!strncmp(pMsg, "Chain: instance: Loading layer library", 38)) {
 			return false;
 		}
-		extensionListSuppress = 0;
+		if (!strncmp(pMsg, "Device Extension: ", 18)) {
+			return false;
+		}
+		suppressState = 0;
+	} else if (!strcmp(pLayerPrefix, "MEM")) {
+		if (strstr(pMsg, "Details of") && msgCode == 0) {
+			suppressState = 2;
+			return false;
+		}
+		if (!strcmp(pMsg, "=============================") || suppressState == 2) {
+			return false;
+		}
 	}
-	extensionListSuppress = 0;
+	suppressState = 0;
 
 	char level[16];
 	char * plevel = &level[0];

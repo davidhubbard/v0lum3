@@ -186,7 +186,7 @@ typedef struct Device {
 	VkPresentModeKHR vsyncMode = (VkPresentModeKHR) 0;
 	VkExtent2D swapchainExtent;
 
-	// Populated after open().
+	// Populated only after open().
 	VkPtr<VkSwapchainKHR> swapchain{dev, vkDestroySwapchainKHR};
 	std::vector<Framebuf> framebufs;
 } Device;
@@ -229,8 +229,11 @@ typedef struct Device {
 //
 // It _is_ a good idea however to use multiple threads to build command queues.
 // And a multi-GPU system could in theory have multiple GRAPHICS queues (but
-// Vulkan 1.0 does not have multi-GPU support:
-// https://lunarg.com/faqs/vulkan-multiple-gpus-acceleration/ )
+// Vulkan 1.0 does not have a final multi-GPU standard yet:
+// https://lunarg.com/faqs/vulkan-multiple-gpus-acceleration/
+// but there are extensions being developed:
+// https://www.khronos.org/registry/vulkan/specs/1.0-extensions/html/vkspec.html#VK_KHX_device_group
+// )
 class Instance {
 public:
 	Instance() = default;
