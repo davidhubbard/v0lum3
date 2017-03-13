@@ -7,6 +7,7 @@
  */
 
 #include <lib/language/language.h>
+#include <lib/language/VkInit.h>
 #include <string>
 
 #pragma once
@@ -65,7 +66,7 @@ typedef struct Shader {
 // TODO: Find out if Vulkan errors out if two PipelineStages are added for the
 // same stage. For example, two VK_SHADER_STAGE_VERTEX_BIT.
 typedef struct PipelineStage {
-	PipelineStage();
+	PipelineStage() { VkOverwrite(sci); };
 	PipelineStage(PipelineStage&&) = default;
 	PipelineStage(const PipelineStage&) = default;
 
