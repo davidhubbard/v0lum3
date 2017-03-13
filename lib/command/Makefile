@@ -8,5 +8,7 @@ HDRS=command.h
 HDRS+=$(foreach f,language.h VkInit.h,$(TOP)lib/language/$(f))
 
 SRCS+=command.cpp
+SRCS+=fence.cpp
+SRCS+=pipeline.cpp
 
 include $(TOP)lib/make/tail.inc
