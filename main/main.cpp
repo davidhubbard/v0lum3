@@ -23,13 +23,13 @@ static int mainLoop(GLFWwindow * window, language::Instance& inst) {
 	}
 	language::Device& dev = inst.at(0);
 	command::RenderPass renderPass(dev);
-	command::PipelineCreateInfo pipe0params(dev);
+	command::PipelineCreateInfo pipe0params(dev, renderPass);
 
-	if (renderPass.addShader(pipe0params, VK_SHADER_STAGE_VERTEX_BIT, "main")
+	if (pipe0params.addShader(VK_SHADER_STAGE_VERTEX_BIT, "main")
 			.loadSPV(obj_main_vert_spv_start, obj_main_vert_spv_end)) {
 		return 1;
 	}
-	if (renderPass.addShader(pipe0params, VK_SHADER_STAGE_FRAGMENT_BIT, "main")
+	if (pipe0params.addShader(VK_SHADER_STAGE_FRAGMENT_BIT, "main")
 			.loadSPV(obj_main_frag_spv_start, obj_main_frag_spv_end)) {
 		return 1;
 	}
@@ -43,15 +43,7 @@ static int mainLoop(GLFWwindow * window, language::Instance& inst) {
 		return 1;
 	}
 
-	auto present_i = dev.getQfamI(language::PRESENT);
-	if (present_i == (size_t) -1) {
-		return 1;
-	}
-	auto graphics_i = dev.getQfamI(language::GRAPHICS);
-	if (graphics_i == (size_t) -1) {
-		return 1;
-	}
-	command::CommandPool cpool(dev, graphics_i);
+	command::CommandPool cpool(dev, language::GRAPHICS);
 	if (cpool.ctorError(dev, 0)) {
 		return 1;
 	}
@@ -109,12 +101,11 @@ static int mainLoop(GLFWwindow * window, language::Instance& inst) {
 	if (imageAvailableSemaphore.ctorError(dev)) {
 		return 1;
 	}
-	command::Semaphore renderFinishedSemaphore(dev);
-	if (renderFinishedSemaphore.ctorError(dev)) {
+	command::PresentSemaphore renderSemaphore(dev);
+	if (renderSemaphore.ctorError()) {
 		return 1;
 	}
 
-	fprintf(stderr, "start main loop\n");
 	while(!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 
@@ -137,31 +128,20 @@ static int mainLoop(GLFWwindow * window, language::Instance& inst) {
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &commandBuffers.at(next_image_i);
 
-		VkSemaphore signalSemaphores[] = {renderFinishedSemaphore.vk};
+		VkSemaphore signalSemaphores[] = {renderSemaphore.vk};
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = signalSemaphores;
-		VkResult v = vkQueueSubmit(dev.qfams.at(graphics_i).queues.at(0), 1, &submitInfo, VK_NULL_HANDLE);
+		VkResult v = vkQueueSubmit(cpool.q(0), 1, &submitInfo, VK_NULL_HANDLE);
 		if (v != VK_SUCCESS) {
 			fprintf(stderr, "vkQueueSubmit returned %d\n", v);
 			return 1;
 		}
 
-		VkSwapchainKHR swapChains[] = {dev.swapchain};
-		VkPresentInfoKHR VkInit(presentInfo);
-		presentInfo.waitSemaphoreCount = 1;
-		presentInfo.pWaitSemaphores = signalSemaphores;
-		presentInfo.swapchainCount = 1;
-		presentInfo.pSwapchains = swapChains;
-		presentInfo.pImageIndices = &next_image_i;
-
-		v = vkQueuePresentKHR(dev.qfams.at(present_i).queues.at(0), &presentInfo);
-		if (v != VK_SUCCESS) {
-			fprintf(stderr, "vkQueuePresentKHR returned error\n");
+		if (renderSemaphore.present(next_image_i)) {
 			return 1;
 		}
 	}
 
-	fprintf(stderr, "vkDeviceWaitIdle\n");
 	VkResult v = vkDeviceWaitIdle(dev.dev);
 	if (v != VK_SUCCESS) {
 		fprintf(stderr, "vkDeviceWaitIdle returned %d\n", v);
@@ -172,18 +152,18 @@ static int mainLoop(GLFWwindow * window, language::Instance& inst) {
 
 // Wrap glfwCreateWindowSurface for type safety.
 static VkResult createWindowSurface(language::Instance& inst, void * window) {
-	return glfwCreateWindowSurface(inst.vk, (GLFWwindow *) window, nullptr /*allocator*/,
-		&inst.surface);
+	return glfwCreateWindowSurface(inst.vk, (GLFWwindow *) window,
+		nullptr /*allocator*/, &inst.surface);
 }
 
 static int runLanguage(GLFWwindow * window) {
 	unsigned int glfwExtensionCount = 0;
 	const char ** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 	language::Instance inst;
-	if (inst.ctorError(glfwExtensions, glfwExtensionCount, createWindowSurface, window)) {
+	if (inst.ctorError(glfwExtensions, glfwExtensionCount,
+			createWindowSurface, window)) {
 		return 1;
 	}
-
 	int r = inst.open({WIN_W, WIN_H});
 	if (r) {
 		return r;
