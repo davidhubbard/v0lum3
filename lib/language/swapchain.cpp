@@ -25,28 +25,6 @@ int initSurfaceFormat(Device& dev) {
 		return 0;
 	}
 
-	if (0) {
-		// Hmm... this is too picky. Just go with the first option returned.
-		for (const auto& availableFormat : dev.surfaceFormats) {
-			// Prefer 32-bit color and hardware SRGB color space.
-			if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM &&
-					availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-				dev.format = availableFormat;
-				return 0;
-			}
-		}
-
-		// This combination has not been seen in the real world.
-		// Please file a bug if you see this!
-		fprintf(stderr, "Warn: initSurfaceFormat() did not find a great format.\n");
-		fprintf(stderr, "      This is an unexpected surprise! Could you send us\n");
-		fprintf(stderr, "      what vendor/VulkamSamples/build/demo/vulkaninfo\n");
-		fprintf(stderr, "      outputs -- we would love a bug report at:\n");
-		fprintf(stderr, "      https://github.com/davidhubbard/v0lum3/issues/new\n");
-		dev.format = dev.surfaceFormats[0];
-		return 0;
-	}
-
 	dev.format = dev.surfaceFormats.at(0);
 	return 0;
 }
