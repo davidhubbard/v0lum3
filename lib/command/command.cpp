@@ -74,7 +74,7 @@ PipelineCreateInfo::PipelineCreateInfo(language::Device& dev,
 	asci.primitiveRestartEnable = VK_FALSE;
 
 	VkOverwrite(viewsci);
-	VkExtent2D& scExtent = dev.swapchainExtent;
+	VkExtent2D& scExtent = dev.swapChainExtent;
 	viewports.push_back(VkViewport{
 		/*x:*/ 0.0f,
 		/*y:*/ 0.0f,
@@ -241,8 +241,8 @@ int Pipeline::init(RenderPass& renderPass, size_t subpass_i, PipelineCreateInfo&
 		fbci.renderPass = renderPass.vk;
 		fbci.attachmentCount = sizeof(attachments) / sizeof(attachments[0]);
 		fbci.pAttachments = attachments;
-		fbci.width = pci.dev.swapchainExtent.width;
-		fbci.height = pci.dev.swapchainExtent.height;
+		fbci.width = pci.dev.swapChainExtent.width;
+		fbci.height = pci.dev.swapChainExtent.height;
 		fbci.layers = 1;  // Same as layers used in imageView.
 
 		v = vkCreateFramebuffer(pci.dev.dev, &fbci, nullptr, &framebuf.vk);
@@ -449,13 +449,12 @@ int PresentSemaphore::ctorError() {
 
 	// Assume that any queue in this family is acceptable.
 	q = *(qfam.queues.end() - 1);
-
-	semaphores[0] = vk;
 	return 0;
 };
 
 int PresentSemaphore::present(uint32_t image_i) {
-	swapChains[0] = dev.swapchain;
+	VkSemaphore semaphores[] = { vk };
+	VkSwapchainKHR swapChains[] = { dev.swapChain };
 
 	VkPresentInfoKHR VkInit(presentInfo);
 	presentInfo.waitSemaphoreCount = sizeof(semaphores)/sizeof(semaphores[0]);

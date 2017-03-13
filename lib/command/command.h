@@ -272,14 +272,12 @@ class PresentSemaphore : public Semaphore {
 public:
 	language::Device& dev;
 	VkQueue q;
-	VkSemaphore semaphores[1];
-	VkSwapchainKHR swapChains[1];
 public:
 	PresentSemaphore(language::Device& dev) : Semaphore(dev), dev(dev) {};
 	// Two-stage constructor: check the return code of ctorError().
 	WARN_UNUSED_RESULT int ctorError();
 
-	// present() submits the given swapchain image_i to Device dev's screen
+	// present() submits the given swapChain image_i to Device dev's screen
 	// using the correct language::PRESENT queue and synchronization.
 	int present(uint32_t image_i);
 };

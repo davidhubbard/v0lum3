@@ -77,7 +77,7 @@ static int mainLoop(GLFWwindow * window, language::Instance& inst) {
 		renderPassInfo.renderPass = renderPass.vk;
 		renderPassInfo.framebuffer = dev.framebufs.at(i).vk;
 		renderPassInfo.renderArea.offset = {0, 0};
-		renderPassInfo.renderArea.extent = dev.swapchainExtent;
+		renderPassInfo.renderArea.extent = dev.swapChainExtent;
 
 		VkClearValue clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
 		renderPassInfo.clearValueCount = 1;
@@ -110,7 +110,7 @@ static int mainLoop(GLFWwindow * window, language::Instance& inst) {
 		glfwPollEvents();
 
 		uint32_t next_image_i;
-		if (vkAcquireNextImageKHR(dev.dev, dev.swapchain, std::numeric_limits<uint64_t>::max(),
+		if (vkAcquireNextImageKHR(dev.dev, dev.swapChain, std::numeric_limits<uint64_t>::max(),
 				imageAvailableSemaphore.vk, VK_NULL_HANDLE, &next_image_i) != VK_SUCCESS) {
 			fprintf(stderr, "vkAcquireNextImageKHR returned error\n");
 			return 1;

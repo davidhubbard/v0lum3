@@ -128,7 +128,7 @@ int Instance::open(VkExtent2D surfaceSizeRequest) {
 				fprintf(stderr, "Warn: Here be dragons.\n");
 				fprintf(stderr, "Warn: https://lunarg.com/faqs/vulkan-multiple-gpus-acceleration/\n");
 			}
-			if (this->createSwapchain(kv.first, surfaceSizeRequest)) {
+			if (this->createSwapChain(kv.first, surfaceSizeRequest)) {
 				return 1;
 			}
 			swap_chain_count++;

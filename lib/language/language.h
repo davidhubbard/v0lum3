@@ -180,10 +180,10 @@ typedef struct Device {
 	VkPresentModeKHR freerunMode = (VkPresentModeKHR) 0;
 	// Present mode to use if vsync is on. Populated after ctorError().
 	VkPresentModeKHR vsyncMode = (VkPresentModeKHR) 0;
-	VkExtent2D swapchainExtent;
+	VkExtent2D swapChainExtent;
 
 	// Populated only after open().
-	VkPtr<VkSwapchainKHR> swapchain{dev, vkDestroySwapchainKHR};
+	VkPtr<VkSwapchainKHR> swapChain{dev, vkDestroySwapchainKHR};
 	std::vector<Framebuf> framebufs;
 } Device;
 
@@ -199,9 +199,9 @@ typedef struct Device {
 //    queues are created, and a device with no queues is considered ignored).
 //    Choose surface formats, extensions, or present mode. Finally,
 //    call open() (step 3 of the constructor) to finish setting up Vulkan:
-//    surfaces, queues, and a swapchain.
+//    surfaces, queues, and a swapChain.
 //
-// Afterward, look at lib/command/command.h to display things in the swapchain.
+// Afterward, look at lib/command/command.h to display things in the swapChain.
 //
 // * Why so many steps?
 //
@@ -209,7 +209,7 @@ typedef struct Device {
 // boilerplate needed to get up and running. The Instance contructor is just
 // the default constructor. Then ctorError() actually creates the instance,
 // populating as much as possible without any configuration. Finally, open()
-// uses all the optional settings to get to a complete swapchain.
+// uses all the optional settings to get to a complete swapChain.
 //
 // * Some discussion about setting up queues:
 //
@@ -328,8 +328,8 @@ protected:
 	// open().
 	virtual int initSurfaceFormatAndPresentMode(Device& dev);
 
-	// Override createSwapchain() if your app needs a different swapchain.
-	virtual int createSwapchain(size_t dev_i, VkExtent2D sizeRequest);
+	// Override createSwapChain() if your app needs a different swapChain.
+	virtual int createSwapChain(size_t dev_i, VkExtent2D sizeRequest);
 };
 
 } // namespace language

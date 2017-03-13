@@ -96,7 +96,7 @@ int initPresentMode(Device& dev) {
 	}
 
 	// TODO: Add a way to prefer IMMEDIATE instead (perhaps the user wants
-	// to ensure the swapchain is as small as possible).
+	// to ensure the swapChain is as small as possible).
 	if (haveMailbox) {
 		dev.freerunMode = VK_PRESENT_MODE_MAILBOX_KHR;
 	} else if (haveImmediate) {
@@ -196,9 +196,9 @@ int Instance::initSurfaceFormatAndPresentMode(Device& dev) {
 	return 0;
 }
 
-int Instance::createSwapchain(size_t dev_i, VkExtent2D sizeRequest) {
+int Instance::createSwapChain(size_t dev_i, VkExtent2D sizeRequest) {
 	Device& dev = devs.at(dev_i);
-	VkSwapchainKHR oldSwapchain = dev.swapchain;
+	VkSwapchainKHR oldSwapChain = dev.swapChain;
 
 	VkSurfaceCapabilitiesKHR scap;
 	VkResult v = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(dev.phys, surface, &scap);
@@ -207,14 +207,14 @@ int Instance::createSwapchain(size_t dev_i, VkExtent2D sizeRequest) {
 		return 1;
 	}
 
-	dev.swapchainExtent = calculateSurfaceExtend2D(scap, sizeRequest);
+	dev.swapChainExtent = calculateSurfaceExtend2D(scap, sizeRequest);
 
 	VkSwapchainCreateInfoKHR VkInit(scci);
 	scci.surface = surface;
 	scci.minImageCount = calculateMinRequestedImages(scap);
 	scci.imageFormat = dev.format.format;
 	scci.imageColorSpace = dev.format.colorSpace;
-	scci.imageExtent = dev.swapchainExtent;
+	scci.imageExtent = dev.swapChainExtent;
 	scci.imageArrayLayers = 1;  // e.g. 2 is for stereo displays.
 	scci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 	scci.preTransform = calculateSurfaceTransform(scap);
@@ -222,7 +222,7 @@ int Instance::createSwapchain(size_t dev_i, VkExtent2D sizeRequest) {
 	// TODO: vsyncMode support.
 	scci.presentMode = dev.freerunMode;
 	scci.clipped = VK_TRUE;
-	scci.oldSwapchain = oldSwapchain;
+	scci.oldSwapchain = oldSwapChain;
 	uint32_t qfamIndices[] = {
 		(uint32_t) dev.getQfamI(PRESENT),
 		(uint32_t) dev.getQfamI(GRAPHICS),
@@ -242,18 +242,18 @@ int Instance::createSwapchain(size_t dev_i, VkExtent2D sizeRequest) {
 		scci.queueFamilyIndexCount = 2;
 		scci.pQueueFamilyIndices = qfamIndices;
 	}
-	v = vkCreateSwapchainKHR(dev.dev, &scci, pAllocator, &dev.swapchain);
+	v = vkCreateSwapchainKHR(dev.dev, &scci, pAllocator, &dev.swapChain);
 	if (v != VK_SUCCESS) {
 		fprintf(stderr, "vkCreateSwapchainKHR() returned %d\n", v);
 		return 1;
 	}
-	dev.swapchain.allocator = pAllocator;
-	if (oldSwapchain) {
-		fprintf(stderr, "TODO: clean up oldSwapchain\n");
+	dev.swapChain.allocator = pAllocator;
+	if (oldSwapChain) {
+		fprintf(stderr, "TODO: clean up oldswapChain\n");
 		exit(1);
 	}
 
-	auto* vkImages = Vk::getSwapchainImages(dev.dev, dev.swapchain);
+	auto* vkImages = Vk::getSwapchainImages(dev.dev, dev.swapChain);
 	if (!vkImages) {
 		return 1;
 	}
