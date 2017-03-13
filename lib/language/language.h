@@ -63,14 +63,15 @@ namespace language {
 #define WARN_UNUSED_RESULT
 #endif
 
-// For debugging lib/language: set language::dbg_lvl to higher values to log more debug info.
+// For debugging lib/language: set language::dbg_lvl to higher values to log
+// more detailed debug info.
 extern int dbg_lvl;
 extern const char VK_LAYER_LUNARG_standard_validation[];
 
 // Forward declaration of Device for Framebuffer.
 struct Device;
 
-// Framebuffer references the presented pixels and manages the memory behind them.
+// Framebuffer is the on-screen pixels and the memory behind them.
 typedef struct Framebuf {
 	Framebuf(Device& dev);  // ctor is in swapchain.cpp for Device definition.
 	Framebuf(Framebuf&&) = default;
@@ -78,6 +79,7 @@ typedef struct Framebuf {
 
 	// VkImage has no VkDestroyImage function.
 	VkImage image;
+
 	VkPtr<VkImageView> imageView;
 	VkPtr<VkFramebuffer> vk;
 } Framebuf;
@@ -86,6 +88,7 @@ typedef struct Framebuf {
 // As an exception, the GRAPHICS value is used to request a QueueFamily
 // with vk.queueFlags & VK_QUEUE_GRAPHICS_BIT in Instance::requestQfams() and
 // Device::getQfamI().
+// TODO: add COMPUTE.
 enum SurfaceSupport {
 	UNDEFINED = 0,
 	NONE = 1,
@@ -94,9 +97,9 @@ enum SurfaceSupport {
 	GRAPHICS = 0x1000,  // Not used in struct QueueFamily.
 };
 
-// QueueRequest communicates the physical device and queue family (within the device)
-// being requested by initQueues() (below). initQueues() should push one QueueRequest
-// instance per queue you want created.
+// QueueRequest communicates the physical device and queue family within the
+// device -- a request by initQueues() (below). initQueues() pushes one
+// QueueRequest instance per queue.
 typedef struct QueueRequest {
 	uint32_t dev_index;
 	uint32_t dev_qfam_index;
@@ -112,12 +115,12 @@ typedef struct QueueRequest {
 } QueueRequest;
 
 // QueueFamily wraps VkQueueFamilyProperties. QueueFamily also gives whether the
-// QueueFamily can be used to "present" on the app surface (i.e. swap a surface to
-// the screen if surfaceSupport == PRESENT).
+// QueueFamily can be used to "present" on the app surface (i.e. swap a surface
+// to the screen if surfaceSupport == PRESENT).
 // SurfaceSupport is the result of vkGetPhysicalDeviceSurfaceSupportKHR().
 typedef struct QueueFamily {
-	QueueFamily(const VkQueueFamilyProperties& vk_, SurfaceSupport surfaceSupport_)
-		: vk(vk_), surfaceSupport(surfaceSupport_) {};
+	QueueFamily(const VkQueueFamilyProperties& vk, SurfaceSupport surfaceSupport)
+		: vk(vk), surfaceSupport(surfaceSupport) {};
 	QueueFamily(QueueFamily&&) = default;
 	QueueFamily(const QueueFamily&) = delete;
 
@@ -133,10 +136,10 @@ typedef struct QueueFamily {
 	std::vector<VkQueue> queues;
 } QueueFamily;
 
-// Device wraps the Vulkan logical and physical devices and a list of QueueFamily
-// supported by the physical device. When initQueues() is called, Instance::devs
-// are populated with phys and qfams, but Device::dev (the logical device) and
-// Device::qfams.queues are not populated.
+// Device wraps the Vulkan logical and physical devices and a list of
+// QueueFamily supported by the physical device. When initQueues() is called,
+// Instance::devs are populated with phys and qfams, but Device::dev (the
+// logical device) and Device::qfams.queues are not populated.
 //
 // initQueues() pushes QueueRequest instances for the queues your app needs.
 //
