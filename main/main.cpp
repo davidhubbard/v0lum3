@@ -214,7 +214,7 @@ static int mainLoop(GLFWwindow * window, language::Instance& inst) {
 // Wrap glfwCreateWindowSurface for type safety.
 static VkResult createWindowSurface(language::Instance& inst, void * window) {
 	return glfwCreateWindowSurface(inst.vk, (GLFWwindow *) window,
-		nullptr /*allocator*/, &inst.surface);
+		inst.pAllocator, &inst.surface);
 }
 
 static int runLanguage(GLFWwindow * window) {
