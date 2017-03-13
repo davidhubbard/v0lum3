@@ -64,17 +64,8 @@ struct InstanceInternal : public Instance {
 		// Note: Modify this code to suit your application.
 		enabledExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 
-		char appname[2048];
-		snprintf(appname, sizeof(appname), "TODO: " __FILE__ ":%d: choose ApplicationName", __LINE__);
-
-		VkApplicationInfo VkInit(app);
-		app.apiVersion = VK_API_VERSION_1_0;
-		app.pApplicationName = appname;
-		app.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-		app.pEngineName = "v0lum3";
-
 		VkInstanceCreateInfo VkInit(iinfo);
-		iinfo.pApplicationInfo = &app;
+		iinfo.pApplicationInfo = &applicationInfo;
 		if (enabledExtensions.size()) {
 			iinfo.enabledExtensionCount = enabledExtensions.size();
 			iinfo.ppEnabledExtensionNames = enabledExtensions.data();
@@ -83,7 +74,7 @@ struct InstanceInternal : public Instance {
 		iinfo.ppEnabledLayerNames = enabledLayers.data();
 		iinfo.enabledLayerCount = 0;
 
-		VkResult v = vkCreateInstance(&iinfo, nullptr, &this->vk);
+		VkResult v = vkCreateInstance(&iinfo, pAllocator, &this->vk);
 		if (v != VK_SUCCESS) {
 			fprintf(stderr, "vkCreateInstance failed: %d (%s)\n", v, string_VkResult(v));
 			if (v == VK_ERROR_INCOMPATIBLE_DRIVER) {
@@ -196,6 +187,17 @@ struct InstanceInternal : public Instance {
 
 }  // anonymous namespace
 
+Instance::Instance() {
+	applicationName = "TODO: " __FILE__ ": customize applicationName";
+	engineName = "v0lum3";
+
+	VkOverwrite(applicationInfo);
+	applicationInfo.apiVersion = VK_API_VERSION_1_0;
+	applicationInfo.pApplicationName = applicationName.c_str();
+	applicationInfo.applicationVersion = VK_MAKE_VERSION(0, 1, 0);
+	applicationInfo.pEngineName = engineName.c_str();
+}
+
 int Instance::ctorError(const char ** requiredExtensions, size_t requiredExtensionCount,
 		CreateWindowSurfaceFn createWindowSurface, void *window) {
 	auto * extensions = Vk::getExtensions();
@@ -229,6 +231,7 @@ int Instance::ctorError(const char ** requiredExtensions, size_t requiredExtensi
 		fprintf(stderr, "createWindowSurface (the user-provided fn) failed: %d (%s)", v, string_VkResult(v));
 		return 1;
 	}
+	surface.allocator = pAllocator;
 
 	std::vector<VkPhysicalDevice> * physDevs = Vk::getDevices(vk);
 	if (physDevs == nullptr) {
@@ -248,9 +251,9 @@ int Instance::ctorError(const char ** requiredExtensions, size_t requiredExtensi
 	}
 
 	if (dbg_lvl > 0) {
-		printf("%zu physical device%s:\n", devs.size(), devs.size() != 1 ? "s" : "");
+		fprintf(stderr, "%zu physical device%s:\n", devs.size(), devs.size() != 1 ? "s" : "");
 		for (size_t n = 0; n < devs.size(); n++) {
-			printf("  [%zu] \"%s\"\n", n, devs.at(n).physProp.deviceName);
+			fprintf(stderr, "  [%zu] \"%s\"\n", n, devs.at(n).physProp.deviceName);
 		}
 	}
 	return r;

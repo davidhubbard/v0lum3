@@ -152,11 +152,12 @@ public:
 
 	T object;
 
+	VkAllocationCallbacks * allocator;
+
 private:
 	VKAPI_ATTR void (VKAPI_CALL* deleterT)(T, const VkAllocationCallbacks *);
 	VKAPI_ATTR void (VKAPI_CALL* deleterInst)(VkInstance, T, const VkAllocationCallbacks *);
 	VKAPI_ATTR void (VKAPI_CALL* deleterDev)(VkDevice, T, const VkAllocationCallbacks *);
-	const VkAllocationCallbacks * allocator;
 	VkInstance * pInst;
 	VkDevice * pDev;
 
@@ -171,3 +172,8 @@ private:
 #endif
 	}
 };
+
+#ifdef VKDEBUG
+#undef VKDEBUG
+#endif
+

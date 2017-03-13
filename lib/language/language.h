@@ -10,13 +10,8 @@
  * selection.
  *
  * Note: lib/language attempts to avoid needing a "whole app INI or config"
- *       solution. These are some config choices you may want to edit directly
- *       in the source:
- * 1. in lib/language.cpp: app.pEngineName and app.applicationVersion
- * 2. a logging library instead of fprintf(stderr)
- * 3. a custom allocator
- * 4. enable instance-level extensions or blacklist some extensions
- * 5. enable device layers or blacklist device layers
+ *       solution. This avoids pulling in an unnecessary dependency.
+ * TODO: Centralize logging instead of sprinkling fprintf(stderr) throughout.
  *
  * Example program:
  *
@@ -49,8 +44,9 @@
  * }
  */
 
-#include <vector>
 #include <set>
+#include <string>
+#include <vector>
 #include <vulkan/vulkan.h>
 #include "VkPtr.h"
 #include "vk_enum_string_helper.h"
@@ -76,7 +72,7 @@ struct Device;
 
 // Framebuffer references the presented pixels and manages the memory behind them.
 typedef struct Framebuf {
-	Framebuf(Device& dev);  // ctor defined in swapchain.cpp, needs full Device definition.
+	Framebuf(Device& dev);  // ctor is in swapchain.cpp for Device definition.
 	Framebuf(Framebuf&&) = default;
 	Framebuf(const Framebuf&) = delete;
 
@@ -194,6 +190,7 @@ typedef struct Device {
 // Instance holds the root of the Vulkan pipeline. Constructor (ctor) is a
 // 3-phase process:
 // 1. Create an Instance object (step 1 of the constructor)
+//    Optionally customize applicationInfo.
 // 2. Call ctorError() (step 2 of the constructor)
 //    *** Always check the error return ***
 //    ctorError() calls your CreateWindowSurfaceFn to create a VkSurfaceKHR
@@ -236,7 +233,7 @@ typedef struct Device {
 // )
 class Instance {
 public:
-	Instance() = default;
+	Instance();
 	Instance(Instance&&) = delete;
 	Instance(const Instance&) = delete;
 
@@ -302,6 +299,15 @@ public:
 
 	VkDebugReportCallbackEXT debugReport = VK_NULL_HANDLE;
 
+	// applicationInfo is set to defaults in Instance() and is sent to Vulkan
+	// in ctorError(). Customize your application before calling ctorError().
+	VkApplicationInfo applicationInfo;
+	std::string applicationName;
+	std::string engineName;
+
+	// pAllocator defaults to nullptr. Your application can install a custom
+	// allocator before calling ctorError().
+	VkAllocationCallbacks * pAllocator = nullptr;
 protected:
 	// Override initDebug() if your app needs different debug settings.
 	virtual int initDebug();

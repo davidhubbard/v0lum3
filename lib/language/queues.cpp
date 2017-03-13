@@ -97,11 +97,12 @@ int Instance::open(VkExtent2D surfaceSizeRequest) {
 		dCreateInfo.enabledLayerCount = enabledLayers.size();
 		dCreateInfo.ppEnabledLayerNames = enabledLayers.data();
 
-		VkResult v = vkCreateDevice(dev.phys, &dCreateInfo, nullptr /*allocator*/, &dev.dev);
+		VkResult v = vkCreateDevice(dev.phys, &dCreateInfo, pAllocator, &dev.dev);
 		if (v != VK_SUCCESS) {
 			fprintf(stderr, "dev_i=%zu VkCreateDevice() returned %d (%s)\n", (size_t) kv.first, v, string_VkResult(v));
 			return 1;
 		}
+		dev.dev.allocator = pAllocator;
 	}
 
 	size_t swap_chain_count = 0;
@@ -111,7 +112,7 @@ int Instance::open(VkExtent2D surfaceSizeRequest) {
 		for (size_t q_i = 0; q_i < dev.qfams.size(); q_i++) {
 			auto& qfam = dev.qfams.at(q_i);
 			if (dbg_lvl && qfam.prios.size()) {
-				printf("dev_i=%u q_count=%zu adding qfam[%zu] x %zu\n",
+				fprintf(stderr, "dev_i=%u q_count=%zu adding qfam[%zu] x %zu\n",
 					kv.first, q_count, q_i, qfam.prios.size());
 			}
 			// Copy the newly minted VkQueue objects into dev.qfam.queues.
@@ -126,23 +127,6 @@ int Instance::open(VkExtent2D surfaceSizeRequest) {
 				fprintf(stderr, "Warn: A multi-GPU setup probably does not work.\n");
 				fprintf(stderr, "Warn: Here be dragons.\n");
 				fprintf(stderr, "Warn: https://lunarg.com/faqs/vulkan-multiple-gpus-acceleration/\n");
-				/**
-				 * https://lunarg.com/faqs/vulkan-multiple-gpus-acceleration/
-				 *
-				 * Does Vulkan support multiple GPUs or multiple GPU acceleration?
-				 *
-				 * There is no multiple GPU support in version 1.0. That was
-				 * unfortunately a feature Khronos had to cut in order to preserve
-				 * schedule. It is expected to be near the top of the list for
-				 * Vulkan 1.1. It is perfectly possible for a Vulkan implementation to
-				 * expose multiple GPUs. What Vulkan currently can’t do is allow
-				 * resource sharing between them. So from a point of view of, for
-				 * example, a Windows system manager, its possible to recognize
-				 * multiple ways to render to a surface and then use operating system
-				 * hooks to transfer that to the screen. What Vulkan doesn’t have is
-				 * the ability to share a texture or a render target between multiple
-				 * GPUs.
-				 */
 			}
 			if (this->createSwapchain(kv.first, surfaceSizeRequest)) {
 				return 1;

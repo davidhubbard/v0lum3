@@ -242,11 +242,12 @@ int Instance::createSwapchain(size_t dev_i, VkExtent2D sizeRequest) {
 		scci.queueFamilyIndexCount = 2;
 		scci.pQueueFamilyIndices = qfamIndices;
 	}
-	v = vkCreateSwapchainKHR(dev.dev, &scci, nullptr /*allocator*/, &dev.swapchain);
+	v = vkCreateSwapchainKHR(dev.dev, &scci, pAllocator, &dev.swapchain);
 	if (v != VK_SUCCESS) {
 		fprintf(stderr, "vkCreateSwapchainKHR() returned %d\n", v);
 		return 1;
 	}
+	dev.swapchain.allocator = pAllocator;
 	if (oldSwapchain) {
 		fprintf(stderr, "TODO: clean up oldSwapchain\n");
 		exit(1);
@@ -277,7 +278,7 @@ int Instance::createSwapchain(size_t dev_i, VkExtent2D sizeRequest) {
 		ivci.subresourceRange.levelCount = 1;
 		ivci.subresourceRange.baseArrayLayer = 0;
 		ivci.subresourceRange.layerCount = 1;  // Might be 2 for stereo displays.
-		v = vkCreateImageView(dev.dev, &ivci, nullptr, &framebuf.imageView);
+		v = vkCreateImageView(dev.dev, &ivci, pAllocator, &framebuf.imageView);
 		if (v != VK_SUCCESS) {
 			fprintf(stderr, "vkCreateImageView[%zu] returned %d\n", i, v);
 			delete vkImages;
@@ -290,7 +291,10 @@ int Instance::createSwapchain(size_t dev_i, VkExtent2D sizeRequest) {
 
 // Framebuf::Framebuf() defined here to have full Device definition.
 Framebuf::Framebuf(Device& dev)
-	: imageView(dev.dev, vkDestroyImageView)
-	, vk(dev.dev, vkDestroyFramebuffer) {};
+		: imageView(dev.dev, vkDestroyImageView)
+		, vk(dev.dev, vkDestroyFramebuffer) {
+	imageView.allocator = dev.dev.allocator;
+	vk.allocator = dev.dev.allocator;
+};
 
 }  // namespace language

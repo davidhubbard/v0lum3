@@ -113,7 +113,7 @@ int Instance::initDebug() {
 		return 1;
 	}
 
-	VkResult v = pCreateDebugReportCallback(this->vk, &dinfo, nullptr /*allocator*/,
+	VkResult v = pCreateDebugReportCallback(this->vk, &dinfo, pAllocator,
 		&this->debugReport);
 	if (v != VK_SUCCESS) {
 		fprintf(stderr, "pCreateDebugReportCallback returned %d (%s)\n", v, string_VkResult(v));
@@ -126,7 +126,7 @@ int dbg_lvl = 0;
 
 Instance::~Instance() {
 	if (pDestroyDebugReportCallbackEXT) {
-		pDestroyDebugReportCallbackEXT(vk, debugReport, nullptr /*allocator*/);
+		pDestroyDebugReportCallbackEXT(vk, debugReport, pAllocator);
 	}
 }
 

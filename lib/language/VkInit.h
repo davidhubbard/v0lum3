@@ -9,6 +9,8 @@
 // initializing the Vulkan object as soon as it is instantiated.
 #define VkInit(x) x; ::language::internal::_VkInit(x)
 
+#define VkOverwrite(x) language::internal::_VkInit(x)
+
 namespace language {
 namespace internal {
 

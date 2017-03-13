@@ -8,8 +8,6 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 
-#define VkOverwrite(x) language::internal::_VkInit(x)
-
 namespace command {
 
 int Shader::loadSPV(const void * spvBegin, const void * spvEnd) {
