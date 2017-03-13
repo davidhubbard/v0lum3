@@ -1,11 +1,6 @@
 /* Copyright (c) David Hubbard 2016. Licensed under the GPLv3.
  */
 #include "command.h"
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
 
 namespace command {
 
