@@ -33,7 +33,9 @@ typedef struct Shader {
 	Shader(language::Device& dev_)
 		: dev(&dev_)
 		, vk{dev_.dev, vkDestroyShaderModule}
-	{}
+	{
+		vk.allocator = dev_.dev.allocator;
+	}
 	Shader(Shader&&) = default;
 	Shader(const Shader& other) = delete;
 
@@ -201,6 +203,7 @@ typedef struct RenderPass {
 	RenderPass(language::Device& dev);
 	RenderPass(RenderPass&&) = default;
 	RenderPass(const RenderPass&) = delete;
+	virtual ~RenderPass() = default;
 
 	std::vector<Shader> shaders;
 	std::vector<Pipeline> pipelines;
@@ -225,7 +228,10 @@ typedef struct RenderPass {
 
 // Semaphore represents a GPU-only synchronization operation vs. Fence, below.
 typedef struct Semaphore {
-	Semaphore(language::Device& dev) : vk{dev.dev, vkDestroySemaphore} {};
+	Semaphore(language::Device& dev) : vk{dev.dev, vkDestroySemaphore}
+	{
+		vk.allocator = dev.dev.allocator;
+	};
 	// Two-stage constructor: check the return code of ctorError().
 	WARN_UNUSED_RESULT int ctorError(language::Device& dev);
 
@@ -234,7 +240,10 @@ typedef struct Semaphore {
 
 // Fence represents a GPU-to-CPU synchronization operation vs. Semaphore.
 typedef struct Fence {
-	Fence(language::Device& dev) : vk{dev.dev, vkDestroyFence} {};
+	Fence(language::Device& dev) : vk{dev.dev, vkDestroyFence}
+	{
+		vk.allocator = dev.dev.allocator;
+	};
 	// Two-stage constructor: check the return code of ctorError().
 	WARN_UNUSED_RESULT int ctorError(language::Device& dev);
 
@@ -250,7 +259,10 @@ protected:
 public:
 	CommandPool(language::Device& dev, language::SurfaceSupport queueFamily)
 		: queueFamily(queueFamily)
-		, vk{dev.dev, vkDestroyCommandPool} {};
+		, vk{dev.dev, vkDestroyCommandPool}
+	{
+		vk.allocator = dev.dev.allocator;
+	};
 	CommandPool(CommandPool&&) = default;
 	CommandPool(const CommandPool&) = delete;
 
@@ -274,6 +286,9 @@ public:
 	VkQueue q;
 public:
 	PresentSemaphore(language::Device& dev) : Semaphore(dev), dev(dev) {};
+	PresentSemaphore(PresentSemaphore&&) = default;
+	PresentSemaphore(const PresentSemaphore&) = delete;
+
 	// Two-stage constructor: check the return code of ctorError().
 	WARN_UNUSED_RESULT int ctorError();
 

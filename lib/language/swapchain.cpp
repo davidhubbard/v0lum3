@@ -196,36 +196,33 @@ int Instance::initSurfaceFormatAndPresentMode(Device& dev) {
 	return 0;
 }
 
-int Instance::createSwapChain(size_t dev_i, VkExtent2D sizeRequest) {
-	Device& dev = devs.at(dev_i);
-	VkSwapchainKHR oldSwapChain = dev.swapChain;
-
+int Device::resetSwapChain(VkSurfaceKHR surface, VkExtent2D sizeRequest) {
 	VkSurfaceCapabilitiesKHR scap;
-	VkResult v = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(dev.phys, surface, &scap);
+	VkResult v = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(phys, surface, &scap);
 	if (v != VK_SUCCESS) {
 		fprintf(stderr, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR() returned %d (%s)\n", v, string_VkResult(v));
 		return 1;
 	}
 
-	dev.swapChainExtent = calculateSurfaceExtend2D(scap, sizeRequest);
+	swapChainExtent = calculateSurfaceExtend2D(scap, sizeRequest);
 
 	VkSwapchainCreateInfoKHR VkInit(scci);
 	scci.surface = surface;
 	scci.minImageCount = calculateMinRequestedImages(scap);
-	scci.imageFormat = dev.format.format;
-	scci.imageColorSpace = dev.format.colorSpace;
-	scci.imageExtent = dev.swapChainExtent;
+	scci.imageFormat = format.format;
+	scci.imageColorSpace = format.colorSpace;
+	scci.imageExtent = swapChainExtent;
 	scci.imageArrayLayers = 1;  // e.g. 2 is for stereo displays.
 	scci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 	scci.preTransform = calculateSurfaceTransform(scap);
 	scci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 	// TODO: vsyncMode support.
-	scci.presentMode = dev.freerunMode;
+	scci.presentMode = freerunMode;
 	scci.clipped = VK_TRUE;
-	scci.oldSwapchain = oldSwapChain;
+	scci.oldSwapchain = swapChain;
 	uint32_t qfamIndices[] = {
-		(uint32_t) dev.getQfamI(PRESENT),
-		(uint32_t) dev.getQfamI(GRAPHICS),
+		(uint32_t) getQfamI(PRESENT),
+		(uint32_t) getQfamI(GRAPHICS),
 	};
 	if (qfamIndices[0] == qfamIndices[1]) {
 		// Device queues were set up such that one QueueFamily does both
@@ -234,39 +231,38 @@ int Instance::createSwapChain(size_t dev_i, VkExtent2D sizeRequest) {
 		scci.queueFamilyIndexCount = 0;
 		scci.pQueueFamilyIndices = nullptr;
 	} else {
-		fprintf(stderr, "CONCURRENT not tested\n");
-		exit(1);
 		// Device queues were set up such that a different QueueFamily does PRESENT
 		// and a different QueueFamily does GRAPHICS.
 		scci.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 		scci.queueFamilyIndexCount = 2;
 		scci.pQueueFamilyIndices = qfamIndices;
 	}
-	v = vkCreateSwapchainKHR(dev.dev, &scci, pAllocator, &dev.swapChain);
+	VkSwapchainKHR newSwapChain;
+	v = vkCreateSwapchainKHR(dev, &scci, dev.allocator, &newSwapChain);
 	if (v != VK_SUCCESS) {
-		fprintf(stderr, "vkCreateSwapchainKHR() returned %d\n", v);
+		fprintf(stderr, "vkCreateSwapchainKHR() returned %d (%s)\n", v, string_VkResult(v));
 		return 1;
 	}
-	dev.swapChain.allocator = pAllocator;
-	if (oldSwapChain) {
-		fprintf(stderr, "TODO: clean up oldswapChain\n");
-		exit(1);
-	}
+	// This avoids deleting dev.swapChain until after vkCreateSwapchainKHR().
+	swapChain.reset();  // Delete the old dev.swapChain.
+	*(&swapChain) = newSwapChain;  // Install the new dev.swapChain.
+	swapChain.allocator = dev.allocator;
 
-	auto* vkImages = Vk::getSwapchainImages(dev.dev, dev.swapChain);
+	auto* vkImages = Vk::getSwapchainImages(dev, swapChain);
 	if (!vkImages) {
 		return 1;
 	}
 
+	framebufs.clear();
 	for (size_t i = 0; i < vkImages->size(); i++) {
-		dev.framebufs.emplace_back(dev);
-		auto& framebuf = *(dev.framebufs.end() - 1);
+		framebufs.emplace_back(*this);
+		auto& framebuf = *(framebufs.end() - 1);
 		framebuf.image = vkImages->at(i);
 
 		VkImageViewCreateInfo VkInit(ivci);
 		ivci.image = framebuf.image;
 		ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		ivci.format = dev.format.format;
+		ivci.format = format.format;
 		ivci.components = {
 				VK_COMPONENT_SWIZZLE_R,
 				VK_COMPONENT_SWIZZLE_G,
@@ -278,9 +274,9 @@ int Instance::createSwapChain(size_t dev_i, VkExtent2D sizeRequest) {
 		ivci.subresourceRange.levelCount = 1;
 		ivci.subresourceRange.baseArrayLayer = 0;
 		ivci.subresourceRange.layerCount = 1;  // Might be 2 for stereo displays.
-		v = vkCreateImageView(dev.dev, &ivci, pAllocator, &framebuf.imageView);
+		v = vkCreateImageView(dev, &ivci, dev.allocator, &framebuf.imageView);
 		if (v != VK_SUCCESS) {
-			fprintf(stderr, "vkCreateImageView[%zu] returned %d\n", i, v);
+			fprintf(stderr, "vkCreateImageView[%zu] returned %d (%s)\n", i, v, string_VkResult(v));
 			delete vkImages;
 			return 1;
 		}

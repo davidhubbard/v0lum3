@@ -182,9 +182,14 @@ typedef struct Device {
 	VkPresentModeKHR vsyncMode = (VkPresentModeKHR) 0;
 	VkExtent2D swapChainExtent;
 
-	// Populated only after open().
+	// Instance::open() calls resetSwapChain() so swapChain is valid after open().
 	VkPtr<VkSwapchainKHR> swapChain{dev, vkDestroySwapchainKHR};
 	std::vector<Framebuf> framebufs;
+
+	// resetSwapChain() re-initializes swapChain with the new sizeRequest.
+	// swapChainExtent is updated to the new sizeRequest and the entire
+	// framebufs vector may be recreated.
+	int resetSwapChain(VkSurfaceKHR surface, VkExtent2D sizeRequest);
 } Device;
 
 // Instance holds the root of the Vulkan pipeline. Constructor (ctor) is a
@@ -327,9 +332,6 @@ protected:
 	// Device::surfaceFormats and Device::presentModes before calling
 	// open().
 	virtual int initSurfaceFormatAndPresentMode(Device& dev);
-
-	// Override createSwapChain() if your app needs a different swapChain.
-	virtual int createSwapChain(size_t dev_i, VkExtent2D sizeRequest);
 };
 
 } // namespace language

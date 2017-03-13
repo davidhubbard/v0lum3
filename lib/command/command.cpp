@@ -168,6 +168,8 @@ Pipeline::Pipeline(language::Device& dev)
 	: pipelineLayout{dev.dev, vkDestroyPipelineLayout}
 	, vk{dev.dev, vkDestroyPipeline}
 {
+	pipelineLayout.allocator = dev.dev.allocator;
+	vk.allocator = dev.dev.allocator;
 };
 
 int Pipeline::init(RenderPass& renderPass, size_t subpass_i, PipelineCreateInfo& pci)
@@ -224,6 +226,8 @@ int Pipeline::init(RenderPass& renderPass, size_t subpass_i, PipelineCreateInfo&
 	p.layout = pipelineLayout;
 	p.renderPass = renderPass.vk;
 	p.subpass = subpass_i;
+
+	vk.reset();
 	v = vkCreateGraphicsPipelines(pci.dev.dev, VK_NULL_HANDLE, 1, &p, nullptr, &vk);
 	if (v != VK_SUCCESS) {
 		fprintf(stderr, "vkCreateGraphicsPipelines() returned %d (%s)\n", v, string_VkResult(v));
