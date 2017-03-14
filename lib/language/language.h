@@ -106,6 +106,8 @@ typedef struct QueueRequest {
 	float priority;
 
 	// The default priority is the lowest possible (0.0), but can be changed.
+	// Many GPUs only have the minimum
+	// VkPhysicalDeviceLimits.discreteQueuePriorities, which is 2: 0.0 and 1.0.
 	QueueRequest(uint32_t dev_i, uint32_t dev_qfam_i) {
 		dev_index = dev_i;
 		dev_qfam_index = dev_qfam_i;
@@ -184,6 +186,9 @@ typedef struct Device {
 	// Present mode to use if vsync is on. Populated after ctorError().
 	VkPresentModeKHR vsyncMode = (VkPresentModeKHR) 0;
 	VkExtent2D swapChainExtent;
+	float aspectRatio() const {
+		return swapChainExtent.width / (float) swapChainExtent.height;
+	};
 
 	// Instance::open() calls resetSwapChain() so swapChain is valid after open().
 	VkPtr<VkSwapchainKHR> swapChain{dev, vkDestroySwapchainKHR};

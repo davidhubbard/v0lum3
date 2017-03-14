@@ -89,7 +89,7 @@ PipelineCreateInfo::PipelineCreateInfo(language::Device& dev,
 	rastersci.polygonMode = VK_POLYGON_MODE_FILL;
 	rastersci.lineWidth = 1.0f;
 	rastersci.cullMode = VK_CULL_MODE_BACK_BIT;
-	rastersci.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	rastersci.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rastersci.depthBiasEnable = VK_FALSE;
 
 	VkOverwrite(multisci);
@@ -97,7 +97,6 @@ PipelineCreateInfo::PipelineCreateInfo(language::Device& dev,
 	multisci.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
 	VkOverwrite(depthsci);
-	VkOverwrite(plci);
 
 	VkOverwrite(cbsci);
 	cbsci.logicOpEnable = VK_FALSE;
@@ -186,16 +185,17 @@ int Pipeline::init(RenderPass& renderPass, size_t subpass_i, PipelineCreateInfo&
 	pci.cbsci.attachmentCount = pci.perFramebufColorBlend.size();
 	pci.cbsci.pAttachments = pci.perFramebufColorBlend.data();
 
-	// TODO: Once uniforms are working, add pushConstants as well.
-	pci.plci.setLayoutCount = descriptors.size();
-	pci.plci.pSetLayouts = descriptors.data();
-	pci.plci.pushConstantRangeCount = 0;
-	pci.plci.pPushConstantRanges = 0;
+	VkPipelineLayoutCreateInfo VkInit(plci);
+	// TODO: Add pushConstants.
+	plci.setLayoutCount = pci.setLayouts.size();
+	plci.pSetLayouts = pci.setLayouts.data();
+	plci.pushConstantRangeCount = 0;
+	plci.pPushConstantRanges = 0;
 
 	//
 	// Create pipelineLayout.
 	//
-	VkResult v = vkCreatePipelineLayout(pci.dev.dev, &pci.plci, nullptr, &pipelineLayout);
+	VkResult v = vkCreatePipelineLayout(pci.dev.dev, &plci, nullptr, &pipelineLayout);
 	if (v != VK_SUCCESS) {
 		fprintf(stderr, "vkCreatePipelineLayout() returned %d (%s)\n", v, string_VkResult(v));
 		return 1;

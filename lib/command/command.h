@@ -144,9 +144,10 @@ typedef struct PipelineCreateInfo {
 	VkPipelineMultisampleStateCreateInfo multisci;
 	VkPipelineDepthStencilStateCreateInfo depthsci;
 
-	// TODO: Since uniforms are not yet working, please leave this member alone
-	// for now. (Or proceed at your own risk?)
-	VkPipelineLayoutCreateInfo plci;
+	// Use vkCreateDescriptorSetLayout to create layouts, which then
+	// auto-generates VkPipelineLayoutCreateInfo.
+	// TODO: Add pushConstants.
+	std::vector<VkDescriptorSetLayout> setLayouts;
 
 	// Optionally modify these structures before calling Pipeline::init().
 	// perFramebufColorBlend will be written to cbsci by Pipeline::init().
@@ -167,10 +168,6 @@ typedef struct Pipeline {
 
 	VkPtr<VkPipelineLayout> pipelineLayout;
 	VkPtr<VkPipeline> vk;
-
-	// Uniforms are not implemented yet, and this is probably the wrong way to do
-	// it, but it compiles.
-	std::vector<VkDescriptorSetLayout> descriptors;
 
 protected:
 	friend struct RenderPass;
