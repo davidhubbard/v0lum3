@@ -144,9 +144,6 @@ protected:
 	};
 };
 
-const int WIN_W = 800;
-const int WIN_H = 600;
-
 static int mainLoop(GLFWwindow * window, language::Instance& inst) {
 	if (!inst.devs_size()) {
 		fprintf(stderr, "BUG: no devices created\n");
@@ -217,7 +214,7 @@ static VkResult createWindowSurface(language::Instance& inst, void * window) {
 		inst.pAllocator, &inst.surface);
 }
 
-static int runLanguage(GLFWwindow * window) {
+static int runLanguage(GLFWwindow * window, VkExtent2D size) {
 	unsigned int glfwExtensionCount = 0;
 	const char ** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 	language::Instance inst;
@@ -225,7 +222,7 @@ static int runLanguage(GLFWwindow * window) {
 			createWindowSurface, window)) {
 		return 1;
 	}
-	int r = inst.open({WIN_W, WIN_H});
+	int r = inst.open(size);
 	if (r) {
 		return r;
 	}
@@ -235,8 +232,10 @@ static int runLanguage(GLFWwindow * window) {
 static int runGLFW() {
 	glfwInit();
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	GLFWwindow * window = glfwCreateWindow(WIN_W, WIN_H, "Vulkan window", nullptr, nullptr);
-	int r = runLanguage(window);
+	VkExtent2D size{800, 600};
+	GLFWwindow * window = glfwCreateWindow(size.width, size.height,
+		"Vulkan window", nullptr, nullptr);
+	int r = runLanguage(window, size);
 	glfwDestroyWindow(window);
 	glfwTerminate();
 	return r;
