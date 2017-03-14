@@ -54,6 +54,17 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(VkFlags msgFlags, VkDe
 		if (!strcmp(pMsg, "=============================") || suppressState == 2) {
 			return false;
 		}
+	} else if (!strcmp(pLayerPrefix, "DS")) {
+		if ((msgFlags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) &&
+				!strncmp(pMsg, "vkCmdDraw()", 11)) {
+			suppressState = 3;
+			return false;
+		}
+		if (suppressState == 3 &&
+				(msgFlags & (VK_DEBUG_REPORT_DEBUG_BIT_EXT |
+					VK_DEBUG_REPORT_INFORMATION_BIT_EXT)) != 0) {
+			return false;
+		}
 	}
 	suppressState = 0;
 
