@@ -5,6 +5,7 @@ TARGET_BIN=v
 PKG_CONFIG_PKGS+=vulkan
 LIBS+=$(TOP)lib/language/liblanguage.a
 LIBS+=$(TOP)lib/command/libcommand.a
+LIBS+=$(TOP)lib/memory/libmemory.a
 SRCS=main.cpp
 HDRS=
 HDRS+=$(foreach f,language.h VkPtr.h VkEnum.h,$(TOP)lib/language/$(f))
