@@ -205,8 +205,7 @@ int Pipeline::init(RenderPass& renderPass, size_t subpass_i, PipelineCreateInfo&
 	std::vector<VkPipelineShaderStageCreateInfo> stagecis;
 	for (auto& stage : pci.stages) {
 		stage.sci.module = renderPass.shaders.at(stage.shader_i).vk;
-		stage.sci.pName = "main";
-//stage.entryPointName.c_str();
+		stage.sci.pName = stage.entryPointName.c_str();
 		//fprintf(stderr, "Pipeline::init: stage[%zu] \"%p\"\n", stagecis.size(), stage.sci.pName);
 		//fprintf(stderr, "Pipeline::init:      [%zu] \"%s\"\n", stagecis.size(), stage.sci.pName);
 		stagecis.push_back(stage.sci);

@@ -24,6 +24,27 @@ int Fence::ctorError(language::Device& dev) {
 	return 0;
 }
 
+int PresentSemaphore::ctorError() {
+	if (Semaphore::ctorError(dev)) {
+		return 1;
+	}
+
+	auto qfam_i = dev.getQfamI(language::PRESENT);
+	if (qfam_i == (decltype(qfam_i)) -1) {
+		return 1;
+	}
+	auto& qfam = dev.qfams.at(qfam_i);
+	if (qfam.queues.size() < 1) {
+		fprintf(stderr, "BUG: queue family PRESENT with %zu queues\n",
+			qfam.queues.size());
+		return 1;
+	}
+
+	// Assume that any queue in this family is acceptable.
+	q = *(qfam.queues.end() - 1);
+	return 0;
+};
+
 int PresentSemaphore::present(uint32_t image_i) {
 	VkSemaphore semaphores[] = { vk };
 	VkSwapchainKHR swapChains[] = { dev.swapChain };
