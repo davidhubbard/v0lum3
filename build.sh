@@ -34,7 +34,7 @@ cat <<EOF >"${PC}"
 prefix=${PWD}/vendor/VulkanSamples
 includedir=\${prefix}/include
 glm_includedir=\${prefix}/libs
-loaderdir=\${prefix}/build/loader
+loaderdir=${PWD}/vendor/lib
 
 Name: Vulkan
 Description: High Performance Graphics API
