@@ -46,6 +46,11 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(VkFlags msgFlags, VkDe
 			return false;
 		}
 		suppressState = 0;
+	} else if (!strcmp(pLayerPrefix, "ObjectTracker")) {
+		if (msgFlags & (VK_DEBUG_REPORT_DEBUG_BIT_EXT |
+				VK_DEBUG_REPORT_INFORMATION_BIT_EXT)) {
+			return false;
+		}
 	} else if (!strcmp(pLayerPrefix, "MEM")) {
 		if (strstr(pMsg, "Details of") && msgCode == 0) {
 			suppressState = 2;
