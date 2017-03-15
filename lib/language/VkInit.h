@@ -154,6 +154,11 @@ inline void _VkInit(VkFenceCreateInfo &fci) {
 	fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 }
 
+inline void _VkInit(VkEventCreateInfo &eci) {
+	memset(&eci, 0, sizeof(eci));
+	eci.sType = VK_STRUCTURE_TYPE_EVENT_CREATE_INFO;
+}
+
 inline void _VkInit(VkCommandPoolCreateInfo &cpci) {
 	memset(&cpci, 0, sizeof(cpci));
 	cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;

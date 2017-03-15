@@ -474,6 +474,24 @@ public:
 		return 0;
 	};
 
+	WARN_UNUSED_RESULT int waitEvents(
+			uint32_t eventCount,
+			const VkEvent * pEvents,
+			VkPipelineStageFlags srcStageMask,
+			VkPipelineStageFlags dstStageMask,
+			uint32_t memoryBarrierCount,
+			const VkMemoryBarrier * pMemoryBarriers,
+			uint32_t bufferMemoryBarrierCount,
+			const VkBufferMemoryBarrier * pBufferMemoryBarriers,
+			uint32_t imageMemoryBarrierCount,
+			const VkImageMemoryBarrier * pImageMemoryBarriers) {
+		vkCmdWaitEvents(buf, eventCount, pEvents, srcStageMask, dstStageMask,
+			memoryBarrierCount, pMemoryBarriers,
+			bufferMemoryBarrierCount, pBufferMemoryBarriers,
+			imageMemoryBarrierCount, pImageMemoryBarriers);
+		return 0;
+	};
+
 
 	WARN_UNUSED_RESULT int pushConstants(Pipeline& pipe,
 			VkShaderStageFlags stageFlags,
@@ -492,6 +510,11 @@ public:
 		return 0;
 	};
 
+	WARN_UNUSED_RESULT int updateBuffer(VkBuffer dst, VkDeviceSize dstOffset,
+			VkDeviceSize dataSize, const void * pData) {
+		vkCmdUpdateBuffer(buf, dst, dstOffset, dataSize, pData);
+		return 0;
+	};
 
 	WARN_UNUSED_RESULT int copyBuffer(VkBuffer src, VkBuffer dst,
 			std::vector<VkBufferCopy>& regions) {
@@ -589,7 +612,6 @@ public:
 		return 0;
 	};
 
-
 	WARN_UNUSED_RESULT int beginQuery(VkQueryPool queryPool, uint32_t query,
 			VkQueryControlFlags flags) {
 		vkCmdBeginQuery(buf, queryPool, query, flags);
@@ -598,6 +620,12 @@ public:
 
 	WARN_UNUSED_RESULT int endQuery(VkQueryPool queryPool, uint32_t query) {
 		vkCmdEndQuery(buf, queryPool, query);
+		return 0;
+	};
+
+	WARN_UNUSED_RESULT int writeTimestamp(VkPipelineStageFlagBits stage,
+			VkQueryPool queryPool, uint32_t query) {
+		vkCmdWriteTimestamp(buf, stage, queryPool, query);
 		return 0;
 	};
 
@@ -765,6 +793,44 @@ public:
 	{
 		vkCmdDispatchIndirect(buf, buffer, offset);
 		return 0;
+	};
+
+
+	//
+	// The following commands require the currently bound pipeline had
+	// VK_DYNAMIC_STATE_* flags enabled first.
+	//
+
+	void setBlendConstants(const float blendConstants[4]) {
+		vkCmdSetBlendConstants(buf, blendConstants);
+	};
+	void setDepthBias(float constantFactor, float clamp, float slopeFactor) {
+		vkCmdSetDepthBias(buf, constantFactor, clamp, slopeFactor);
+	};
+	void setDepthBounds(float minBound, float maxBound) {
+		vkCmdSetDepthBounds(buf, minBound, maxBound);
+	};
+	void setLineWidth(float lineWidth) {
+		vkCmdSetLineWidth(buf, lineWidth);
+	};
+	void setScissor(uint32_t firstScissor, uint32_t scissorCount,
+			const VkRect2D * pScissors) {
+		vkCmdSetScissor(buf, firstScissor, scissorCount, pScissors);
+	};
+	void setStencilCompareMask(VkStencilFaceFlags faceMask, uint32_t compareMask)
+	{
+		vkCmdSetStencilCompareMask(buf, faceMask, compareMask);
+	};
+	void setStencilReference(VkStencilFaceFlags faceMask, uint32_t reference) {
+		vkCmdSetStencilReference(buf, faceMask, reference);
+	};
+	void setStencilWriteMask(VkStencilFaceFlags faceMask, uint32_t writeMask)
+	{
+		vkCmdSetStencilWriteMask(buf, faceMask, writeMask);
+	};
+	void setViewport(uint32_t firstViewport, uint32_t viewportCount,
+			const VkViewport * pViewports) {
+		vkCmdSetViewport(buf, firstViewport, viewportCount, pViewports);
 	};
 };
 
