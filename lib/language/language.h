@@ -200,7 +200,8 @@ typedef struct Device {
 	// resetSwapChain() re-initializes swapChain with the new sizeRequest.
 	// swapChainExtent is updated to the new sizeRequest and the entire
 	// framebufs vector may be recreated.
-	int resetSwapChain(VkSurfaceKHR surface, VkExtent2D sizeRequest);
+	WARN_UNUSED_RESULT int resetSwapChain(
+		VkSurfaceKHR surface, VkExtent2D sizeRequest);
 } Device;
 
 // Instance holds the root of the Vulkan pipeline. Constructor (ctor) is a

@@ -206,8 +206,8 @@ typedef struct RenderPass {
 	std::vector<Shader> shaders;
 	std::vector<Pipeline> pipelines;
 
-	// Optionally modify these structures before calling Pipeline::init().
-	// colorAttaches will be written to rpci by Pipeline::init().
+	// Optionally modify these structures before calling init().
+	// colorAttaches will be written to rpci by init().
 	std::vector<VkAttachmentDescription> colorAttaches;
 	VkRenderPassCreateInfo rpci;
 
@@ -222,6 +222,13 @@ typedef struct RenderPass {
 	WARN_UNUSED_RESULT int init(std::vector<PipelineCreateInfo> pcis);
 
 	VkPtr<VkRenderPass> vk;
+	// passBeginInfo is populated by init() for convenience. Customize as needed.
+	// Note that passBeginInfo.frameBuffer MUST be updated each frame, and
+	// passBeginInfo.renderArea.extent MUST be updated any time the window is
+	// resized or anything similar.
+	VkRenderPassBeginInfo passBeginInfo;
+	// passBeginClearColor is referenced in passBeginInfo.
+	VkClearValue passBeginClearColor;
 } RenderPass;
 
 // Semaphore represents a GPU-only synchronization operation vs. Fence, below.
@@ -235,6 +242,24 @@ typedef struct Semaphore {
 
 	VkPtr<VkSemaphore> vk;
 } Semaphore;
+
+// PresentSemaphore is a special Semaphore that adds the present() method.
+class PresentSemaphore : public Semaphore {
+public:
+	language::Device& dev;
+	VkQueue q;
+public:
+	PresentSemaphore(language::Device& dev) : Semaphore(dev), dev(dev) {};
+	PresentSemaphore(PresentSemaphore&&) = default;
+	PresentSemaphore(const PresentSemaphore&) = delete;
+
+	// Two-stage constructor: check the return code of ctorError().
+	WARN_UNUSED_RESULT int ctorError();
+
+	// present() submits the given swapChain image_i to Device dev's screen
+	// using the correct language::PRESENT queue and synchronization.
+	WARN_UNUSED_RESULT int present(uint32_t image_i);
+};
 
 // Fence represents a GPU-to-CPU synchronization operation vs. Semaphore.
 typedef struct Fence {
@@ -285,30 +310,235 @@ public:
 	};
 
 	// alloc calls vkAllocateCommandBuffers to populate buf with empty buffers.
-	// The VkCommandBufferLevel must be given if not PRIMARY.
-	int alloc(std::vector<VkCommandBuffer>& buf,
+	// Specify the VkCommandBufferLevel for a secondary command buffer.
+	WARN_UNUSED_RESULT int alloc(std::vector<VkCommandBuffer>& buf,
 		VkCommandBufferLevel level = VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
 	const language::SurfaceSupport queueFamily;
 	VkPtr<VkCommandPool> vk;
 };
 
-// PresentSemaphore is a special Semaphore that adds the present() method.
-class PresentSemaphore : public Semaphore {
-public:
-	language::Device& dev;
-	VkQueue q;
-public:
-	PresentSemaphore(language::Device& dev) : Semaphore(dev), dev(dev) {};
-	PresentSemaphore(PresentSemaphore&&) = default;
-	PresentSemaphore(const PresentSemaphore&) = delete;
+// CommandBuilder holds a vector of VkCommandBuffer, designed to simplify
+// recording, executing, and reusing a VkCommandBuffer. A vector of
+// VkCommandBuffers is more useful because one buffer may be executing while
+// your application is recording into another (or similar designs). The
+// CommandBuilder::use() method selects which VkCommandBuffer gets recorded
+// or "built."
+// https://www.khronos.org/registry/vulkan/specs/1.0-wsi_extensions/html/vkspec.html#commandbuffers-lifecycle
+class CommandBuilder {
+protected:
+	CommandPool& cpool;
+	bool isAllocated = false;
+	size_t bufInUse = 0;
+	VkCommandBuffer buf = VK_NULL_HANDLE;
 
-	// Two-stage constructor: check the return code of ctorError().
-	WARN_UNUSED_RESULT int ctorError();
+	int alloc() {
+		if (cpool.alloc(bufs)) {
+			return 1;
+		}
+		isAllocated = true;
+		use(bufInUse);
+		return 0;
+	};
 
-	// present() submits the given swapChain image_i to Device dev's screen
-	// using the correct language::PRESENT queue and synchronization.
-	int present(uint32_t image_i);
+public:
+	CommandBuilder(CommandPool& cpool_, size_t initialSize = 1)
+		: cpool(cpool_)
+		, bufs(initialSize) {};
+	~CommandBuilder()
+	{
+		cpool.free(bufs);
+	};
+
+	std::vector<VkCommandBuffer> bufs;
+
+	// resize updates the vector size and reallocates the VkCommandBuffers.
+	WARN_UNUSED_RESULT int resize(size_t bufsSize) {
+		if (isAllocated) {
+			// free any VkCommandBuffer in buf. Command Buffers are automatically
+			// freed when the CommandPool is destroyed, so free() is really only
+			// needed when dynamically replacing an existing set of CommandBuffers.
+			cpool.free(bufs);
+		}
+		bufs.resize(bufsSize);
+		return alloc();
+	};
+
+	// use selects which index in the vector bufs gets recorded or "built."
+	// The first VkCommandBuffer is selected by default, to simplify cases where
+	// only one CommandBuffer is needed.
+	void use(size_t i) {
+		bufInUse = i;
+		buf = bufs.at(i);
+	};
+
+	// submit calls vkQueueSubmit using commandPoolQueueI.
+	// Note vkQueueSubmit is a high overhead operation; submitting multiple
+	// command buffers and even multiple VkSubmitInfo batches is recommended.
+	WARN_UNUSED_RESULT int submit(size_t commandPoolQueueI) {
+		VkSubmitInfo VkInit(submitInfo);
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &buf;
+
+		VkResult v;
+		if ((v = vkQueueSubmit(cpool.q(commandPoolQueueI), 1, &submitInfo,
+				VK_NULL_HANDLE /*optional VkFence to sigmal*/)) != VK_SUCCESS) {
+			fprintf(stderr, "vkQueueSubmit failed: %d (%s)\n", v, string_VkResult(v));
+			return 1;
+		}
+		return 0;
+	};
+
+
+	WARN_UNUSED_RESULT int begin(VkCommandBufferUsageFlagBits usageFlags) {
+		if (!isAllocated && alloc()) {
+			return 1;
+		};
+		VkCommandBufferBeginInfo VkInit(cbbi);
+		cbbi.flags = usageFlags;
+		VkResult v = vkBeginCommandBuffer(buf, &cbbi);
+		if (v != VK_SUCCESS) {
+			fprintf(stderr, "vkBeginCommandBuffer failed: %d (%s)\n", v, string_VkResult(v));
+			return 1;
+		}
+		return 0;
+	};
+
+	WARN_UNUSED_RESULT int beginOneTimeUse() {
+		return begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+	};
+	WARN_UNUSED_RESULT int beginSimultaneousUse() {
+		return begin(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
+	};
+
+
+	WARN_UNUSED_RESULT int end() {
+		if (!isAllocated && alloc()) {
+			return 1;
+		};
+		VkResult v = vkEndCommandBuffer(buf);
+		if (v != VK_SUCCESS) {
+			fprintf(stderr, "vkEndCommandBuffer failed: %d (%s)\n", v, string_VkResult(v));
+			return 1;
+		}
+		return 0;
+	};
+
+
+	WARN_UNUSED_RESULT int copyBuffer(VkBuffer src, VkBuffer dst,
+			std::vector<VkBufferCopy>& regions) {
+		if (regions.size() == 0) {
+			fprintf(stderr, "copyBuffer with empty regions\n");
+			return 1;
+		}
+		if (!isAllocated && alloc()) {
+			return 1;
+		};
+		vkCmdCopyBuffer(buf, src, dst, regions.size(), regions.data());
+		return 0;
+	};
+	WARN_UNUSED_RESULT int copyBuffer(VkBuffer src, VkBuffer dst, size_t size) {
+		VkBufferCopy region = {};
+		region.size = size;
+		std::vector<VkBufferCopy> regions{region};
+		return copyBuffer(src, dst, regions);
+	};
+
+
+	WARN_UNUSED_RESULT int beginRenderPass(RenderPass& pass,
+			VkSubpassContents contents) {
+		vkCmdBeginRenderPass(buf, &pass.passBeginInfo, contents);
+		return 0;
+	};
+
+	WARN_UNUSED_RESULT int endRenderPass() {
+		vkCmdEndRenderPass(buf);
+		return 0;
+	};
+
+
+	WARN_UNUSED_RESULT int bindPipeline(VkPipelineBindPoint bindPoint,
+			Pipeline& pipe) {
+		vkCmdBindPipeline(buf, bindPoint, pipe.vk);
+		return 0;
+	};
+
+
+	WARN_UNUSED_RESULT int bindDescriptorSets(
+			VkPipelineBindPoint bindPoint,
+			VkPipelineLayout layout,
+			uint32_t firstSet,
+			uint32_t descriptorSetCount,
+			const VkDescriptorSet * pDescriptorSets,
+			uint32_t dynamicOffsetCount = 0,
+			const uint32_t * pDynamicOffsets = nullptr) {
+		vkCmdBindDescriptorSets(buf, bindPoint, layout, firstSet,
+			descriptorSetCount, pDescriptorSets, dynamicOffsetCount, pDynamicOffsets);
+		return 0;
+	};
+	WARN_UNUSED_RESULT int bindGraphicsPipelineAndDescriptors(Pipeline& pipe,
+			uint32_t firstSet,
+			uint32_t descriptorSetCount,
+			const VkDescriptorSet * pDescriptorSets,
+			uint32_t dynamicOffsetCount = 0,
+			const uint32_t * pDynamicOffsets = nullptr) {
+		return bindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipe) ||
+			bindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS, pipe.pipelineLayout,
+				firstSet, descriptorSetCount, pDescriptorSets,
+				dynamicOffsetCount, pDynamicOffsets);
+	};
+	WARN_UNUSED_RESULT int bindComputePipelineAndDescriptors(Pipeline& pipe,
+			uint32_t firstSet,
+			uint32_t descriptorSetCount,
+			const VkDescriptorSet * pDescriptorSets,
+			uint32_t dynamicOffsetCount = 0,
+			const uint32_t * pDynamicOffsets = nullptr) {
+		return bindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE, pipe) ||
+			bindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE, pipe.pipelineLayout,
+				firstSet, descriptorSetCount, pDescriptorSets,
+				dynamicOffsetCount, pDynamicOffsets);
+	};
+
+
+	WARN_UNUSED_RESULT int bindVertexBuffers(
+			uint32_t firstBinding,
+			uint32_t bindingCount,
+			const VkBuffer * pBuffers,
+			const VkDeviceSize * pOffsets) {
+		vkCmdBindVertexBuffers(buf, firstBinding, bindingCount, pBuffers, pOffsets);
+		return 0;
+	};
+
+
+	WARN_UNUSED_RESULT int bindIndexBuffer(
+			VkBuffer indexBuf,
+			VkDeviceSize offset,
+			VkIndexType indexType) {
+		vkCmdBindIndexBuffer(buf, indexBuf, offset, indexType);
+		return 0;
+	};
+
+
+	WARN_UNUSED_RESULT int drawIndexed(
+			uint32_t indexCount,
+			uint32_t instanceCount,
+			uint32_t firstIndex,
+			int32_t vertexOffset,
+			uint32_t firstInstance) {
+		vkCmdDrawIndexed(buf, indexCount, instanceCount, firstIndex, vertexOffset,
+			firstInstance);
+		return 0;
+	};
+
+
+	WARN_UNUSED_RESULT int draw(
+			uint32_t vertexCount,
+			uint32_t instanceCount,
+			uint32_t firstVertex,
+			uint32_t firstInstance) {
+		vkCmdDraw(buf, vertexCount, instanceCount, firstVertex, firstInstance);
+		return 0;
+	};
 };
 
 }  // namespace command

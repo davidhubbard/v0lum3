@@ -5,7 +5,8 @@
 namespace command {
 
 RenderPass::RenderPass(language::Device& dev)
-		: vk{dev.dev, vkDestroyRenderPass} {
+		: vk{dev.dev, vkDestroyRenderPass}
+		, passBeginClearColor{0.0f, 0.0f, 0.0f, 1.0f} {
 	VkAttachmentDescription VkInit(ad);
 	ad.format = dev.format.format;
 	ad.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -18,6 +19,7 @@ RenderPass::RenderPass(language::Device& dev)
 	colorAttaches.push_back(ad);
 
 	VkOverwrite(rpci);
+	VkOverwrite(passBeginInfo);
 }
 
 int RenderPass::getSubpassDeps(size_t subpass_i,
@@ -137,6 +139,14 @@ int RenderPass::init(std::vector<PipelineCreateInfo> pcis) {
 			return 1;
 		}
 	}
+
+	passBeginInfo.renderPass = vk;
+	// passBeginInfo.framebuffer is left unset. You MUST update it for each frame!
+	passBeginInfo.renderArea.offset = {0, 0};
+	passBeginInfo.renderArea.extent = checkDevice->swapChainExtent;
+
+	passBeginInfo.clearValueCount = 1;
+	passBeginInfo.pClearValues = &passBeginClearColor;
 	return 0;
 }
 

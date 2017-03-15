@@ -176,9 +176,19 @@ inline void _VkInit(VkXcbSurfaceCreateInfoKHR &xcb) {
 }
 #endif
 
+inline void _VkInit(VkSubmitInfo &si) {
+	memset(&si, 0, sizeof(si));
+	si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+}
+
 inline void _VkInit(VkCommandBufferAllocateInfo &ai) {
 	memset(&ai, 0, sizeof(ai));
 	ai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+}
+
+inline void _VkInit(VkCommandBufferBeginInfo &cbbi) {
+	memset(&cbbi, 0, sizeof(cbbi));
+	cbbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 }
 
 }  // namespace internal
