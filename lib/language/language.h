@@ -164,6 +164,9 @@ typedef struct Device {
 	// Properties, like device name. Populated after ctorError().
 	VkPhysicalDeviceProperties physProp;
 
+	// Memory properties like memory type. Populated after ctorError().
+	VkPhysicalDeviceMemoryProperties memProps;
+
 	// Device extensions to choose from. Populated after ctorError().
 	std::vector<VkExtensionProperties> availableExtensions;
 

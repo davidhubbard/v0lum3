@@ -172,6 +172,7 @@ struct InstanceInternal : public Instance {
 			Device& dev = *(this->devs.end() - 1);
 			dev.phys = phys;
 			vkGetPhysicalDeviceProperties(phys, &dev.physProp);
+			vkGetPhysicalDeviceMemoryProperties(dev.phys, &dev.memProps);
 
 			int r = initSupportedQueues(*vkQFams, dev);
 			delete vkQFams;
