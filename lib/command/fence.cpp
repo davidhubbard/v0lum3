@@ -14,16 +14,6 @@ int Semaphore::ctorError(language::Device& dev) {
 	return 0;
 }
 
-int Fence::ctorError(language::Device& dev) {
-	VkFenceCreateInfo VkInit(fci);
-	VkResult v = vkCreateFence(dev.dev, &fci, nullptr, &vk);
-	if (v != VK_SUCCESS) {
-		fprintf(stderr, "vkCreateFence returned %d (%s)\n", v, string_VkResult(v));
-		return 1;
-	}
-	return 0;
-}
-
 int PresentSemaphore::ctorError() {
 	if (Semaphore::ctorError(dev)) {
 		return 1;
@@ -63,5 +53,25 @@ int PresentSemaphore::present(uint32_t image_i) {
 	}
 	return 0;
 };
+
+int Fence::ctorError(language::Device& dev) {
+	VkFenceCreateInfo VkInit(fci);
+	VkResult v = vkCreateFence(dev.dev, &fci, nullptr, &vk);
+	if (v != VK_SUCCESS) {
+		fprintf(stderr, "vkCreateFence returned %d (%s)\n", v, string_VkResult(v));
+		return 1;
+	}
+	return 0;
+}
+
+int Event::ctorError(language::Device& dev) {
+	VkEventCreateInfo VkInit(eci);
+	VkResult v = vkCreateEvent(dev.dev, &eci, nullptr, &vk);
+	if (v != VK_SUCCESS) {
+		fprintf(stderr, "vkCreateEvent returned %d (%s)\n", v, string_VkResult(v));
+		return 1;
+	}
+	return 0;
+}
 
 }  // namespace command

@@ -232,6 +232,8 @@ typedef struct RenderPass {
 } RenderPass;
 
 // Semaphore represents a GPU-only synchronization operation vs. Fence, below.
+// Semaphores can be waited on in any queue vs. Events which must be waited on
+// within a single queue.
 typedef struct Semaphore {
 	Semaphore(language::Device& dev) : vk{dev.dev, vkDestroySemaphore}
 	{
@@ -261,7 +263,8 @@ public:
 	WARN_UNUSED_RESULT int present(uint32_t image_i);
 };
 
-// Fence represents a GPU-to-CPU synchronization operation vs. Semaphore.
+// Fence represents a GPU-to-CPU synchronization. Fences are the only sync
+// primitive which the CPU can wait on.
 typedef struct Fence {
 	Fence(language::Device& dev) : vk{dev.dev, vkDestroyFence}
 	{
@@ -272,6 +275,20 @@ typedef struct Fence {
 
 	VkPtr<VkFence> vk;
 } Fence;
+
+// Event represents a GPU-only synchronization operation, and must be waited on
+// and set (signalled) within a single queue. Events can also be set (signalled)
+// from the CPU.
+typedef struct Event {
+	Event(language::Device& dev) : vk{dev.dev, vkDestroyEvent}
+	{
+		vk.allocator = dev.dev.allocator;
+	};
+	// Two-stage constructor: check the return code of ctorError().
+	WARN_UNUSED_RESULT int ctorError(language::Device& dev);
+
+	VkPtr<VkEvent> vk;
+} Event;
 
 // CommandPool holds a reference to the VkCommandPool from which commands are
 // allocated. Create a CommandPool instance in each thread that submits
@@ -313,6 +330,19 @@ public:
 	// Specify the VkCommandBufferLevel for a secondary command buffer.
 	WARN_UNUSED_RESULT int alloc(std::vector<VkCommandBuffer>& buf,
 		VkCommandBufferLevel level = VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+	// reset deallocates all command buffers in the pool (very quickly).
+	WARN_UNUSED_RESULT int reset(
+		VkCommandPoolResetFlagBits flags =
+			VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT)
+	{
+		VkResult v;
+		if ((v = vkResetCommandPool(vkdev, vk, flags)) != VK_SUCCESS) {
+			fprintf(stderr, "vkResetCommandPool failed: %d (%s)\n", v, string_VkResult(v));
+			return 1;
+		}
+		return 0;
+	};
 
 	const language::SurfaceSupport queueFamily;
 	VkPtr<VkCommandPool> vk;
@@ -389,6 +419,19 @@ public:
 		return 0;
 	};
 
+	// reset deallocates and clears the current VkCommandBuffer. Note that in
+	// most cases, begin() calls vkBeginCommandBuffer() which implicitly resets
+	// the buffer and clears any old data it may have had.
+	WARN_UNUSED_RESULT int reset(
+		VkCommandBufferResetFlagBits flags =
+			VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)
+	{
+		VkResult v;
+		if ((v = vkResetCommandBuffer(buf, flags)) != VK_SUCCESS) {
+			fprintf(stderr, "vkResetCommandBuffer failed: %d (%s)\n", v, string_VkResult(v));
+			return 1;
+		}
+	};
 
 	WARN_UNUSED_RESULT int begin(VkCommandBufferUsageFlagBits usageFlags) {
 		if (!isAllocated && alloc()) {
@@ -425,6 +468,31 @@ public:
 	};
 
 
+	WARN_UNUSED_RESULT int executeCommands(uint32_t secondaryCmdsCount,
+			VkCommandBuffer * pSecondaryCmds) {
+		vkCmdExecuteCommands(buf, secondaryCmdsCount, pSecondaryCmds);
+		return 0;
+	};
+
+
+	WARN_UNUSED_RESULT int pushConstants(Pipeline& pipe,
+			VkShaderStageFlags stageFlags,
+			uint32_t offset,
+			uint32_t size,
+			const void* pValues) {
+		vkCmdPushConstants(buf, pipe.pipelineLayout, stageFlags,
+			offset, size, pValues);
+		return 0;
+	};
+
+
+	WARN_UNUSED_RESULT int fillBuffer(VkBuffer dst, VkDeviceSize dstOffset,
+			VkDeviceSize size, uint32_t data) {
+		vkCmdFillBuffer(buf, dst, dstOffset, size, data);
+		return 0;
+	};
+
+
 	WARN_UNUSED_RESULT int copyBuffer(VkBuffer src, VkBuffer dst,
 			std::vector<VkBufferCopy>& regions) {
 		if (regions.size() == 0) {
@@ -445,9 +513,103 @@ public:
 	};
 
 
+	WARN_UNUSED_RESULT int copyBufferToImage(
+			VkBuffer src,
+			VkImage dst,
+			VkImageLayout dstLayout,
+			std::vector<VkBufferImageCopy>& regions) {
+		vkCmdCopyBufferToImage(buf, src, dst, dstLayout,
+			regions.size(), regions.data());
+		return 0;
+	};
+
+
+	WARN_UNUSED_RESULT int copyImageToBuffer(
+			VkImage src,
+			VkImageLayout srcLayout,
+			VkBuffer dst,
+			std::vector<VkBufferImageCopy>& regions) {
+		vkCmdCopyImageToBuffer(buf, src, srcLayout, dst, regions.size(), regions.data());
+		return 0;
+	};
+
+
+	WARN_UNUSED_RESULT int copyImage(
+			VkImage src,
+			VkImageLayout srcLayout,
+			VkImage dst,
+			VkImageLayout dstLayout,
+			std::vector<VkImageCopy>& regions) {
+		vkCmdCopyImage(buf, src, srcLayout, dst, dstLayout,
+			regions.size(), regions.data());
+		return 0;
+	};
+
+
+	WARN_UNUSED_RESULT int blitImage(
+			VkImage src,
+			VkImageLayout srcLayout,
+			VkImage dst,
+			VkImageLayout dstLayout,
+			std::vector<VkImageBlit>& regions,
+			VkFilter filter) {
+		vkCmdBlitImage(buf, src, srcLayout, dst, dstLayout,
+			regions.size(), regions.data(), filter);
+		return 0;
+	};
+
+	WARN_UNUSED_RESULT int resolveImage(
+			VkImage src,
+			VkImageLayout srcLayout,
+			VkImage dst,
+			VkImageLayout dstLayout,
+			std::vector<VkImageResolve>& regions) {
+		vkCmdResolveImage(buf, src, srcLayout, dst, dstLayout,
+			regions.size(), regions.data());
+		return 0;
+	};
+
+
+	WARN_UNUSED_RESULT int copyQueryPoolResults(
+			VkQueryPool queryPool,
+			uint32_t firstQuery,
+			uint32_t queryCount,
+			VkBuffer dstBuffer,
+			VkDeviceSize dstOffset,
+			VkDeviceSize stride,
+			VkQueryResultFlags flags) {
+		vkCmdCopyQueryPoolResults(buf, queryPool, firstQuery, queryCount,
+			dstBuffer, dstOffset, stride, flags);
+		return 0;
+	};
+
+	WARN_UNUSED_RESULT int resetQueryPool(VkQueryPool queryPool,
+			uint32_t firstQuery, uint32_t queryCount) {
+		vkCmdResetQueryPool(buf, queryPool, firstQuery, queryCount);
+		return 0;
+	};
+
+
+	WARN_UNUSED_RESULT int beginQuery(VkQueryPool queryPool, uint32_t query,
+			VkQueryControlFlags flags) {
+		vkCmdBeginQuery(buf, queryPool, query, flags);
+		return 0;
+	};
+
+	WARN_UNUSED_RESULT int endQuery(VkQueryPool queryPool, uint32_t query) {
+		vkCmdEndQuery(buf, queryPool, query);
+		return 0;
+	};
+
+
 	WARN_UNUSED_RESULT int beginRenderPass(RenderPass& pass,
 			VkSubpassContents contents) {
 		vkCmdBeginRenderPass(buf, &pass.passBeginInfo, contents);
+		return 0;
+	};
+
+	WARN_UNUSED_RESULT int nextSubpass(VkSubpassContents contents) {
+		vkCmdNextSubpass(buf, contents);
 		return 0;
 	};
 
@@ -530,6 +692,15 @@ public:
 		return 0;
 	};
 
+	WARN_UNUSED_RESULT int drawIndexedIndirect(
+			VkBuffer buffer,
+			VkDeviceSize offset,
+			uint32_t drawCount,
+			uint32_t stride) {
+		vkCmdDrawIndexedIndirect(buf, buffer, offset, drawCount, stride);
+		return 0;
+	};
+
 
 	WARN_UNUSED_RESULT int draw(
 			uint32_t vertexCount,
@@ -537,6 +708,62 @@ public:
 			uint32_t firstVertex,
 			uint32_t firstInstance) {
 		vkCmdDraw(buf, vertexCount, instanceCount, firstVertex, firstInstance);
+		return 0;
+	};
+
+	WARN_UNUSED_RESULT int drawIndirect(
+			VkBuffer buffer,
+			VkDeviceSize offset,
+			uint32_t drawCount,
+			uint32_t stride) {
+		vkCmdDrawIndirect(buf, buffer, offset, drawCount, stride);
+		return 0;
+	};
+
+
+	WARN_UNUSED_RESULT int clearAttachments(
+			uint32_t attachmentCount,
+			const VkClearAttachment * pAttachments,
+			uint32_t rectCount,
+			const VkClearRect * pRects) {
+		vkCmdClearAttachments(buf, attachmentCount, pAttachments,
+			rectCount, pRects);
+		return 0;
+	};
+
+
+	WARN_UNUSED_RESULT int clearColorImage(
+			VkImage image,
+			VkImageLayout imageLayout,
+			const VkClearColorValue * pColor,
+			uint32_t rangeCount,
+			const VkImageSubresourceRange * pRanges) {
+		vkCmdClearColorImage(buf, image, imageLayout, pColor, rangeCount, pRanges);
+		return 0;
+	};
+
+
+	WARN_UNUSED_RESULT int clearDepthStencilImage(
+			VkImage image,
+			VkImageLayout imageLayout,
+			const VkClearDepthStencilValue * pDepthStencil,
+			uint32_t rangeCount,
+			const VkImageSubresourceRange * pRanges) {
+		vkCmdClearDepthStencilImage(buf, image, imageLayout, pDepthStencil,
+			rangeCount, pRanges);
+		return 0;
+	};
+
+
+	WARN_UNUSED_RESULT int dispatch(uint32_t groupCountX, uint32_t groupCountY,
+			uint32_t groupCountZ) {
+		vkCmdDispatch(buf, groupCountX, groupCountY, groupCountZ);
+		return 0;
+	};
+
+	WARN_UNUSED_RESULT int dispatchIndirect(VkBuffer buffer, VkDeviceSize offset)
+	{
+		vkCmdDispatchIndirect(buf, buffer, offset);
 		return 0;
 	};
 };
