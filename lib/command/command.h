@@ -254,9 +254,11 @@ typedef struct Fence {
 class CommandPool {
 protected:
 	language::QueueFamily * qf_ = nullptr;
+	VkDevice vkdev;
 public:
 	CommandPool(language::Device& dev, language::SurfaceSupport queueFamily)
-		: queueFamily(queueFamily)
+		: vkdev(dev.dev)
+		, queueFamily(queueFamily)
 		, vk{dev.dev, vkDestroyCommandPool}
 	{
 		vk.allocator = dev.dev.allocator;
@@ -270,10 +272,24 @@ public:
 			VK_COMMAND_POOL_CREATE_TRANSIENT_BIT |
 			VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
-	const language::SurfaceSupport queueFamily;
 	VkQueue q(size_t i) {
 		return qf_->queues.at(i);
 	};
+
+	// free releases any VkCommandBuffer in buf. Command Buffers are automatically
+	// freed when the CommandPool is destroyed, so free() is really only needed
+	// when dynamically replacing an existing set of CommandBuffers.
+	void free(std::vector<VkCommandBuffer>& buf) {
+		if (!buf.size()) return;
+		vkFreeCommandBuffers(vkdev, vk, buf.size(), buf.data());
+	};
+
+	// alloc calls vkAllocateCommandBuffers to populate buf with empty buffers.
+	// The VkCommandBufferLevel must be given if not PRIMARY.
+	int alloc(std::vector<VkCommandBuffer>& buf,
+		VkCommandBufferLevel level = VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+	const language::SurfaceSupport queueFamily;
 	VkPtr<VkCommandPool> vk;
 };
 

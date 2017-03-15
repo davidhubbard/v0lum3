@@ -159,6 +159,21 @@ int CommandPool::ctorError(language::Device& dev, VkCommandPoolCreateFlags flags
 		return 1;
 	}
 	return 0;
-};
+}
+
+int CommandPool::alloc(std::vector<VkCommandBuffer>& buf,
+		VkCommandBufferLevel level) {
+	VkCommandBufferAllocateInfo VkInit(ai);
+	ai.commandPool = vk;
+	ai.level = level;
+	ai.commandBufferCount = (decltype(ai.commandBufferCount)) buf.size();
+
+	VkResult v = vkAllocateCommandBuffers(vkdev, &ai, buf.data());
+	if (v != VK_SUCCESS) {
+		fprintf(stderr, "vkAllocateCommandBuffers failed: %d (%s)\n", v, string_VkResult(v));
+		return 1;
+	}
+	return 0;
+}
 
 }  // namespace command

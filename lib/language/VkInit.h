@@ -176,5 +176,10 @@ inline void _VkInit(VkXcbSurfaceCreateInfoKHR &xcb) {
 }
 #endif
 
+inline void _VkInit(VkCommandBufferAllocateInfo &ai) {
+	memset(&ai, 0, sizeof(ai));
+	ai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+}
+
 }  // namespace internal
 }  // namespace language
