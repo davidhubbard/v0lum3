@@ -72,13 +72,14 @@ public:
 	VkSurfaceKHR surface;
 	command::RenderPass * pass;
 	command::CommandPool cpool;
-	std::vector<VkCommandBuffer> buf;
+	command::CommandBuilder builder;
 
 	SimplePipeline(language::Instance& inst, language::SurfaceSupport queueFamily)
 		: dev(inst.at(0))
 		, surface(inst.surface)
 		, pass(nullptr)
 		, cpool(dev, queueFamily)
+		, builder(cpool)
 	{
 		startTime = std::chrono::high_resolution_clock::now();
 	};
@@ -123,6 +124,7 @@ public:
 	std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
 	unsigned frameCount = 0;
 	int timeDelta = 0;
+
 	void updateUniformBuffer() {
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		float time = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0f;
@@ -154,7 +156,7 @@ public:
 
 		void* data;
 		vkMapMemory(dev.dev, uniformStagingBufferMemory, 0, sizeof(ubo), 0, &data);
-				memcpy(data, &ubo, sizeof(ubo));
+		memcpy(data, &ubo, sizeof(ubo));
 		vkUnmapMemory(dev.dev, uniformStagingBufferMemory);
 
 		copyBuffer(uniformStagingBuffer, uniformBuffer, sizeof(ubo));
@@ -162,12 +164,9 @@ public:
 
 protected:
 	int findMemoryType(uint32_t typeBits, VkMemoryPropertyFlags flags) {
-		VkPhysicalDeviceMemoryProperties memProperties;
-		vkGetPhysicalDeviceMemoryProperties(dev.phys, &memProperties);
-
-		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+		for (uint32_t i = 0; i < dev.memProps.memoryTypeCount; i++) {
 			if ((typeBits & (1 << i)) &&
-					(memProperties.memoryTypes[i].propertyFlags & flags) == flags) {
+					(dev.memProps.memoryTypes[i].propertyFlags & flags) == flags) {
 				return i;
 			}
 		}
@@ -218,45 +217,15 @@ protected:
 		return 0;
 	}
 
-	int copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
-		VkCommandBufferAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandPool = cpool.vk;
-		allocInfo.commandBufferCount = 1;
-
-		VkCommandBuffer commandBuffer;
-		VkResult v = vkAllocateCommandBuffers(dev.dev, &allocInfo, &commandBuffer);
-		if (v != VK_SUCCESS) {
-			fprintf(stderr, "copyBuffer: vkAllocateCommandBuffers failed: %d (%s)\n", v, string_VkResult(v));
+	int copyBuffer(VkBuffer src, VkBuffer dst, size_t size) {
+		command::CommandBuilder builder(cpool);
+		if (builder.beginOneTimeUse() ||
+				builder.copyBuffer(src, dst, size) ||
+				builder.end() ||
+				builder.submit(0)) {
 			return 1;
 		}
-
-		VkCommandBufferBeginInfo beginInfo = {};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-		VkBufferCopy copyRegion = {};
-		copyRegion.size = size;
-		vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-		vkEndCommandBuffer(commandBuffer);
-
-		VkSubmitInfo submitInfo = {};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &commandBuffer;
-
-		if ((v = vkQueueSubmit(cpool.q(0), 1, &submitInfo, VK_NULL_HANDLE)) != VK_SUCCESS) {
-			fprintf(stderr, "copyBuffer: vkQueueSubmit failed: %d (%s)\n", v, string_VkResult(v));
-			return 1;
-		}
-		if ((v = vkQueueWaitIdle(cpool.q(0))) != VK_SUCCESS) {
-			fprintf(stderr, "copyBuffer: vkQueueWaitIdle failed: %d (%s)\n", v, string_VkResult(v));
-			return 1;
-		}
-
-		vkFreeCommandBuffers(dev.dev, cpool.vk, 1, &commandBuffer);
+		vkQueueWaitIdle(cpool.q(0));
 		return 0;
 	}
 
@@ -300,7 +269,6 @@ protected:
 		// Create uniformBuffer
 		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
 
-		fprintf(stderr, "createBuffer uniformStagingBuffer\n");
 		if (createBuffer(bufferSize,
 				VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -309,7 +277,6 @@ protected:
 			return 1;
 		}
 
-		fprintf(stderr, "createBuffer uniformBuffer\n");
 		if (createBuffer(bufferSize,
 				VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -371,7 +338,6 @@ protected:
 
 		VkPtr<VkBuffer> stagingBuffer{dev.dev, vkDestroyBuffer};
 		VkPtr<VkDeviceMemory> stagingBufferMemory{dev.dev, vkFreeMemory};
-		fprintf(stderr, "createBuffer stagingBuffer\n");
 		if (createBuffer(bufferSize,
 				VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -388,7 +354,6 @@ protected:
 		memcpy(data, vertices.data(), (size_t) bufferSize);
 		vkUnmapMemory(dev.dev, stagingBufferMemory);
 
-		fprintf(stderr, "createBuffer vertexBuffer\n");
 		if (createBuffer(bufferSize,
 				VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -397,7 +362,7 @@ protected:
 			return 1;
 		}
 
-		if (copyBuffer(stagingBuffer, vertexBuffer, bufferSize)) {
+		if (copyBuffer(stagingBuffer, vertexBuffer, (size_t) bufferSize)) {
 			return 1;
 		}
 
@@ -406,7 +371,6 @@ protected:
 
 		stagingBufferMemory.reset();
 		stagingBuffer.reset();
-		fprintf(stderr, "createBuffer stagingBuffer\n");
 		if (createBuffer(bufferSize,
 				VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -429,7 +393,7 @@ protected:
 			return 1;
 		}
 
-		if (copyBuffer(stagingBuffer, indexBuffer, bufferSize)) {
+		if (copyBuffer(stagingBuffer, indexBuffer, (size_t) bufferSize)) {
 			return 1;
 		}
 		return 0;
@@ -472,67 +436,29 @@ protected:
 			return 1;
 		}
 
-		if (buf.size() > 0) {
-			vkFreeCommandBuffers(dev.dev, cpool.vk, buf.size(), buf.data());
-		}
-
-		buf.resize(dev.framebufs.size());
-		VkCommandBufferAllocateInfo allocInfo;
-		memset(&allocInfo, 0, sizeof(allocInfo));
-		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocInfo.commandPool = cpool.vk;
-		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandBufferCount = (uint32_t) buf.size();
-
-		VkResult v = vkAllocateCommandBuffers(dev.dev, &allocInfo, buf.data());
-		if (v != VK_SUCCESS) {
-			fprintf(stderr, "vkAllocateCommandBuffers failed: %d (%s)\n", v, string_VkResult(v));
+		if (builder.resize(dev.framebufs.size())) {
 			return 1;
 		}
 
-		for (size_t i = 0; i < buf.size(); i++) {
-			VkCommandBufferBeginInfo beginInfo;
-			memset(&beginInfo, 0, sizeof(beginInfo));
-			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-			beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-			if (vkBeginCommandBuffer(buf.at(i), &beginInfo) != VK_SUCCESS) {
-				fprintf(stderr, "vkBeginCommandBuffer returned error\n");
-				return 1;
-			}
+		for (size_t i = 0; i < dev.framebufs.size(); i++) {
+			builder.use(i);
 
-			VkRenderPassBeginInfo renderPassInfo;
-			memset(&renderPassInfo, 0, sizeof(renderPassInfo));
-			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			renderPassInfo.renderPass = pass->vk;
-			renderPassInfo.framebuffer = dev.framebufs.at(i).vk;
-			renderPassInfo.renderArea.offset = {0, 0};
-			renderPassInfo.renderArea.extent = dev.swapChainExtent;
-
-			VkClearValue clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
-			renderPassInfo.clearValueCount = 1;
-			renderPassInfo.pClearValues = &clearColor;
-
-			vkCmdBeginRenderPass(buf.at(i), &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-			vkCmdBindPipeline(buf.at(i), VK_PIPELINE_BIND_POINT_GRAPHICS,
-				pass->pipelines.at(0).vk);
+			pass->passBeginInfo.framebuffer = dev.framebufs.at(i).vk;
+			pass->passBeginInfo.renderArea.extent = dev.swapChainExtent;
 
 			VkBuffer vertexBuffers[] = {vertexBuffer};
 			VkDeviceSize offsets[] = {0};
-			vkCmdBindVertexBuffers(buf.at(i), 0, 1, vertexBuffers, offsets);
 
-			vkCmdBindIndexBuffer(buf.at(i), indexBuffer, 0, VK_INDEX_TYPE_UINT16);
-
-			vkCmdBindDescriptorSets(buf.at(i), VK_PIPELINE_BIND_POINT_GRAPHICS, pass->pipelines.at(0).pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
-
-			vkCmdDrawIndexed(buf.at(i), indices.size(), 1, 0, 0, 0);
-
-			vkCmdDraw(buf.at(i), 3, 1, 0, 0);
-
-			vkCmdEndRenderPass(buf.at(i));
-
-			if ((v = vkEndCommandBuffer(buf.at(i))) != VK_SUCCESS) {
-				fprintf(stderr, "vkEndCommandBuffer failed: %d (%s)\n", v, string_VkResult(v));
+			if (builder.beginSimultaneousUse() ||
+					builder.beginRenderPass(*pass, VK_SUBPASS_CONTENTS_INLINE) ||
+					builder.bindGraphicsPipelineAndDescriptors(pass->pipelines.at(0),
+						0, 1, &descriptorSet) ||
+					builder.bindVertexBuffers(0, 1, vertexBuffers, offsets) ||
+					builder.bindIndexBuffer(indexBuffer, 0, VK_INDEX_TYPE_UINT16) ||
+					builder.drawIndexed(indices.size(), 1, 0, 0, 0) ||
+					builder.draw(3, 1, 0, 0) ||
+					builder.endRenderPass() ||
+					builder.end()) {
 				return 1;
 			}
 		}
@@ -581,7 +507,7 @@ static int mainLoop(GLFWwindow * window, language::Instance& inst) {
 		submitInfo.pWaitDstStageMask = waitStages;
 
 		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &simple.buf.at(next_image_i);
+		submitInfo.pCommandBuffers = &simple.builder.bufs.at(next_image_i);
 
 		VkSemaphore signalSemaphores[] = {renderSemaphore.vk};
 		submitInfo.signalSemaphoreCount = 1;
