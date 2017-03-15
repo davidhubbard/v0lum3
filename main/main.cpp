@@ -78,7 +78,10 @@ public:
 		: dev(inst.at(0))
 		, surface(inst.surface)
 		, pass(nullptr)
-		, cpool(dev, queueFamily) {};
+		, cpool(dev, queueFamily)
+	{
+		startTime = std::chrono::high_resolution_clock::now();
+	};
 
 	~SimplePipeline() {
 		delete pass;
@@ -117,11 +120,23 @@ public:
 		}
 	};
 
+	std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
+	unsigned frameCount = 0;
+	int timeDelta = 0;
 	void updateUniformBuffer() {
-		static auto startTime = std::chrono::high_resolution_clock::now();
-
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		float time = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0f;
+		frameCount++;
+		if (time > 1.0) {
+			fprintf(stderr, "%d fps\n", frameCount);
+			startTime = currentTime;
+			frameCount = 0;
+			timeDelta++;
+			if (timeDelta > 3) {
+				timeDelta = 0;
+			}
+		}
+		time += timeDelta;
 
 		UniformBufferObject ubo = {};
 		ubo.model = glm::rotate(glm::mat4(), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
