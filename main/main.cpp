@@ -450,12 +450,13 @@ protected:
 			VkDeviceSize offsets[] = {0};
 
 			if (builder.beginSimultaneousUse() ||
-					builder.beginRenderPass(*pass, VK_SUBPASS_CONTENTS_INLINE) ||
+					builder.beginPrimaryPass(*pass) ||
 					builder.bindGraphicsPipelineAndDescriptors(pass->pipelines.at(0),
 						0, 1, &descriptorSet) ||
-					builder.bindVertexBuffers(0, 1, vertexBuffers, offsets) ||
-					builder.bindIndexBuffer(indexBuffer, 0, VK_INDEX_TYPE_UINT16) ||
-					builder.drawIndexed(indices.size(), 1, 0, 0, 0) ||
+					builder.bindVertexBuffers(0,
+						sizeof(vertexBuffers)/sizeof(vertexBuffers[0]), vertexBuffers,
+						offsets) ||
+					builder.bindAndDraw(indices, indexBuffer, 0 /*indexBufOffset*/) ||
 					builder.draw(3, 1, 0, 0) ||
 					builder.endRenderPass() ||
 					builder.end()) {

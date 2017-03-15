@@ -635,10 +635,29 @@ public:
 		vkCmdBeginRenderPass(buf, &pass.passBeginInfo, contents);
 		return 0;
 	};
+	// beginPrimaryPass starts a RenderPass using a primary command buffer.
+	WARN_UNUSED_RESULT int beginPrimaryPass(RenderPass& pass) {
+		return beginRenderPass(pass, VK_SUBPASS_CONTENTS_INLINE);
+	};
+	// beginSecondaryPass is necessary to bind a secondary command buffer to
+	// its associated RenderPass even though it will be called from the correct
+	// primary command buffer.
+	WARN_UNUSED_RESULT int beginSecondaryPass(RenderPass& pass) {
+		return beginRenderPass(pass, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+	};
 
 	WARN_UNUSED_RESULT int nextSubpass(VkSubpassContents contents) {
 		vkCmdNextSubpass(buf, contents);
 		return 0;
+	};
+	// nextPrimarySubpass starts the next subpass, but must be in a primary
+	// command buffer.
+	WARN_UNUSED_RESULT int nextPrimarySubpass() {
+		return nextSubpass(VK_SUBPASS_CONTENTS_INLINE);
+	};
+	// nextSecondarySubpass allows a secondary command buffer to have subpasses.
+	WARN_UNUSED_RESULT int nextSecondarySubpass() {
+		return nextSubpass(VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 	};
 
 	WARN_UNUSED_RESULT int endRenderPass() {
@@ -700,9 +719,7 @@ public:
 	};
 
 
-	WARN_UNUSED_RESULT int bindIndexBuffer(
-			VkBuffer indexBuf,
-			VkDeviceSize offset,
+	WARN_UNUSED_RESULT int bindIndexBuffer(VkBuffer indexBuf, VkDeviceSize offset,
 			VkIndexType indexType) {
 		vkCmdBindIndexBuffer(buf, indexBuf, offset, indexType);
 		return 0;
@@ -719,6 +736,28 @@ public:
 			firstInstance);
 		return 0;
 	};
+	WARN_UNUSED_RESULT int bindAndDraw(const std::vector<uint16_t>& indices,
+			VkBuffer indexBuf, VkDeviceSize offset,
+			uint32_t instanceCount = 1,
+			uint32_t firstIndex = 0,
+			int32_t vertexOffset = 0,
+			uint32_t firstInstance = 0) {
+		return bindIndexBuffer(indexBuf, offset, VK_INDEX_TYPE_UINT16) ||
+			drawIndexed(indices.size(), instanceCount, firstIndex,
+				vertexOffset, firstInstance);
+	};
+	WARN_UNUSED_RESULT int bindAndDraw(const std::vector<uint32_t>& indices,
+			VkBuffer indexBuf,
+			VkDeviceSize indexBufOffset,
+			uint32_t instanceCount = 1,
+			uint32_t firstIndex = 0,
+			int32_t vertexOffset = 0,
+			uint32_t firstInstance = 0) {
+		return bindIndexBuffer(indexBuf, indexBufOffset, VK_INDEX_TYPE_UINT32) ||
+			drawIndexed(indices.size(), instanceCount, firstIndex,
+				vertexOffset, firstInstance);
+	};
+
 
 	WARN_UNUSED_RESULT int drawIndexedIndirect(
 			VkBuffer buffer,
@@ -738,6 +777,7 @@ public:
 		vkCmdDraw(buf, vertexCount, instanceCount, firstVertex, firstInstance);
 		return 0;
 	};
+
 
 	WARN_UNUSED_RESULT int drawIndirect(
 			VkBuffer buffer,
