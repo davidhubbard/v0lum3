@@ -355,6 +355,13 @@ public:
 // CommandBuilder::use() method selects which VkCommandBuffer gets recorded
 // or "built."
 // https://www.khronos.org/registry/vulkan/specs/1.0-wsi_extensions/html/vkspec.html#commandbuffers-lifecycle
+//
+// Static command buffers can also be built using this class; your application
+// may still need the vector of many VkCommandBuffers because each one will
+// bind to the renderPass (passBeginInfo contains a reference to a framebuffer,
+// which must be set up for each framebuffer in the swapChain).
+//
+// TODO: describe how to use a secondary command buffer for static draw calls.
 class CommandBuilder {
 protected:
 	CommandPool& cpool;
