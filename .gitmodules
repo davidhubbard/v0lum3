@@ -17,3 +17,6 @@
 [submodule "vendor/SPIRV-Headers"]
 	path = vendor/SPIRV-Headers
 	url = https://github.com/KhronosGroup/SPIRV-Headers.git
+[submodule "vendor/libpng"]
+	path = vendor/libpng
+	url = github:glennrp/libpng
