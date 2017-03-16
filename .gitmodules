@@ -19,4 +19,4 @@
 	url = https://github.com/KhronosGroup/SPIRV-Headers.git
 [submodule "vendor/libpng"]
 	path = vendor/libpng
-	url = github:glennrp/libpng
+	url = https://github.com/glennrp/libpng
