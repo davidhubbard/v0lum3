@@ -98,19 +98,48 @@ for submod in glfw glslang SPIRV-Tools VulkanSamples; do
     make -j$NPROC install
   )
 
-  if [ "${submod}" == "glfw" ]; then
-    # A nice benefit of installing a new vulkan.pc is that pkg-config --exists vulkan
-    # will run before even building VulkanSamples. On the other hand if the build does not succeed,
-    # pkg-config will be lying about the presence of vulkan libs!
-    if ! pkg-config --exists vulkan; then
-      echo "WARNING: lib/pkgconfig/vulkan.pc is not in \$PKG_CONFIG_PATH"
-      echo ""
-      echo "WARNING: Please type: \"export PKG_CONFIG_PATH=${PWD}/vendor/lib/pkgconfig\""
-      echo ""
-      echo "WARNING: Recommend adding the above line to your .bashrc / .cshrc / .zshrc etc."
-      exit 1
-    fi
-  fi
+  case "${submod}" in
+    "glfw")
+      # A nice benefit of installing a new vulkan.pc is that pkg-config --exists vulkan
+      # will run before even building VulkanSamples. On the other hand if the build does not succeed,
+      # pkg-config will be lying about the presence of vulkan libs!
+      if ! pkg-config --exists vulkan; then
+        echo "WARNING: lib/pkgconfig/vulkan.pc is not in \$PKG_CONFIG_PATH"
+        echo ""
+        echo "WARNING: Please type: \"export PKG_CONFIG_PATH=${PWD}/vendor/lib/pkgconfig\""
+        echo ""
+        echo "WARNING: Recommend adding the above line to your .bashrc / .cshrc / .zshrc etc."
+        exit 1
+      fi
+
+      # build libpng in parallel
+      if [ ! -f vendor/libpng/libpng-build-success ]; then
+      (
+        cd vendor/libpng
+        if ! grep -q PNG_SETJMP_SUPPORTED pngusr.dfa; then
+          cat <<EOF >>pngusr.dfa
+@#undef PNG_SETJMP_SUPPORTED
+@#define PNG_NO_SETJMP
+@#undef PNG_SIMPLIFIED_READ_SUPPORTED
+@#define PNG_NO_SIMPLIFIED_READ
+@#undef PNG_SIMPLIFIED_WRITE_SUPPORTED
+@#define PNG_NO_SIMPLIFIED_WRITE
+EOF
+          # contrib/libtests/timepng.c depends on setjmp but does not check if
+          # PNG_SETJMP_SUPPORTED is defined. Patch it out.
+          sed -i -e 's/\(defined(PNG_STDIO_SUPPORTED)\)/\1 \&\& 0/' \
+            contrib/libtests/timepng.c
+        fi
+        ./autogen.sh
+        ./configure --prefix="${PREFIX}" --disable-shared --enable-static
+        make -j$NPROC
+        make install
+        touch libpng-build-success
+      ) > /tmp/libpng-build.log 2>&1 &
+      echo $! > /tmp/libpng-build.pid
+      fi
+      ;;
+  esac
 done
 
 # update vulkan.pc with C_DEFINES generate by cmake
@@ -131,6 +160,18 @@ if diff /tmp/vulkan.pc.tmp "${PC}" >/dev/null 2>&1; then
   exit 1
 fi
 mv /tmp/vulkan.pc.tmp "${PC}"
+
+LIBPNG_BUILD_PID=$(cat /tmp/libpng-build.pid)
+if [ -n "$LIBPNG_BUILD_PID" ]; then
+  echo "still building libpng..."
+  wait $LIBPNG_BUILD_PID || true
+  rm /tmp/libpng-build.pid
+fi
+if [ ! -f vendor/libpng/libpng-build-success ]; then
+  echo ""
+  echo "Failed to build vendor/libpng. See /tmp/libpng-build.log"
+  exit 1
+fi
 
 echo ""
 echo "Success. Things to try next:"
