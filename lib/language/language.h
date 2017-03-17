@@ -68,19 +68,49 @@ namespace language {
 extern int dbg_lvl;
 extern const char VK_LAYER_LUNARG_standard_validation[];
 
-// Forward declaration of Device for Framebuffer.
+// Forward declaration of Device for ImageView and Framebuffer.
 struct Device;
+
+// ImageView wraps VkImageView. A VkImageView is to a VkImage as a
+// VkFramebuffer is to the screen: a VkImageView accesses the memory in the
+// VkImage using a specific set of format parameters.
+//
+// ImageView is set up automatically by Device. Feel free to skip to Device now.
+typedef struct ImageView {
+	ImageView(Device& dev);  // ctor is in imageview.cpp for Device definition.
+	ImageView(ImageView&&) = default;
+	ImageView(const ImageView&) = delete;
+
+	// ctorError() must be called with a valid VkImage for this to reference.
+	// Your application may customize ivci before calling ctorError().
+	WARN_UNUSED_RESULT int ctorError(Device& dev, VkImage image, VkFormat format);
+
+	VkImageViewCreateInfo info;
+	VkPtr<VkImageView> vk;
+} ImageView;
 
 // Framebuffer is the on-screen pixels and the memory behind them.
 typedef struct Framebuf {
-	Framebuf(Device& dev);  // ctor is in swapchain.cpp for Device definition.
+	Framebuf(Device& dev);  // ctor is in imageview.cpp for Device definition.
 	Framebuf(Framebuf&&) = default;
 	Framebuf(const Framebuf&) = delete;
 
+	// ctorError() must be called with a valid set of VkImageViews to attach.
+	// For your convenience resetSwapChain() sets up this->imageView to use
+	// this->image. Or provide any ImageViews you need.
+	// The layers argument to ctorError() must be the same as in each
+	// ImageView.info.layerCount.
+	WARN_UNUSED_RESULT int ctorError(
+		Device& dev,
+		VkRenderPass renderPass,
+		VkExtent2D swapChainExtent,
+		uint32_t layers,
+		const std::vector<VkImageView>& attachments);
+
 	// VkImage has no VkDestroyImage function.
 	VkImage image;
+	ImageView imageView;
 
-	VkPtr<VkImageView> imageView;
 	VkPtr<VkFramebuffer> vk;
 } Framebuf;
 
@@ -113,7 +143,7 @@ typedef struct QueueRequest {
 		dev_qfam_index = dev_qfam_i;
 		priority = 0.0;
 	}
-	virtual ~QueueRequest() {};
+	virtual ~QueueRequest();
 } QueueRequest;
 
 // QueueFamily wraps VkQueueFamilyProperties. QueueFamily also gives whether the
@@ -154,6 +184,7 @@ typedef struct Device {
 	Device() = default;
 	Device(Device&&) = default;
 	Device(const Device&) = delete;
+	virtual ~Device();
 
 	// Logical Device. Populated only after open().
 	VkPtr<VkDevice> dev{vkDestroyDevice};
@@ -200,7 +231,7 @@ typedef struct Device {
 	// resetSwapChain() re-initializes swapChain with the new sizeRequest.
 	// swapChainExtent is updated to the new sizeRequest and the entire
 	// framebufs vector may be recreated.
-	WARN_UNUSED_RESULT int resetSwapChain(
+	WARN_UNUSED_RESULT virtual int resetSwapChain(
 		VkSurfaceKHR surface, VkExtent2D sizeRequest);
 } Device;
 
@@ -327,7 +358,7 @@ public:
 	VkAllocationCallbacks * pAllocator = nullptr;
 protected:
 	// Override initDebug() if your app needs different debug settings.
-	virtual int initDebug();
+	WARN_UNUSED_RESULT virtual int initDebug();
 
 	// After devs is initialized in ctorError(), it must not be resized.
 	// Any operation on the vector that causes it to reallocate its storage
@@ -338,12 +369,12 @@ protected:
 	// Override initQueues() if your app needs more than one queue.
 	// initQueues() should call request.push_back() for at least one
 	// QueueRequest.
-	virtual int initQueues(std::vector<QueueRequest>& request);
+	WARN_UNUSED_RESULT virtual int initQueues(std::vector<QueueRequest>& request);
 
 	// Override initSurfaceFormatAndPresentMode() or just modify
 	// Device::surfaceFormats and Device::presentModes before calling
 	// open().
-	virtual int initSurfaceFormatAndPresentMode(Device& dev);
+	WARN_UNUSED_RESULT virtual int initSurfaceFormatAndPresentMode(Device& dev);
 };
 
 } // namespace language

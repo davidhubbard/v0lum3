@@ -1,0 +1,41 @@
+# Copyright (c) David Hubbard 2017. Licensed under GPLv3.
+
+config("v0lum3_config") {
+  cflags = [
+    "-Og",
+    "-ggdb",
+    "-Wall",
+    "-Wextra",
+    "-Wformat=2",
+    "-fstrict-aliasing",
+    "-Wstrict-aliasing",
+    "-fstrict-overflow",
+    "-Wstrict-overflow=5",
+    "-frtti",
+  ]
+}
+
+config("language_config") {
+  include_dirs = [ get_path_info("../..", "abspath" ) ]
+}
+
+static_library("language") {
+  sources = [
+    "debug.cpp",
+    "imageview.cpp",
+    "language.cpp",
+    "queues.cpp",
+    "requestqfams.cpp",
+    "swapchain.cpp",
+    "VkEnum.cpp",
+  ]
+
+  deps = [ "//vendor/VulkanSamples:vulkan" ]
+
+  configs -= [ "//gn:no_rtti" ]
+  public_configs = [ ":language_config" ]
+  all_dependent_configs = [ ":v0lum3_config" ]
+  public = [
+    "language.h",
+  ]
+}

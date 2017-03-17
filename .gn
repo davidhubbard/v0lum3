@@ -1,0 +1,4 @@
+# Copyright (c) David Hubbard 2017. Licensed under GPLv3.
+
+buildconfig = "//gn/BUILDCONFIG.gn"
+secondary_source = "//gn"

@@ -1,0 +1,38 @@
+# Copyright (c) David Hubbard 2017. Licensed under GPLv3.
+
+import("//vendor/glslangValidator.gni")
+
+glslangVulkanToHeader("v0lum3GLSL") {
+  sources = [
+    "main.vert",
+    "main.frag",
+  ]
+}
+
+executable("v") {
+  sources = [
+    "main.cpp",
+  ]
+
+  libs = [
+    "dl",
+  ]
+
+  deps = [
+    ":v0lum3GLSL",
+    "//lib/language",
+    "//lib/command",
+    "//vendor/glfw",
+    "//vendor/VulkanSamples:glm",
+    "//vendor/skia",
+    # dep vulkan must be after dep skia to produce the correct
+    # linker command line (because skia depends on vulkan but does not list
+    # vulkan as a dep in its BUILD.gn file)
+    "//vendor/VulkanSamples:vulkan",
+  ]
+
+  configs -= [ "//gn:no_rtti" ]
+
+  include_dirs = [ root_gen_dir ]
+}
+

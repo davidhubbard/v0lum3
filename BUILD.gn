@@ -1,0 +1,7 @@
+# Copyright (c) David Hubbard 2017. Licensed under GPLv3.
+
+group("root") {
+  deps = [
+    "//main:v",
+  ]
+}

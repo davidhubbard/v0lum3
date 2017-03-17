@@ -1,0 +1,135 @@
+# Copyright 2017 David Hubbard. All rights reserved.
+# Licensed under the GPL v3.
+#
+# I threw this together in about 10 minutes, so I my reaction is twofold:
+# I don't believe it. This works! I haven't run into any bugs yet. Also,
+# I don't believe it. Please file a bug if or when it breaks, at:
+# https://github.com/davidhubbard/v0lum3/
+
+declare_args() {
+  is_posix = is_android || is_mac || is_ios || is_tvos || is_linux
+  is_xcb_enabled = true
+  is_xlib_enabled = true
+  is_wayland_enabled = false
+  is_mir_enabled = false
+  mir_path = "mir" # TODO: locate mir installation
+}
+
+config("vulkan_config") {
+  include_dirs = [ "include" ]
+}
+
+config("glm_config") {
+  include_dirs = [ "libs" ]
+}
+
+config("loader_local_config") {
+  cflags = []
+  defines = []
+  if (is_win) {
+    defines += [
+      "VK_USE_PLATFORM_WIN32_KHR",
+      "WIN32_LEAN_AND_MEAN",
+    ]
+  } else if (is_android) {
+    cflags += [ "-Wpointer-arith" ]
+    defines += [ "VK_USE_PLATFORM_ANDROID_KHR" ]
+  } else if (is_posix) {
+    cflags += [ "-Wpointer-arith" ]
+    defines += [
+      "FALLBACK_CONFIG_DIRS=\"" + rebase_path(root_out_dir) + "\"",
+      "FALLBACK_DATA_DIRS=\"" + rebase_path(root_out_dir) + "\"",
+      "SYSCONFDIR=\"/etc\"",
+    ]
+
+    if (is_xcb_enabled) {
+      defines += [ "VK_USE_PLATFORM_XCB_KHR" ]
+    }
+    if (is_xlib_enabled) {
+      defines += [
+        "VK_USE_PLATFORM_XLIB_KHR",
+        "VK_USE_PLATFORM_XLIB_XRANDR_EXT",
+      ]
+    }
+    if (is_wayland_enabled) {
+      defines += [ "VK_USE_PLATFORM_WAYLAND_KHR" ]
+    }
+    if (is_mir_enabled) {
+      defines += [ "VK_USE_PLATFORM_MIR_KHR" ]
+      include_dirs += [ mir_path ]
+    }
+  } else {
+    assert(false, "Unsupported platform.")
+  }
+}
+
+copy("vulkan_headers") {
+  # this target is only needed for downstream BUILD.gn files that expect
+  # the vulkan SDK to be deployed with headers and libs in the same dir
+  # (in particular, skia has only skia_vulkan_sdk)
+  sources = [
+    "include/vulkan/vk_icd.h",
+    "include/vulkan/vk_layer.h",
+    "include/vulkan/vk_platform.h",
+    "include/vulkan/vk_sdk_platform.h",
+    "include/vulkan/vulkan.h",
+    "include/vulkan/vulkan.hpp",
+  ]
+  outputs = [ "$root_build_dir/{{source_target_relative}}" ]
+}
+
+shared_library("vulkan") {
+  sources = [
+    "loader/loader.c",
+    "loader/loader.h",
+    "loader/vk_loader_platform.h",
+    "loader/vk_loader_layer.h",
+    "loader/trampoline.c",
+    "loader/wsi.c",
+    "loader/wsi.h",
+    "loader/extensions.c",
+    "loader/extensions.h",
+    "loader/debug_report.c",
+    "loader/debug_report.h",
+    "loader/table_ops.h",
+    "loader/gpa_helper.h",
+    "loader/cJSON.c",
+    "loader/cJSON.h",
+    "loader/murmurhash.c",
+    "loader/murmurhash.h",
+
+    # TODO: these are split out as a separate dll on windows
+    "loader/dev_ext_trampoline.c",
+    "loader/phys_dev_ext.c",
+  ]
+
+  if (is_xcb_enabled) {
+    libs = [
+      "X11-xcb",
+      "xcb",
+    ]
+  }
+  if (is_xlib_enabled) {
+    # no libs needed
+  }
+  if (is_wayland_enabled) {
+    libs = [
+      "wayland-client",
+      "wayland-server",
+      "wayland-egl",
+      "wayland-cursor",
+    ]
+  }
+  if (is_mir_enabled) {
+    libs = [ "mirclient" ]
+  }
+
+  deps = [ ":vulkan_headers" ]
+  public_configs = [ ":vulkan_config" ]
+  configs += [ ":loader_local_config" ]
+}
+
+group("glm") {
+  public_configs = [ ":glm_config" ]
+}
+

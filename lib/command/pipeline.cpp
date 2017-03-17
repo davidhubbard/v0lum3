@@ -234,19 +234,8 @@ int Pipeline::init(RenderPass& renderPass, size_t subpass_i, PipelineCreateInfo&
 	//
 	for (size_t i = 0; i < pci.dev.framebufs.size(); i++) {
 		auto& framebuf = pci.dev.framebufs.at(i);
-		VkImageView attachments[] = { framebuf.imageView };
-
-		VkFramebufferCreateInfo VkInit(fbci);
-		fbci.renderPass = renderPass.vk;
-		fbci.attachmentCount = sizeof(attachments) / sizeof(attachments[0]);
-		fbci.pAttachments = attachments;
-		fbci.width = pci.dev.swapChainExtent.width;
-		fbci.height = pci.dev.swapChainExtent.height;
-		fbci.layers = 1;  // Same as layers used in imageView.
-
-		v = vkCreateFramebuffer(pci.dev.dev, &fbci, nullptr, &framebuf.vk);
-		if (v != VK_SUCCESS) {
-			fprintf(stderr, "vkCreateFramebuffer() returned %d (%s)\n", v, string_VkResult(v));
+		if (framebuf.ctorError(pci.dev, renderPass.vk, pci.dev.swapChainExtent, 1,
+				std::vector<VkImageView>{framebuf.imageView.vk})) {
 			return 1;
 		}
 	}

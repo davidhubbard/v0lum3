@@ -8,6 +8,10 @@
 
 namespace language {
 
+QueueRequest::~QueueRequest()
+{
+};
+
 std::vector<QueueRequest> Instance::requestQfams(
 		size_t dev_i, std::set<SurfaceSupport> support) {
 	auto& dev = devs.at(dev_i);

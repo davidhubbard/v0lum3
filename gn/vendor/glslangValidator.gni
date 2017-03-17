@@ -1,0 +1,48 @@
+# Copyright (c) David Hubbard 2017. Licensed under GPLv3.
+# glslangValidator compiles GLSL shader source into SPIR-V binary
+# Each file in sources must end in one of:
+#   .conf   optional config to glslangValidator
+#   .vert   for a vertex shader
+#   .tesc   for a tessellation control shader
+#   .tese   for a tessellation evaluation shader
+#   .geom   for a geometry shader
+#   .frag   for a fragment shader
+#   .comp   for a compute shader
+#
+# The output file is the name of the input file with ".spv" appended.
+template("glslangVulkan") {
+  forward_variables_from(invoker, "*")
+  action_foreach(target_name) {
+    outputs = [ target_gen_dir + "/{{source_file_part}}.spv" ]
+
+    script = "//gn/vendor/glslangValidator.py"
+    args = [
+      "-V",
+      "-o",
+      "{{source_gen_dir}}/{{source_file_part}}.spv",
+      "{{source}}",
+    ]
+
+    deps = [ "//vendor/glslang:glslangValidator" ]
+  }
+}
+
+# Adds --variable-name to the command line.
+template("glslangVulkanToHeader") {
+  forward_variables_from(invoker, "*")
+  action_foreach(target_name) {
+    outputs = [ target_gen_dir + "/{{source_file_part}}.h" ]
+
+    script = "//gn/vendor/glslangValidator.py"
+    args = [
+      "-V",
+      "--variable-name",
+      "spv_{{source_file_part}}",
+      "-o",
+      "{{source_gen_dir}}/{{source_file_part}}.h",
+      "{{source}}",
+    ]
+
+    deps = [ "//vendor/glslang:glslangValidator" ]
+  }
+}

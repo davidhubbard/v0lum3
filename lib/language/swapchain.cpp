@@ -236,25 +236,7 @@ int Device::resetSwapChain(VkSurfaceKHR surface, VkExtent2D sizeRequest) {
 		framebufs.emplace_back(*this);
 		auto& framebuf = *(framebufs.end() - 1);
 		framebuf.image = vkImages->at(i);
-
-		VkImageViewCreateInfo VkInit(ivci);
-		ivci.image = framebuf.image;
-		ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		ivci.format = format.format;
-		ivci.components = {
-				VK_COMPONENT_SWIZZLE_R,
-				VK_COMPONENT_SWIZZLE_G,
-				VK_COMPONENT_SWIZZLE_B,
-				VK_COMPONENT_SWIZZLE_A,
-			};
-		ivci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		ivci.subresourceRange.baseMipLevel = 0;  // No mipmapping.
-		ivci.subresourceRange.levelCount = 1;
-		ivci.subresourceRange.baseArrayLayer = 0;
-		ivci.subresourceRange.layerCount = 1;  // Might be 2 for stereo displays.
-		v = vkCreateImageView(dev, &ivci, dev.allocator, &framebuf.imageView);
-		if (v != VK_SUCCESS) {
-			fprintf(stderr, "vkCreateImageView[%zu] returned %d (%s)\n", i, v, string_VkResult(v));
+		if (framebuf.imageView.ctorError(*this, framebuf.image, format.format)) {
 			delete vkImages;
 			return 1;
 		}
@@ -262,13 +244,5 @@ int Device::resetSwapChain(VkSurfaceKHR surface, VkExtent2D sizeRequest) {
 	delete vkImages;
 	return 0;
 }
-
-// Framebuf::Framebuf() defined here to have full Device definition.
-Framebuf::Framebuf(Device& dev)
-		: imageView(dev.dev, vkDestroyImageView)
-		, vk(dev.dev, vkDestroyFramebuffer) {
-	imageView.allocator = dev.dev.allocator;
-	vk.allocator = dev.dev.allocator;
-};
 
 }  // namespace language

@@ -41,6 +41,9 @@ typedef struct Shader {
 	Shader(const Shader& other) = delete;
 
 	WARN_UNUSED_RESULT int loadSPV(const void * spvBegin, const void * spvEnd);
+	WARN_UNUSED_RESULT int loadSPV(const void * spvBegin, size_t len) {
+		return loadSPV(spvBegin, (const char *) spvBegin + len);
+	}
 	WARN_UNUSED_RESULT int loadSPV(const std::vector<char>& spv) {
 		return loadSPV(&spv.begin()[0], &spv.end()[0]);
 	}
@@ -165,6 +168,7 @@ typedef struct Pipeline {
 	Pipeline(language::Device& dev);
 	Pipeline(Pipeline&&) = default;
 	Pipeline(const Pipeline& other) = delete;
+	virtual ~Pipeline() {};
 
 	VkPtr<VkPipelineLayout> pipelineLayout;
 	VkPtr<VkPipeline> vk;
@@ -574,6 +578,15 @@ public:
 			regions.size(), regions.data());
 		return 0;
 	};
+	WARN_UNUSED_RESULT int copyImage(
+			VkImage src,
+			VkImage dst,
+			std::vector<VkImageCopy>& regions) {
+		return copyImage(
+			src, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			regions);
+	};
 
 
 	WARN_UNUSED_RESULT int blitImage(
@@ -842,6 +855,27 @@ public:
 		return 0;
 	};
 
+
+	struct BarrierSet {
+		std::vector<VkMemoryBarrier> mem;
+		std::vector<VkBufferMemoryBarrier> buf;
+		std::vector<VkImageMemoryBarrier> img;
+	};
+
+	WARN_UNUSED_RESULT int barrier(
+			BarrierSet& bset,
+			VkPipelineStageFlags srcStageMask,
+			VkPipelineStageFlags dstStageMask,
+			VkDependencyFlags dependencyFlags = 0) {
+		vkCmdPipelineBarrier(buf,
+			srcStageMask,
+			dstStageMask,
+			dependencyFlags,
+			bset.mem.size(), bset.mem.data(),
+			bset.buf.size(), bset.buf.data(),
+			bset.img.size(), bset.img.data());
+		return 0;
+	}
 
 	//
 	// The following commands require the currently bound pipeline had

@@ -14,7 +14,8 @@
 #include <glm/vec4.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include "objsyms.h"
+#include "main/main.vert.h"
+#include "main/main.frag.h"
 
 #include <array>
 #include <chrono>
@@ -134,9 +135,7 @@ public:
 			startTime = currentTime;
 			frameCount = 0;
 			timeDelta++;
-			if (timeDelta > 3) {
-				timeDelta = 0;
-			}
+			timeDelta &= 3;
 		}
 		time += timeDelta;
 
@@ -406,11 +405,11 @@ protected:
 
 		command::PipelineCreateInfo pipe0params(dev, *pass);
 		if (pipe0params.addShader(VK_SHADER_STAGE_VERTEX_BIT, "main")
-				.loadSPV(obj_main_vert_spv_start, obj_main_vert_spv_end)) {
+				.loadSPV(spv_main_vert, sizeof(spv_main_vert))) {
 			return 1;
 		}
 		if (pipe0params.addShader(VK_SHADER_STAGE_FRAGMENT_BIT, "main")
-				.loadSPV(obj_main_frag_spv_start, obj_main_frag_spv_end)) {
+				.loadSPV(spv_main_frag, sizeof(spv_main_frag))) {
 			return 1;
 		}
 
@@ -424,11 +423,11 @@ protected:
 
 		pipe0params.setLayouts.push_back(descriptorSetLayout);
 
-		if (0) fprintf(stderr, "renderPass.init: "
+		fprintf(stderr, "renderPass.init: "
 			"main.vert.spv (0x%zx bytes) main.frag.spv (0x%zx bytes)"
 			" wxh=%dx%d\n",
-			(size_t) (obj_main_vert_spv_end - obj_main_vert_spv_start),
-			(size_t) (obj_main_frag_spv_end - obj_main_frag_spv_start),
+			sizeof(spv_main_vert),
+			sizeof(spv_main_frag),
 			dev.swapChainExtent.width, dev.swapChainExtent.height);
 
 		pass->pipelines.emplace_back(dev);
@@ -541,6 +540,9 @@ static VkResult createWindowSurface(language::Instance& inst, void * window) {
 static int runLanguage(GLFWwindow * window, VkExtent2D size) {
 	unsigned int glfwExtensionCount = 0;
 	const char ** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+	fprintf(stderr, "require %d extensions\n", glfwExtensionCount);
+	for (unsigned i = 0; i < glfwExtensionCount; i++)
+		fprintf(stderr, "  \"%s\"\n", glfwExtensions[i]);
 	language::Instance inst;
 	if (inst.ctorError(glfwExtensions, glfwExtensionCount,
 			createWindowSurface, window)) {
@@ -553,12 +555,17 @@ static int runLanguage(GLFWwindow * window, VkExtent2D size) {
 	return mainLoop(window, inst);
 }
 
+static void printGLFWerr(int code, const char * msg) {
+	fprintf(stderr, "glfw error %x: %s\n", code, msg);
+}
+
 static int runGLFW() {
 	glfwInit();
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	VkExtent2D size{800, 600};
 	GLFWwindow * window = glfwCreateWindow(size.width, size.height,
 		"Vulkan window", nullptr, nullptr);
+	glfwSetErrorCallback(printGLFWerr);
 	int r = runLanguage(window, size);
 	glfwDestroyWindow(window);
 	glfwTerminate();
