@@ -21,10 +21,12 @@ ImageView::ImageView(Device& dev) : vk(dev.dev, vkDestroyImageView)
 			VK_COMPONENT_SWIZZLE_B,
 			VK_COMPONENT_SWIZZLE_A,
 		};
+	// info.subresourceRange could be set up using range1MipAndColor() in
+	// <lib/science/science.h> -- but it would be a circular dependency.
 	info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	info.subresourceRange.baseMipLevel = 0;  // No mipmapping.
-	info.subresourceRange.levelCount = 1;
-	info.subresourceRange.baseArrayLayer = 0;
+	info.subresourceRange.baseMipLevel = 0;  // Mipmap level offset (none).
+	info.subresourceRange.levelCount = 1;  // There is 1 mipmap (no mipmapping).
+	info.subresourceRange.baseArrayLayer = 0;  // Offset in layerCount layers.
 	info.subresourceRange.layerCount = 1;  // Might be 2 for stereo displays.
 };
 

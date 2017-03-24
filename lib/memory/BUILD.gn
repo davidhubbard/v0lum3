@@ -1,0 +1,23 @@
+# Copyright (c) David Hubbard 2017. Licensed under GPLv3.
+
+config("memory_config") {
+  include_dirs = [ get_path_info("../..", "abspath" ) ]
+}
+
+static_library("memory") {
+  sources = [
+    "memory.cpp",
+  ]
+
+  deps = [
+    "//lib/language",
+    "//lib/science",
+    "//vendor/VulkanSamples:vulkan",
+  ]
+
+  configs -= [ "//gn:no_rtti" ]
+  public_configs = [ ":memory_config" ]
+  public = [
+    "memory.h",
+  ]
+}

@@ -4,9 +4,23 @@
  * lib/command is part of the v0lum3 project.
  * This library is called "command" as a homage to Star Trek First Contact.
  * Like the Vulcan High Command, this library sends out the commands.
+ *
+ * This library has 3 sub-categories, all interdependent:
+ *
+ * 1. The RenderPass uses these classes:
+ *    * RenderPass
+ *    * Pipeline
+ *    * PipelineCreateInfo
+ *    * PipelineStage
+ *    * Shader
+ *
+ * 2. The Semaphore (with PresentSemaphore), Fence, and Event classes.
+ *
+ * 3. The CommandPool and CommandBuilder classes.
  */
 
 #include <lib/language/language.h>
+#include <lib/language/VkPtr.h>
 #include <lib/language/VkInit.h>
 #include <string>
 
@@ -573,7 +587,7 @@ public:
 			VkImageLayout srcLayout,
 			VkImage dst,
 			VkImageLayout dstLayout,
-			std::vector<VkImageCopy>& regions) {
+			const std::vector<VkImageCopy>& regions) {
 		vkCmdCopyImage(buf, src, srcLayout, dst, dstLayout,
 			regions.size(), regions.data());
 		return 0;
@@ -581,7 +595,7 @@ public:
 	WARN_UNUSED_RESULT int copyImage(
 			VkImage src,
 			VkImage dst,
-			std::vector<VkImageCopy>& regions) {
+			const std::vector<VkImageCopy>& regions) {
 		return copyImage(
 			src, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 			dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -867,6 +881,32 @@ public:
 			VkPipelineStageFlags srcStageMask,
 			VkPipelineStageFlags dstStageMask,
 			VkDependencyFlags dependencyFlags = 0) {
+		bool found = false;
+		for (auto& mem : bset.mem) {
+			found = true;
+			if (mem.sType != VK_STRUCTURE_TYPE_MEMORY_BARRIER) {
+				fprintf(stderr, "BarrierSet::mem contains invalid VkMemoryBarrier\n");
+				return 1;
+			}
+		}
+		for (auto& buf : bset.buf) {
+			found = true;
+			if (!buf.buffer) {
+				fprintf(stderr, "BarrierSet::buf contains invalid VkBuffer\n");
+				return 1;
+			}
+		}
+		for (auto& img : bset.img) {
+			found = true;
+			if (!img.image) {
+				fprintf(stderr, "BarrierSet::img contains invalid VkImage\n");
+				return 1;
+			}
+		}
+		if (!found) {
+			fprintf(stderr, "All {mem,buf,img} were empty in BarrierSet.\n");
+			return 1;
+		}
 		vkCmdPipelineBarrier(buf,
 			srcStageMask,
 			dstStageMask,

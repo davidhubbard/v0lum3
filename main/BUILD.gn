@@ -22,6 +22,8 @@ executable("v") {
     ":v0lum3GLSL",
     "//lib/language",
     "//lib/command",
+    "//lib/science",
+    "//lib/memory",
     "//vendor/glfw",
     "//vendor/VulkanSamples:glm",
     "//vendor/skia",

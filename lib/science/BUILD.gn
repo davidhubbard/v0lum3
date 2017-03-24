@@ -1,0 +1,22 @@
+# Copyright (c) David Hubbard 2017. Licensed under GPLv3.
+
+config("science_config") {
+  include_dirs = [ get_path_info("../..", "abspath" ) ]
+}
+
+static_library("science") {
+  sources = [
+    "science.cpp",
+  ]
+
+  deps = [
+    "//lib/language",
+    "//vendor/VulkanSamples:vulkan",
+  ]
+
+  configs -= [ "//gn:no_rtti" ]
+  public_configs = [ ":science_config" ]
+  public = [
+    "science.h",
+  ]
+}

@@ -2,3 +2,7 @@
 
 buildconfig = "//gn/BUILDCONFIG.gn"
 secondary_source = "//gn"
+
+default_args = {
+  skia_use_system_libjpeg_turbo = false
+}

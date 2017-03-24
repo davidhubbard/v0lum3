@@ -82,7 +82,7 @@ typedef struct ImageView {
 	ImageView(const ImageView&) = delete;
 
 	// ctorError() must be called with a valid VkImage for this to reference.
-	// Your application may customize ivci before calling ctorError().
+	// Your application may customize this->info before calling ctorError().
 	WARN_UNUSED_RESULT int ctorError(Device& dev, VkImage image, VkFormat format);
 
 	VkImageViewCreateInfo info;
@@ -356,6 +356,7 @@ public:
 	// pAllocator defaults to nullptr. Your application can install a custom
 	// allocator before calling ctorError().
 	VkAllocationCallbacks * pAllocator = nullptr;
+
 protected:
 	// Override initDebug() if your app needs different debug settings.
 	WARN_UNUSED_RESULT virtual int initDebug();

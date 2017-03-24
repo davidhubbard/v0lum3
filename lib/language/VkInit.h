@@ -196,5 +196,25 @@ inline void _VkInit(VkCommandBufferBeginInfo &cbbi) {
 	cbbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 }
 
+inline void _VkInit(VkMemoryAllocateInfo &mai) {
+	memset(&mai, 0, sizeof(mai));
+	mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+}
+
+inline void _VkInit(VkBufferCreateInfo &bci) {
+	memset(&bci, 0, sizeof(bci));
+	bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+}
+
+inline void _VkInit(VkImageCreateInfo &ici) {
+	memset(&ici, 0, sizeof(ici));
+	ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+}
+
+inline void _VkInit(VkImageMemoryBarrier &imb) {
+	memset(&imb, 0, sizeof(imb));
+	imb.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+}
+
 }  // namespace internal
 }  // namespace language
