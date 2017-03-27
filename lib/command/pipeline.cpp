@@ -203,11 +203,12 @@ int Pipeline::init(RenderPass& renderPass, size_t subpass_i, PipelineCreateInfo&
 
 	VkGraphicsPipelineCreateInfo VkInit(p);
 	std::vector<VkPipelineShaderStageCreateInfo> stagecis;
-	for (auto& stage : pci.stages) {
+	stageName.resize(pci.stages.size());
+	for (size_t i = 0; i < pci.stages.size(); i++) {
+		auto& stage = pci.stages.at(i);
+		stageName.at(i) = stage.entryPointName;
 		stage.sci.module = renderPass.shaders.at(stage.shader_i).vk;
-		stage.sci.pName = stage.entryPointName.c_str();
-		//fprintf(stderr, "Pipeline::init: stage[%zu] \"%p\"\n", stagecis.size(), stage.sci.pName);
-		//fprintf(stderr, "Pipeline::init:      [%zu] \"%s\"\n", stagecis.size(), stage.sci.pName);
+		stage.sci.pName = stageName.at(i).c_str();
 		stagecis.push_back(stage.sci);
 	}
 	p.stageCount = stagecis.size();

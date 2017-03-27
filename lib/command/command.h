@@ -189,6 +189,9 @@ typedef struct Pipeline {
 
 protected:
 	friend struct RenderPass;
+	// Workaround bug in NVidia driver that driver does not keep a copy of the
+	// VkPipelineShaderStageCreateInfo pName contents, just the pointer.
+	std::vector<std::string> stageName;
 
 	// init() sets up shaders (and references to them in pci.stages), and
 	// creates a VkPipeline. The parent renderPass and this Pipeline's
