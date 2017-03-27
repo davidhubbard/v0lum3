@@ -7,6 +7,7 @@
  */
 
 #include <lib/language/language.h>
+#include <lib/command/command.h>
 #include <lib/language/VkInit.h>
 
 namespace memory {
@@ -90,9 +91,25 @@ typedef struct Image {
 	WARN_UNUSED_RESULT int ctorError(language::Device& dev,
 		VkMemoryPropertyFlags props);
 
-	WARN_UNUSED_RESULT int ctorDeviceLocal(language::Device& dev) {
+	WARN_UNUSED_RESULT int ctorDeviceLocalSampled(language::Device& dev) {
 		info.tiling = VK_IMAGE_TILING_OPTIMAL;
 		info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		return ctorError(dev, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	};
+
+	WARN_UNUSED_RESULT int ctorDeviceLocalDepth(
+			language::Device& dev,
+			const std::vector<VkFormat>& formatChoices) {
+		info.tiling = VK_IMAGE_TILING_OPTIMAL;
+		info.format = dev.chooseFormat(
+			info.tiling, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT,
+			formatChoices);
+		if (info.format == VK_FORMAT_UNDEFINED) {
+			fprintf(stderr, "ctorDeviceLocalDepth: none of formatChoices chosen.\n");
+			return 1;
+		}
+		info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		return ctorError(dev, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	};
@@ -227,5 +244,58 @@ typedef struct MemoryRequirements {
 	VkMemoryAllocateInfo vkalloc;
 	language::Device& dev;
 } MemoryRequirements;
+
+
+// Sampler contains an Image, the ImageView, and the VkSampler, and has
+// convenience methods for passing the VkSampler to descriptor sets and shaders.
+typedef struct Sampler {
+	// Construct a Sampler with info set to defaults (set to NEAREST mode,
+	// which looks very blocky / pixellated).
+	Sampler(language::Device& dev)
+		: image{dev}
+		, imageView{dev}
+		, vk{dev.dev, vkDestroySampler}
+	{
+		VkOverwrite(info);
+		//info.magFilter = VK_FILTER_NEAREST;
+		//info.minFilter = VK_FILTER_NEAREST;
+		//info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		//info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		//info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		info.anisotropyEnable = VK_TRUE;
+		info.maxAnisotropy = dev.physProp.limits.maxSamplerAnisotropy;
+		info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+		info.unnormalizedCoordinates = VK_FALSE;
+		info.compareEnable = VK_FALSE;
+		info.compareOp = VK_COMPARE_OP_ALWAYS;
+	};
+
+	// TODO: add a ctorError() method to construct vk, the Image (and bind it),
+	// and the ImageView. Then just return. The caller can use the (host-visible)
+	// Image. The caller must manually transition the image to a shader layout.
+
+	// ctorError() constructs vk, the Image, and ImageView. It enqueues calls on
+	// command::CommandBuilder 'builder' to do layout transitions and copyImage().
+	// The Image.info.{extent,format} are set to src.info.{extent,format}.
+	// Also src.currentLayout is modified, which does not actually happen until
+	// the command builder is submitted.
+	WARN_UNUSED_RESULT int ctorError(
+		language::Device& dev,
+		command::CommandBuilder& builder,
+		Image& src);
+
+	// toDescriptor is a convenience method to add this Sampler to a descriptor
+	// set.
+	void toDescriptor(VkDescriptorImageInfo * imageInfo) {
+		imageInfo->imageLayout = image.currentLayout;
+		imageInfo->imageView = imageView.vk;
+		imageInfo->sampler = vk;
+	};
+
+	Image image;
+	language::ImageView imageView;
+	VkSamplerCreateInfo info;
+	VkPtr<VkSampler> vk;
+} Sampler;
 
 } // namespace memory

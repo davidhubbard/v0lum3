@@ -89,27 +89,44 @@ typedef struct ImageView {
 	VkPtr<VkImageView> vk;
 } ImageView;
 
-// Framebuffer is the on-screen pixels and the memory behind them.
+// Framebuf is the on-screen pixels and the memory behind them.
+//
+// Although you do not need to use it directly, its lifecycle is:
+// 1. vector<Framebuf> framebufs are created in Device as part of
+//    Instance::ctorError(). The object contains only zeroes at this point and
+//    should not be used.
+// 2. Instance::open() calls resetSwapChain() which populates
+//    Framebuf::attachments with one VkImageView: Framebuf::imageView0 pointing
+//    to Framebuf::image. Framebuf::image is one frame buffer contained in the
+//    Device::swapChain, and Device::framebufs holds all the Framebuf objects
+//    which make up Device::swapChain.
+// 3. Your application can customize Framebuf before calling Pipeline::init().
+// 4. Your application should call Pipeline::init(), which calls
+//    Framebuf::ctorError().
+// 5. Framebuf::ctorError() consumes Framebuf::attachments.
+// 6. Later, your application may call resetSwapChain() again if the swapChain
+//    extent needs to change. This resets all Framebuf::attachments, so your
+//    application should repopulate them immediately after. Typically the
+//    attachments setup code goes in a subroutine to be called after
+//    Instance::open() and after Device::resetSwapChain().
 typedef struct Framebuf {
 	Framebuf(Device& dev);  // ctor is in imageview.cpp for Device definition.
 	Framebuf(Framebuf&&) = default;
 	Framebuf(const Framebuf&) = delete;
 
-	// ctorError() must be called with a valid set of VkImageViews to attach.
-	// For your convenience resetSwapChain() sets up this->imageView to use
-	// this->image. Or provide any ImageViews you need.
-	// The layers argument to ctorError() must be the same as in each
-	// ImageView.info.layerCount.
+	// ctorError() creates the VkFramebuffer, typically called from
+	// Pipeline::init() in <lib/command/command.h>.
 	WARN_UNUSED_RESULT int ctorError(
 		Device& dev,
 		VkRenderPass renderPass,
-		VkExtent2D swapChainExtent,
-		uint32_t layers,
-		const std::vector<VkImageView>& attachments);
+		VkExtent2D swapChainExtent);
 
-	// VkImage has no VkDestroyImage function.
+	// Image from Device::swapChain. VkImage has no VkDestroyImage function.
 	VkImage image;
-	ImageView imageView;
+	ImageView imageView0;
+	// attachments must be created with identical
+	// ImageView::info.subresourceRange.layerCount.
+	std::vector<VkImageView> attachments;
 
 	VkPtr<VkFramebuffer> vk;
 } Framebuf;
@@ -220,8 +237,58 @@ typedef struct Device {
 	// Present mode to use if vsync is on. Populated after ctorError().
 	VkPresentModeKHR vsyncMode = (VkPresentModeKHR) 0;
 	VkExtent2D swapChainExtent;
+
+	// aspectRatio is a convenience method to compute the aspect ratio of the
+	// swapChain.
 	float aspectRatio() const {
 		return swapChainExtent.width / (float) swapChainExtent.height;
+	};
+
+	// formatProperties is a convenience wrapper around
+	// vkGetPhysicalDeviceFormatProperties.
+	WARN_UNUSED_RESULT VkFormatProperties formatProperties(VkFormat format) {
+		VkFormatProperties props;
+		vkGetPhysicalDeviceFormatProperties(phys, format, &props);
+		return props;
+	};
+
+	// chooseFormat is a convenience method to select the first matching format
+	// that has the given tiling and feature flags.
+	// If no format meets the criteria, VK_FORMAT_UNDEFINED is returned.
+	WARN_UNUSED_RESULT VkFormat chooseFormat(
+		VkImageTiling tiling,
+		VkFormatFeatureFlags flags,
+		const std::vector<VkFormat>& choices)
+	{
+		switch (tiling) {
+		case VK_IMAGE_TILING_LINEAR:
+			for (auto format : choices) {
+				VkFormatProperties props = formatProperties(format);
+				if ((props.linearTilingFeatures & flags) == flags) {
+					return format;
+				}
+			}
+			break;
+		case VK_IMAGE_TILING_OPTIMAL:
+			for (auto format : choices) {
+				VkFormatProperties props = formatProperties(format);
+				if ((props.optimalTilingFeatures & flags) == flags) {
+					return format;
+				}
+			}
+			break;
+		case VK_IMAGE_TILING_RANGE_SIZE:
+			fprintf(stderr, "_RANGE_SIZE enum values are placeholders only. "
+				"This should never happen.");
+			exit(1);
+			break;
+		case VK_IMAGE_TILING_MAX_ENUM:
+			fprintf(stderr, "_MAX_ENUM enum values are placeholders only. "
+				"This should never happen.");
+			exit(1);
+			break;
+		}
+		return VK_FORMAT_UNDEFINED;
 	};
 
 	// Instance::open() calls resetSwapChain() so swapChain is valid after open().
@@ -230,7 +297,7 @@ typedef struct Device {
 
 	// resetSwapChain() re-initializes swapChain with the new sizeRequest.
 	// swapChainExtent is updated to the new sizeRequest and the entire
-	// framebufs vector may be recreated.
+	// framebufs vector is recreated.
 	WARN_UNUSED_RESULT virtual int resetSwapChain(
 		VkSurfaceKHR surface, VkExtent2D sizeRequest);
 } Device;

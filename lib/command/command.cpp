@@ -6,30 +6,11 @@ namespace command {
 
 RenderPass::RenderPass(language::Device& dev)
 		: vk{dev.dev, vkDestroyRenderPass}
-		, passBeginClearColor{0.0f, 0.0f, 0.0f, 1.0f} {
-	VkAttachmentDescription VkInit(ad);
-	ad.format = dev.format.format;
-	ad.samples = VK_SAMPLE_COUNT_1_BIT;
-	ad.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	ad.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	ad.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	ad.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-
-	// This color attachment (the VkImage in the Framebuffer) will be transitioned
-	// automatically just before the RenderPass. It will be transitioned from...
-	ad.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	// (VK_IMAGE_LAYOUT_UNDEFINED meaning throw away any data in the Framebuffer)
-	//
-	// Then the RenderPass is performed.
-	//
-	// Then after the RenderPass ends, automatically transition the Framebuffer
-	// VkImage to:
-	ad.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-	// (The above are default values. Customize as needed for your application.)
-	colorAttaches.push_back(ad);
-
+{
 	VkOverwrite(rpci);
 	VkOverwrite(passBeginInfo);
+	passBeginClearColors.emplace_back();
+	setClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 int RenderPass::getSubpassDeps(size_t subpass_i,
@@ -104,8 +85,10 @@ int RenderPass::init(std::vector<PipelineCreateInfo> pcis) {
 	}
 
 	language::Device * checkDevice = &pcis.at(0).dev;
-	std::vector<VkSubpassDescription> only_vk_subpasses;
-	std::vector<VkSubpassDependency> only_vk_deps;
+	std::vector<VkAttachmentDescription> attachmentVk;
+	std::vector<VkAttachmentReference> attachmentRefVk;
+	std::vector<VkSubpassDescription> subpassVk;
+	std::vector<VkSubpassDependency> depVk;
 	for (size_t subpass_i = 0; subpass_i < pcis.size(); subpass_i++) {
 		auto& pci = pcis.at(subpass_i);
 		if (pci.stages.empty()) {
@@ -120,20 +103,63 @@ int RenderPass::init(std::vector<PipelineCreateInfo> pcis) {
 			return 1;
 		}
 
-		pci.subpassDesc.colorAttachmentCount = pci.colorAttaches.size();
-		pci.subpassDesc.pColorAttachments = pci.colorAttaches.data();
-		only_vk_subpasses.push_back(pci.subpassDesc);
-		if (getSubpassDeps(subpass_i, pcis, only_vk_deps)) {
+		// Bookmark where the pci.attach data will be saved in attachmentRefs.
+		auto prevRefSize = attachmentRefVk.size();
+		VkAttachmentReference depthRef;
+		int depthRefIndex = -1;
+		for (size_t attach_i = 0; attach_i < pci.attach.size(); attach_i++) {
+			auto& a = pci.attach.at(attach_i);
+
+			// Save each a.refvk into attachmentRefVk, each a.vk into attachmentVk.
+			// Up to one depth buffer is added to attachmentRefVk much later.
+			if (a.refvk.layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+				if (depthRefIndex != -1) {
+					fprintf(stderr, "PipelineCreateInfo[%zu].attach[%zu] and "
+						"attach[%d] are both DEPTH. Can only have one!\n",
+						subpass_i, attach_i, depthRefIndex);
+					return 1;
+				}
+				depthRefIndex = attach_i;
+				depthRef = a.refvk;
+			} else {
+				a.refvk.attachment = attachmentVk.size();
+				attachmentRefVk.emplace_back(a.refvk);
+				attachmentVk.emplace_back(a.vk);
+			}
+			if (attachmentRefVk.size() != attachmentVk.size()) {
+				fprintf(stderr, "BUG: attachmentVk and attachmentRefVk out of sync\n");
+				exit(1);
+				return 1;
+			}
+		}
+
+		// Write attachmentRefVk[prevRefSize:] to pci.subpassDesc.
+		// Note that these are ONLY color attachments. depthRef is left out.
+		pci.subpassDesc.colorAttachmentCount = attachmentRefVk.size() - prevRefSize;
+		pci.subpassDesc.pColorAttachments = attachmentRefVk.data() + prevRefSize;
+
+		// Write depthRef last.
+		if (depthRefIndex != -1) {
+			depthRef.attachment = attachmentVk.size();
+			pci.attach.at(depthRefIndex).refvk.attachment = attachmentVk.size();
+			attachmentRefVk.emplace_back(depthRef);
+			attachmentVk.emplace_back(pci.attach.at(depthRefIndex).vk);
+			pci.subpassDesc.pDepthStencilAttachment = &*(attachmentRefVk.end() - 1);
+		}
+
+		// Save pci.subpassDesc into only_vk_subpasses.
+		subpassVk.push_back(pci.subpassDesc);
+		if (getSubpassDeps(subpass_i, pcis, depVk)) {
 			return 1;
 		}
 	}
-	rpci.attachmentCount = colorAttaches.size();
-	rpci.pAttachments = colorAttaches.data();
-	rpci.subpassCount = only_vk_subpasses.size();
-	rpci.pSubpasses = only_vk_subpasses.data();
+	rpci.attachmentCount = attachmentVk.size();
+	rpci.pAttachments = attachmentVk.data();
+	rpci.subpassCount = subpassVk.size();
+	rpci.pSubpasses = subpassVk.data();
 
-	rpci.dependencyCount = only_vk_deps.size();
-	rpci.pDependencies = only_vk_deps.data();
+	rpci.dependencyCount = depVk.size();
+	rpci.pDependencies = depVk.data();
 
 	VkResult v = vkCreateRenderPass(checkDevice->dev, &rpci, nullptr, &vk);
 	if (v != VK_SUCCESS) {
@@ -155,10 +181,11 @@ int RenderPass::init(std::vector<PipelineCreateInfo> pcis) {
 	passBeginInfo.renderArea.offset = {0, 0};
 	passBeginInfo.renderArea.extent = checkDevice->swapChainExtent;
 
-	passBeginInfo.clearValueCount = 1;
-	passBeginInfo.pClearValues = &passBeginClearColor;
+	passBeginInfo.clearValueCount = passBeginClearColors.size();
+	passBeginInfo.pClearValues = passBeginClearColors.data();
 	return 0;
 }
+
 
 int CommandPool::ctorError(language::Device& dev, VkCommandPoolCreateFlags flags)
 {

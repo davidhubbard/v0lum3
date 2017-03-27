@@ -216,5 +216,10 @@ inline void _VkInit(VkImageMemoryBarrier &imb) {
 	imb.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 }
 
+inline void _VkInit(VkSamplerCreateInfo &sci) {
+	memset(&sci, 0, sizeof(sci));
+	sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+}
+
 }  // namespace internal
 }  // namespace language

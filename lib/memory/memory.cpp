@@ -3,6 +3,8 @@
 #include "memory.h"
 #include <lib/science/science.h>
 
+using namespace science;
+
 namespace memory {
 
 int DeviceMemory::alloc(MemoryRequirements req, VkMemoryPropertyFlags props)
@@ -99,6 +101,22 @@ int Image::makeTransitionAccessMasks(VkImageMemoryBarrier& imageB) {
 			return 0;
 		}
 		break;
+	case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+		if (imageB.oldLayout == VK_IMAGE_LAYOUT_UNDEFINED) {
+			// Reset imageB.subresourceRange, then set it to Depth.
+			SubresUpdate& u = Subres(imageB.subresourceRange).addDepth();
+			// Also add Stencil if requested.
+			if (hasStencil(info.format)) {
+				u.addStencil();
+			}
+
+			imageB.srcAccessMask = 0;
+			imageB.dstAccessMask =
+				VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+				VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			return 0;
+		}
+		break;
 	default:
 		// TODO: either predefine a high quality access mask or document
 		// the states where the access mask can only be supplied by the caller.
@@ -118,7 +136,7 @@ VkImageMemoryBarrier Image::makeTransition(VkImageLayout newLayout)
 		imageB.newLayout = newLayout;
 		imageB.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		imageB.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		science::subres1MipAndColor(imageB.subresourceRange);
+		Subres(imageB.subresourceRange).addColor();
 
 		if (makeTransitionAccessMasks(imageB)) {
 			imageB.image = VK_NULL_HANDLE;

@@ -44,7 +44,7 @@ int ImageView::ctorError(Device& dev, VkImage image, VkFormat format)
 
 // Framebuf::Framebuf() defined here to have full Device definition.
 Framebuf::Framebuf(Device& dev)
-		: imageView(dev)
+		: imageView0(dev)
 		, vk(dev.dev, vkDestroyFramebuffer) {
 	vk.allocator = dev.dev.allocator;
 }
@@ -52,12 +52,18 @@ Framebuf::Framebuf(Device& dev)
 int Framebuf::ctorError(
 		Device& dev,
 		VkRenderPass renderPass,
-		VkExtent2D swapChainExtent,
-		uint32_t layers,
-		const std::vector<VkImageView>& attachments) {
+		VkExtent2D swapChainExtent) {
 	if (!attachments.size()) {
-		// Better to print this than blow up when attachments.at(0) is called below.
-		fprintf(stderr, "vkCreateFramebuffer with attachments.size == 0\n");
+		// Better to print this than segfault in the vulkan driver.
+		fprintf(stderr, "Framebuf::ctorError with attachments.size == 0\n");
+		return 1;
+	}
+	if (attachments.at(0) != imageView0.vk) {
+		// If you hit this error, it means your code removed imageView0.vk from
+		// attachments. In that case, please derive a subclass and define your
+		// own method to populate VkFramebufferCreateInfo::layers appropriately.
+		fprintf(stderr, "BUG: it is probably ok to throw out imageView0, but "
+			"this code depends on imageView0.info.subresourceRange.layerCount!\n");
 		return 1;
 	}
 	VkFramebufferCreateInfo VkInit(fbci);
@@ -66,7 +72,7 @@ int Framebuf::ctorError(
 	fbci.pAttachments = attachments.data();
 	fbci.width = swapChainExtent.width;
 	fbci.height = swapChainExtent.height;
-	fbci.layers = layers;
+	fbci.layers = imageView0.info.subresourceRange.layerCount;
 
 	VkResult v = vkCreateFramebuffer(dev.dev, &fbci, dev.dev.allocator, &vk);
 	if (v != VK_SUCCESS) {

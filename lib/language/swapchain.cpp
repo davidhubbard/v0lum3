@@ -236,10 +236,11 @@ int Device::resetSwapChain(VkSurfaceKHR surface, VkExtent2D sizeRequest) {
 		framebufs.emplace_back(*this);
 		auto& framebuf = *(framebufs.end() - 1);
 		framebuf.image = vkImages->at(i);
-		if (framebuf.imageView.ctorError(*this, framebuf.image, format.format)) {
+		if (framebuf.imageView0.ctorError(*this, framebuf.image, format.format)) {
 			delete vkImages;
 			return 1;
 		}
+		framebuf.attachments.emplace_back(framebuf.imageView0.vk);
 	}
 	delete vkImages;
 	return 0;

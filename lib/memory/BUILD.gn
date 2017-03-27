@@ -7,9 +7,11 @@ config("memory_config") {
 static_library("memory") {
   sources = [
     "memory.cpp",
+    "sampler.cpp",
   ]
 
   deps = [
+    "//lib/command",
     "//lib/language",
     "//lib/science",
     "//vendor/VulkanSamples:vulkan",

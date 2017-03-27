@@ -60,6 +60,64 @@ int Shader::loadSPV(const char * filename) {
 	return r;
 }
 
+PipelineAttachment::PipelineAttachment(language::Device& dev, VkFormat format,
+		VkImageLayout refLayout)
+{
+	VkOverwrite(refvk);
+	VkOverwrite(vk);
+	refvk.layout = refLayout;
+
+	switch (refLayout) {
+	case VK_IMAGE_LAYOUT_UNDEFINED:
+		// Set no defaults. The caller must do all PipelineAttachment setup.
+		break;
+
+	case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+		// Set up vk to be a color attachment.
+		vk.format = format;
+		vk.samples = VK_SAMPLE_COUNT_1_BIT;
+		vk.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		vk.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		vk.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		vk.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+		// This color attachment (the VkImage in the Framebuffer) will be
+		// transitioned automatically just before the RenderPass. It will be
+		// transitioned from...
+		vk.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		// (VK_IMAGE_LAYOUT_UNDEFINED meaning throw away any data in the
+		// Framebuffer)
+		//
+		// Then the RenderPass is performed.
+		//
+		// Then after the RenderPass ends, the Framebuffer gets transitioned
+		// automatically to a VkImage with:
+		vk.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		// (These are default values. Customize as needed for your application.)
+		break;
+
+	case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+		// Set up vk to be a depth attachment.
+		vk.format = format;
+		vk.samples = VK_SAMPLE_COUNT_1_BIT;
+		vk.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		vk.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		vk.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		vk.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		// This depth attachment can also throw away any previous data:
+		vk.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		// And after the RenderPass, VkImage should have a depth buffer format:
+		vk.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		// (These are default values. Customize as needed for your application.)
+		break;
+
+	default:
+		fprintf(stderr, "PipelineAttachment(%s (%d)): not supported.\n",
+			string_VkImageLayout(refLayout), refLayout);
+		break;
+	}
+}
+
 PipelineCreateInfo::PipelineCreateInfo(language::Device& dev,
 		RenderPass& renderPass) : dev(dev), renderPass(renderPass)
 {
@@ -97,6 +155,11 @@ PipelineCreateInfo::PipelineCreateInfo(language::Device& dev,
 	multisci.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
 	VkOverwrite(depthsci);
+	//depthsci.depthTestEnable = VK_FALSE;
+	//depthsci.depthWriteEnable = VK_FALSE;
+	depthsci.depthCompareOp = VK_COMPARE_OP_LESS;
+	//depthsci.depthBoundsTestEnable = VK_FALSE;
+	//depthsci.stencilTestEnable = VK_FALSE;
 
 	VkOverwrite(cbsci);
 	cbsci.logicOpEnable = VK_FALSE;
@@ -107,10 +170,10 @@ PipelineCreateInfo::PipelineCreateInfo(language::Device& dev,
 	cbsci.blendConstants[3] = 0.0f;
 	perFramebufColorBlend.push_back(withDisabledAlpha());
 
-	VkAttachmentReference VkInit(aref);
-	aref.attachment = 0;  // Assumes RenderPass has a VkAttachmentDescription at index [0].
-	aref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	colorAttaches.push_back(aref);
+	// Default PipelineCreateInfo contains a lone color attachment using the
+	// VkSurfaceFormatKHR of the device (dev.format).
+	attach.emplace_back(dev, dev.format.format,
+		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
 	VkOverwrite(subpassDesc);
 	subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -218,6 +281,7 @@ int Pipeline::init(RenderPass& renderPass, size_t subpass_i, PipelineCreateInfo&
 	p.pViewportState = &pci.viewsci;
 	p.pRasterizationState = &pci.rastersci;
 	p.pMultisampleState = &pci.multisci;
+	p.pDepthStencilState = &pci.depthsci;
 	p.pColorBlendState = &pci.cbsci;
 	p.layout = pipelineLayout;
 	p.renderPass = renderPass.vk;
@@ -233,10 +297,8 @@ int Pipeline::init(RenderPass& renderPass, size_t subpass_i, PipelineCreateInfo&
 	//
 	// Create pci.dev.framebufs, now that renderPass is created.
 	//
-	for (size_t i = 0; i < pci.dev.framebufs.size(); i++) {
-		auto& framebuf = pci.dev.framebufs.at(i);
-		if (framebuf.ctorError(pci.dev, renderPass.vk, pci.dev.swapChainExtent, 1,
-				std::vector<VkImageView>{framebuf.imageView.vk})) {
+	for (auto& framebuf : pci.dev.framebufs) {
+		if (framebuf.ctorError(pci.dev, renderPass.vk, pci.dev.swapChainExtent)) {
 			return 1;
 		}
 	}
