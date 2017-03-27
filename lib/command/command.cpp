@@ -14,8 +14,18 @@ RenderPass::RenderPass(language::Device& dev)
 	ad.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	ad.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	ad.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+	// This color attachment (the VkImage in the Framebuffer) will be transitioned
+	// automatically just before the RenderPass. It will be transitioned from...
 	ad.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	// (VK_IMAGE_LAYOUT_UNDEFINED meaning throw away any data in the Framebuffer)
+	//
+	// Then the RenderPass is performed.
+	//
+	// Then after the RenderPass ends, automatically transition the Framebuffer
+	// VkImage to:
 	ad.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	// (The above are default values. Customize as needed for your application.)
 	colorAttaches.push_back(ad);
 
 	VkOverwrite(rpci);

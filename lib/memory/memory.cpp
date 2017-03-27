@@ -57,6 +57,7 @@ int Image::ctorError(language::Device& dev, VkMemoryPropertyFlags props)
 		fprintf(stderr, "vkCreateImage failed: %d (%s)\n", v, string_VkResult(v));
 		return 1;
 	}
+	currentLayout = info.initialLayout;
 
 	return mem.alloc({dev, vk}, props);
 }

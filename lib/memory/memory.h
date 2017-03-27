@@ -74,7 +74,10 @@ typedef struct Image {
 		info.samples = VK_SAMPLE_COUNT_1_BIT;
 		info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-		currentLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		// ctorError() sets currentLayout = info.initialLayout.
+		// ctorDeviceLocal() sets
+		// currentLayout = info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED.
+		currentLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
 	};
 	Image(Image&&) = default;
 	Image(const Image&) = delete;
@@ -90,6 +93,7 @@ typedef struct Image {
 	WARN_UNUSED_RESULT int ctorDeviceLocal(language::Device& dev) {
 		info.tiling = VK_IMAGE_TILING_OPTIMAL;
 		info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		return ctorError(dev, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	};
 
