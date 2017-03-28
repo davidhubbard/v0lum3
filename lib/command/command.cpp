@@ -1,4 +1,4 @@
-/* Copyright (c) David Hubbard 2016. Licensed under the GPLv3.
+/* Copyright (c) David Hubbard 2017. Licensed under the GPLv3.
  */
 #include "command.h"
 

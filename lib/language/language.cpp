@@ -19,30 +19,8 @@ const char VK_LAYER_LUNARG_standard_validation[] = "VK_LAYER_LUNARG_standard_val
 namespace {  // use an anonymous namespace to hide all its contents (only reachable from this file)
 
 struct InstanceInternal : public Instance {
-	int initInstance(const char ** requiredExtensions, size_t requiredExtensionCount,
-			std::vector<VkExtensionProperties>& extensions,
+	int initInstance(const std::vector<std::string>& enabledExtensions,
 			std::vector<VkLayerProperties>& layers) {
-		std::vector<const char *> enabledExtensions;
-		for (size_t i = 0; i < requiredExtensionCount; i++) {
-			if (requiredExtensions[i] == nullptr) {
-				fprintf(stderr, "invalid requiredExtensions[%zu]\n", i);
-				return 1;
-			}
-			bool found = true;
-			for (const auto& ext : extensions) {
-				if (!strcmp(requiredExtensions[i], ext.extensionName)) {
-					enabledExtensions.push_back(requiredExtensions[i]);
-					found = true;
-					break;
-				}
-			}
-			if (!found) {
-				fprintf(stderr, "requiredExtensions[%zu]=\"%s\": "
-					"no devices with this extension found.\n",
-					i, requiredExtensions[i]);
-			}
-		}
-
 		std::vector<const char *> enabledLayers;
 		for (const auto& layerprop : layers) {
 			// Enable instance layer "VK_LAYER_LUNARG_standard_validation"
@@ -60,15 +38,15 @@ struct InstanceInternal : public Instance {
 			}
 		}
 
-		// Enable extension "VK_EXT_debug_report".
-		// Note: Modify this code to suit your application.
-		enabledExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
-
 		VkInstanceCreateInfo VkInit(iinfo);
 		iinfo.pApplicationInfo = &applicationInfo;
+		std::vector<const char *> extPointers;
 		if (enabledExtensions.size()) {
 			iinfo.enabledExtensionCount = enabledExtensions.size();
-			iinfo.ppEnabledExtensionNames = enabledExtensions.data();
+			for (size_t i = 0; i < enabledExtensions.size(); i++) {
+				extPointers.emplace_back(enabledExtensions.at(i).c_str());
+			}
+			iinfo.ppEnabledExtensionNames = extPointers.data();
 		}
 		iinfo.enabledLayerCount = enabledLayers.size();
 		iinfo.ppEnabledLayerNames = enabledLayers.data();
@@ -126,9 +104,11 @@ struct InstanceInternal : public Instance {
 		};
 
 		size_t i = 0, j;
-		for (; i < sizeof(deviceWithPresentRequiredExts)/sizeof(deviceWithPresentRequiredExts[0]); i++) {
+		for (; i < sizeof(deviceWithPresentRequiredExts)/
+				sizeof(deviceWithPresentRequiredExts[0]); i++) {
 			for (j = 0; j < dev.availableExtensions.size(); j++) {
-				if (!strcmp(dev.availableExtensions.at(j).extensionName, deviceWithPresentRequiredExts[i])) {
+				if (!strcmp(dev.availableExtensions.at(j).extensionName,
+							deviceWithPresentRequiredExts[i])) {
 					dev.extensionRequests.push_back(deviceWithPresentRequiredExts[i]);
 					break;
 				}
@@ -199,33 +179,33 @@ Instance::Instance() {
 	applicationInfo.pEngineName = engineName.c_str();
 }
 
-int Instance::ctorError(const char ** requiredExtensions, size_t requiredExtensionCount,
-		CreateWindowSurfaceFn createWindowSurface, void *window) {
-	auto * extensions = Vk::getExtensions();
-	if (extensions == nullptr) {
-		return 1;
+int Instance::ctorError(
+		const char ** requiredExtensions,
+		size_t requiredExtensionCount,
+		CreateWindowSurfaceFn createWindowSurface,
+		void * window) {
+	InstanceExtensionChooser instanceExtensions;
+	for (size_t i = 0; i < requiredExtensionCount; i++) {
+		if (requiredExtensions[i] == nullptr) {
+			fprintf(stderr, "invalid requiredExtensions[%zu]\n", i);
+			return 1;
+		}
+		instanceExtensions.required.emplace_back(requiredExtensions[i]);
 	}
-
-	auto * layers = Vk::getLayers();
-	if (layers == nullptr) {
-		delete extensions;
-		return 1;
-	}
+	if (instanceExtensions.choose()) return 1;
 
 	InstanceInternal * ii = reinterpret_cast<InstanceInternal *>(this);
-	int r = ii->initInstance(requiredExtensions, requiredExtensionCount, *extensions, *layers);
-	delete extensions;
-	extensions = nullptr;
-	delete layers;
-	layers = nullptr;
-	if (r) {
-		return r;
+	int r;
+	{
+		auto * layers = Vk::getLayers();
+		if (layers == nullptr) return 1;
+
+		r = ii->initInstance(instanceExtensions.chosen, *layers);
+		delete layers;
+		if (r) return r;
 	}
 
-	r = ii->initDebug();
-	if (r) {
-		return r;
-	}
+	if ((r = ii->initDebug()) != 0) return r;
 
 	VkResult v = createWindowSurface(*this, window);
 	if (v != VK_SUCCESS) {
@@ -234,20 +214,18 @@ int Instance::ctorError(const char ** requiredExtensions, size_t requiredExtensi
 	}
 	surface.allocator = pAllocator;
 
-	std::vector<VkPhysicalDevice> * physDevs = Vk::getDevices(vk);
-	if (physDevs == nullptr) {
-		return 1;
-	}
+	{
+		std::vector<VkPhysicalDevice> * physDevs = Vk::getDevices(vk);
+		if (physDevs == nullptr) return 1;
 
-	r = ii->initSupportedDevices(*physDevs);
-	delete physDevs;
-	physDevs = nullptr;
-	if (r) {
-		return r;
+		r = ii->initSupportedDevices(*physDevs);
+		delete physDevs;
+		if (r) return r;
 	}
 
 	if (devs.size() == 0) {
-		fprintf(stderr, "No Vulkan-capable devices found on your system. Try running vulkaninfo to troubleshoot.\n");
+		fprintf(stderr, "No Vulkan-capable devices found on your system.\n"
+			"Try running vulkaninfo to troubleshoot.\n");
 		return 1;
 	}
 

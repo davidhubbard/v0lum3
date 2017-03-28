@@ -258,38 +258,7 @@ typedef struct Device {
 	WARN_UNUSED_RESULT VkFormat chooseFormat(
 		VkImageTiling tiling,
 		VkFormatFeatureFlags flags,
-		const std::vector<VkFormat>& choices)
-	{
-		switch (tiling) {
-		case VK_IMAGE_TILING_LINEAR:
-			for (auto format : choices) {
-				VkFormatProperties props = formatProperties(format);
-				if ((props.linearTilingFeatures & flags) == flags) {
-					return format;
-				}
-			}
-			break;
-		case VK_IMAGE_TILING_OPTIMAL:
-			for (auto format : choices) {
-				VkFormatProperties props = formatProperties(format);
-				if ((props.optimalTilingFeatures & flags) == flags) {
-					return format;
-				}
-			}
-			break;
-		case VK_IMAGE_TILING_RANGE_SIZE:
-			fprintf(stderr, "_RANGE_SIZE enum values are placeholders only. "
-				"This should never happen.");
-			exit(1);
-			break;
-		case VK_IMAGE_TILING_MAX_ENUM:
-			fprintf(stderr, "_MAX_ENUM enum values are placeholders only. "
-				"This should never happen.");
-			exit(1);
-			break;
-		}
-		return VK_FORMAT_UNDEFINED;
-	};
+		const std::vector<VkFormat>& choices);
 
 	// Instance::open() calls resetSwapChain() so swapChain is valid after open().
 	VkPtr<VkSwapchainKHR> swapChain{dev, vkDestroySwapchainKHR};
@@ -301,6 +270,21 @@ typedef struct Device {
 	WARN_UNUSED_RESULT virtual int resetSwapChain(
 		VkSurfaceKHR surface, VkExtent2D sizeRequest);
 } Device;
+
+// InstanceExtensionChooser enumerates available extensions and chooses the
+// extensions to submit during Instance::ctorError().
+typedef struct InstanceExtensionChooser {
+	// Construct an InstanceExtensionChooser.
+	InstanceExtensionChooser() {};
+	virtual ~InstanceExtensionChooser();
+
+	// choose generates the chosen vector using the extension names populated in
+	// required.
+	WARN_UNUSED_RESULT virtual int choose();
+
+	std::vector<std::string> required;
+	std::vector<std::string> chosen;
+} InstanceExtensionChooser;
 
 // Instance holds the root of the Vulkan pipeline. Constructor (ctor) is a
 // 3-phase process:

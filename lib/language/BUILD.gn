@@ -21,13 +21,14 @@ config("language_config") {
 
 static_library("language") {
   sources = [
+    "VkEnum.cpp",
+    "choose.cpp",
     "debug.cpp",
     "imageview.cpp",
     "language.cpp",
     "queues.cpp",
     "requestqfams.cpp",
     "swapchain.cpp",
-    "VkEnum.cpp",
   ]
 
   deps = [ "//vendor/VulkanSamples:vulkan" ]
