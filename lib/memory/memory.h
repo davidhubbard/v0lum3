@@ -10,6 +10,8 @@
 #include <lib/command/command.h>
 #include <lib/language/VkInit.h>
 
+#pragma once
+
 namespace memory {
 
 struct MemoryRequirements;
@@ -83,36 +85,19 @@ typedef struct Image {
 	Image(Image&&) = default;
 	Image(const Image&) = delete;
 
-	// ctorError() must be called after filling in this->info to construct the
+	// ctorError must be called after filling in this->info to construct the
 	// Image. Note that bindMemory() should be called after ctorError().
 	//
-	// Some aliases of ctorError() are defined below, which may make your
-	// application less verbose. These are not all the possible combinations.
+	// Your application may not need to call ctorError directly.
+	// Sampler::ctorError(), below, automatically sets up an image for a shader
+	// sampler, and science::Pipeline() automatically sets up an image for a depth
+	// buffer.
 	WARN_UNUSED_RESULT int ctorError(language::Device& dev,
 		VkMemoryPropertyFlags props);
 
-	WARN_UNUSED_RESULT int ctorDeviceLocalSampled(language::Device& dev) {
-		info.tiling = VK_IMAGE_TILING_OPTIMAL;
-		info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	WARN_UNUSED_RESULT int ctorDeviceLocal(language::Device& dev) {
 		return ctorError(dev, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	};
-
-	WARN_UNUSED_RESULT int ctorDeviceLocalDepth(
-			language::Device& dev,
-			const std::vector<VkFormat>& formatChoices) {
-		info.tiling = VK_IMAGE_TILING_OPTIMAL;
-		info.format = dev.chooseFormat(
-			info.tiling, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT,
-			formatChoices);
-		if (info.format == VK_FORMAT_UNDEFINED) {
-			fprintf(stderr, "ctorDeviceLocalDepth: none of formatChoices chosen.\n");
-			return 1;
-		}
-		info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		return ctorError(dev, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	};
+	}
 
 	WARN_UNUSED_RESULT int ctorHostVisible(language::Device& dev) {
 		info.tiling = VK_IMAGE_TILING_LINEAR;

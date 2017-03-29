@@ -9,6 +9,7 @@ static_library("command") {
     "command.cpp",
     "fence.cpp",
     "pipeline.cpp",
+    "render.cpp",
     "shader.cpp",
   ]
 

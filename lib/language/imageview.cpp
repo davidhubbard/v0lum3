@@ -34,6 +34,7 @@ int ImageView::ctorError(Device& dev, VkImage image, VkFormat format)
 {
 	info.image = image;
 	info.format = format;
+	vk.reset();
 	VkResult v = vkCreateImageView(dev.dev, &info, dev.dev.allocator, &vk);
 	if (v != VK_SUCCESS) {
 		fprintf(stderr, "vkCreateImageView returned %d (%s)\n", v, string_VkResult(v));

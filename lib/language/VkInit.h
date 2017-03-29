@@ -104,6 +104,11 @@ inline void _VkInit(VkPipelineColorBlendStateCreateInfo& cbsci) {
 	cbsci.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 }
 
+inline void _VkInit(VkPipelineDynamicStateCreateInfo& pdsci) {
+	memset(&pdsci, 0, sizeof(pdsci));
+	pdsci.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+}
+
 inline void _VkInit(VkPipelineLayoutCreateInfo& plci) {
 	memset(&plci, 0, sizeof(plci));
 	plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

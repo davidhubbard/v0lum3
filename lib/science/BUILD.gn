@@ -10,7 +10,9 @@ static_library("science") {
   ]
 
   deps = [
+    "//lib/command",
     "//lib/language",
+    "//lib/memory",
     "//vendor/VulkanSamples:vulkan",
   ]
 

@@ -21,7 +21,7 @@ int Shader::loadSPV(const void * spvBegin, const void * spvEnd) {
 	}
 
 	smci.pCode = reinterpret_cast<const uint32_t *>(spvBegin);
-	VkResult r = vkCreateShaderModule(dev->dev, &smci, nullptr, &vk);
+	VkResult r = vkCreateShaderModule(vkdev, &smci, nullptr, &vk);
 	if (r != VK_SUCCESS) {
 		fprintf(stderr, "loadSPV(%p, %p) vkCreateShaderModule returned %d (%s)\n",
 			spvBegin, spvEnd, r, string_VkResult(r));
@@ -60,7 +60,10 @@ int Shader::loadSPV(const char * filename) {
 	return r;
 }
 
-Shader& PipelineCreateInfo::addShader(VkShaderStageFlagBits stageBits,
+Shader& PipelineCreateInfo::addShader(
+		language::Device& dev,
+		RenderPass& renderPass,
+		VkShaderStageFlagBits stageBits,
 		std::string entryPointName) {
 	renderPass.shaders.emplace_back(dev);
 	auto& shader = *(renderPass.shaders.end() - 1);

@@ -4,12 +4,16 @@
  * lib/memory is part of the v0lum3 project.
  * This library is called "science" as a homage to Star Trek First Contact.
  * Like the Vulcan Science Academy, this library is a repository of knowledge
- * about how to connect everything together.
+ * as a series of builder classes.
  */
 
 #include <string.h>
 #include <unistd.h>
 #include <lib/language/language.h>
+#include <lib/command/command.h>
+#include <lib/memory/memory.h>
+
+#pragma once
 
 namespace science {
 
@@ -160,5 +164,38 @@ inline bool hasStencil(VkFormat format) {
 		return false;
 	}
 };
+
+
+// PipeBuilder is a builder for command::Pipeline.
+typedef struct PipeBuilder {
+	PipeBuilder(language::Device& dev, command::RenderPass& pass)
+		: pipeline{pass.addPipeline(dev)}
+		, depthImage{dev}
+		, depthImageView{dev} {};
+	PipeBuilder(PipeBuilder&&) = default;
+	PipeBuilder(const PipeBuilder& other) = delete;
+
+	command::Pipeline& pipeline;
+
+	// addDepthImage adds a depth buffer to the pipeline, choosing the first
+	// of formatChoices that is available.
+	// Because addDepthImage automatically calls recreateSwapChainExtent, you must
+	// pass in a valid builder for recreateSwapChainExtent.
+	WARN_UNUSED_RESULT int addDepthImage(
+		language::Device& dev,
+		command::RenderPass& pass,
+		command::CommandBuilder& builder,
+		const std::vector<VkFormat>& formatChoices);
+
+	// recreateSwapChainExtent rebuilds the pipeline with an updated extent from
+	// dev.swapChainExtent. It adds commands to CommandBuilder builder to set up
+	// the depth image, which must have already had a begin...() call on it.
+	// You must then call end() and submit() before beginning a RenderPass.
+	WARN_UNUSED_RESULT int recreateSwapChainExtent(
+		language::Device& dev, command::CommandBuilder& builder);
+
+	memory::Image depthImage;
+	language::ImageView depthImageView;
+} PipeBuilder;
 
 } // namespace science

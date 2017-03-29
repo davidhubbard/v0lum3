@@ -62,8 +62,7 @@ PipelineAttachment::PipelineAttachment(language::Device& dev, VkFormat format,
 	}
 }
 
-PipelineCreateInfo::PipelineCreateInfo(language::Device& dev,
-		RenderPass& renderPass) : dev(dev), renderPass(renderPass)
+PipelineCreateInfo::PipelineCreateInfo(language::Device& dev)
 {
 	VkOverwrite(vertsci);
 	VkOverwrite(asci);
@@ -152,14 +151,18 @@ VkPipelineColorBlendAttachmentState PipelineCreateInfo::withEnabledAlpha() {
 }
 
 Pipeline::Pipeline(language::Device& dev)
-	: pipelineLayout{dev.dev, vkDestroyPipelineLayout}
+	: info{dev}
+	, pipelineLayout{dev.dev, vkDestroyPipelineLayout}
 	, vk{dev.dev, vkDestroyPipeline}
 {
 	pipelineLayout.allocator = dev.dev.allocator;
 	vk.allocator = dev.dev.allocator;
 };
 
-int Pipeline::init(RenderPass& renderPass, size_t subpass_i, PipelineCreateInfo& pci)
+int Pipeline::init(
+		language::Device& dev,
+		RenderPass& renderPass,
+		size_t subpass_i)
 {
 	if (subpass_i >= renderPass.pipelines.size()) {
 		fprintf(stderr, "Pipeline::init(): subpass_i=%zu when renderPass.pipeline.size=%zu\n",
@@ -170,25 +173,26 @@ int Pipeline::init(RenderPass& renderPass, size_t subpass_i, PipelineCreateInfo&
 	//
 	// Collect PipelineCreateInfo structures into native Vulkan structures.
 	//
-	pci.viewsci.viewportCount = pci.viewports.size();
-	pci.viewsci.pViewports = pci.viewports.data();
-	pci.viewsci.scissorCount = pci.scissors.size();
-	pci.viewsci.pScissors = pci.scissors.data();
+	info.viewsci.viewportCount = info.viewports.size();
+	info.viewsci.pViewports = info.viewports.data();
+	info.viewsci.scissorCount = info.scissors.size();
+	info.viewsci.pScissors = info.scissors.data();
 
-	pci.cbsci.attachmentCount = pci.perFramebufColorBlend.size();
-	pci.cbsci.pAttachments = pci.perFramebufColorBlend.data();
+	info.cbsci.attachmentCount = info.perFramebufColorBlend.size();
+	info.cbsci.pAttachments = info.perFramebufColorBlend.data();
 
 	VkPipelineLayoutCreateInfo VkInit(plci);
 	// TODO: Add pushConstants.
-	plci.setLayoutCount = pci.setLayouts.size();
-	plci.pSetLayouts = pci.setLayouts.data();
+	plci.setLayoutCount = info.setLayouts.size();
+	plci.pSetLayouts = info.setLayouts.data();
 	plci.pushConstantRangeCount = 0;
 	plci.pPushConstantRanges = 0;
 
 	//
 	// Create pipelineLayout.
 	//
-	VkResult v = vkCreatePipelineLayout(pci.dev.dev, &plci, nullptr, &pipelineLayout);
+	pipelineLayout.reset();
+	VkResult v = vkCreatePipelineLayout(dev.dev, &plci, nullptr, &pipelineLayout);
 	if (v != VK_SUCCESS) {
 		fprintf(stderr, "vkCreatePipelineLayout() returned %d (%s)\n", v, string_VkResult(v));
 		return 1;
@@ -196,9 +200,9 @@ int Pipeline::init(RenderPass& renderPass, size_t subpass_i, PipelineCreateInfo&
 
 	VkGraphicsPipelineCreateInfo VkInit(p);
 	std::vector<VkPipelineShaderStageCreateInfo> stagecis;
-	stageName.resize(pci.stages.size());
-	for (size_t i = 0; i < pci.stages.size(); i++) {
-		auto& stage = pci.stages.at(i);
+	stageName.resize(info.stages.size());
+	for (size_t i = 0; i < info.stages.size(); i++) {
+		auto& stage = info.stages.at(i);
 		stageName.at(i) = stage.entryPointName;
 		stage.sci.module = renderPass.shaders.at(stage.shader_i).vk;
 		stage.sci.pName = stageName.at(i).c_str();
@@ -206,31 +210,28 @@ int Pipeline::init(RenderPass& renderPass, size_t subpass_i, PipelineCreateInfo&
 	}
 	p.stageCount = stagecis.size();
 	p.pStages = stagecis.data();
-	p.pVertexInputState = &pci.vertsci;
-	p.pInputAssemblyState = &pci.asci;
-	p.pViewportState = &pci.viewsci;
-	p.pRasterizationState = &pci.rastersci;
-	p.pMultisampleState = &pci.multisci;
-	p.pDepthStencilState = &pci.depthsci;
-	p.pColorBlendState = &pci.cbsci;
+	p.pVertexInputState = &info.vertsci;
+	p.pInputAssemblyState = &info.asci;
+	p.pViewportState = &info.viewsci;
+	p.pRasterizationState = &info.rastersci;
+	p.pMultisampleState = &info.multisci;
+	p.pDepthStencilState = &info.depthsci;
+	p.pColorBlendState = &info.cbsci;
+	VkPipelineDynamicStateCreateInfo VkInit(dsci);
+	if (info.dynamicStates.size()) {
+		dsci.dynamicStateCount = info.dynamicStates.size();
+		dsci.pDynamicStates = info.dynamicStates.data();
+		p.pDynamicState = &dsci;
+	}
 	p.layout = pipelineLayout;
 	p.renderPass = renderPass.vk;
 	p.subpass = subpass_i;
 
 	vk.reset();
-	v = vkCreateGraphicsPipelines(pci.dev.dev, VK_NULL_HANDLE, 1, &p, nullptr, &vk);
+	v = vkCreateGraphicsPipelines(dev.dev, VK_NULL_HANDLE, 1, &p, nullptr, &vk);
 	if (v != VK_SUCCESS) {
 		fprintf(stderr, "vkCreateGraphicsPipelines() returned %d (%s)\n", v, string_VkResult(v));
 		return 1;
-	}
-
-	//
-	// Create pci.dev.framebufs, now that renderPass is created.
-	//
-	for (auto& framebuf : pci.dev.framebufs) {
-		if (framebuf.ctorError(pci.dev, renderPass.vk, pci.dev.swapChainExtent)) {
-			return 1;
-		}
 	}
 	return 0;
 }

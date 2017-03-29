@@ -17,11 +17,16 @@ int Sampler::ctorError(
 		return 1;
 	}
 
+	// Construct image as a USAGE_SAMPLED | TRANSFER_DST, then use
+	// CommandBuilder::copyImage() to transfer its contents into it.
 	image.info.extent = src.info.extent;
 	image.info.format = src.info.format;
-	// ctorDeviceLocal sets image.info.tiling = VK_IMAGE_TILING_OPTIMAL and
-	// image.info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED.
-	if (image.ctorDeviceLocalSampled(dev) || image.bindMemory(dev)) {
+	image.info.tiling = VK_IMAGE_TILING_OPTIMAL;
+	image.info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	image.info.usage =
+		VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+
+	if (image.ctorDeviceLocal(dev) || image.bindMemory(dev)) {
 		fprintf(stderr, "ctorDeviceLocal or bindMemory failed\n");
 		return 1;
 	}

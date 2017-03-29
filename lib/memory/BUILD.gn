@@ -13,7 +13,6 @@ static_library("memory") {
   deps = [
     "//lib/command",
     "//lib/language",
-    "//lib/science",
     "//vendor/VulkanSamples:vulkan",
   ]
 
