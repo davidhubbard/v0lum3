@@ -27,14 +27,12 @@ executable("v") {
     "//vendor/glfw",
     "//vendor/VulkanSamples:glm",
     "//vendor/skia",
-    # dep vulkan must be after dep skia to produce the correct
+    # dep VulkanSamples must be after dep skia to produce the correct
     # linker command line (because skia depends on vulkan but does not list
     # vulkan as a dep in its BUILD.gn file)
-    "//vendor/VulkanSamples:vulkan",
+    "//vendor/VulkanSamples",
   ]
 
   configs -= [ "//gn:no_rtti" ]
-
-  include_dirs = [ root_gen_dir ]
 }
 

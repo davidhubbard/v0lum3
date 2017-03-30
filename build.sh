@@ -23,12 +23,34 @@ if [ "$N" -eq "0" ]; then
 fi
 
 # patch glfw to use libvulkan.so instead of libvulkan.so.1
+# and remove its version of vulkan.h
 sed -i -e 's/\(_glfw_dlopen("libvulkan.so\).1")/\1")/g' vendor/glfw/src/vulkan.c
+rm -r vendor/glfw/deps/vulkan
 
 # patch skia to use libvulkan.so instead of lib/libvulkan.so
+# and to depend on VulkanSamples (outside the skia tree)
 sed -i -e 's/\(skia_vulkan_sdk = \)getenv("VULKAN_SDK")/\1root_out_dir/' \
 	-e 's:\(lib_dirs [+]= \[ "$skia_vulkan_sdk/\)lib/" \]:\1" ]:' \
+	-e '/":arm64",/i\    "//vendor/VulkanSamples:vulkan_headers",' \
 	vendor/skia/BUILD.gn
+# patch skia to honor {{output_dir}} in toolchain("gcc_like")
+# this is needed by //vendor/VulkanSamples because libVkLayer_*.so must be
+# installed with the layer json files, and that crowds {{root_out_dir}}.
+patch -p1 <<EOF
+--- a/vendor/skia/gn/BUILD.gn
++++ b/vendor/skia/gn/BUILD.gn
+@@ -687,8 +687,9 @@ toolchain("gcc_like") {
+ 
+     command = "\$cc_wrapper \$cxx -shared {{ldflags}} {{inputs}} {{solibs}} {{libs}} \$rpath -o {{output}}"
+     outputs = [
+-      "{{root_out_dir}}/\$soname",
++      "{{output_dir}}/\$soname",
+     ]
++    default_output_dir = "{{root_out_dir}}"
+     output_prefix = "lib"
+     default_output_extension = ".so"
+     description = "link {{output}}"
+EOF
 
 echo ""
 echo "vendor/skia/tools/git-sync-deps"

@@ -687,8 +687,10 @@ toolchain("gcc_like") {
 
     command = "$cc_wrapper $cxx -shared {{ldflags}} {{inputs}} {{solibs}} {{libs}} $rpath -o {{output}}"
     outputs = [
-      "{{root_out_dir}}/$soname",
+      "{{output_dir}}/$soname"
     ]
+
+    default_output_dir = "{{root_out_dir}}"
     output_prefix = "lib"
     default_output_extension = ".so"
     description = "link {{output}}"

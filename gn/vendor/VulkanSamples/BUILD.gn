@@ -1,10 +1,5 @@
 # Copyright 2017 David Hubbard. All rights reserved.
 # Licensed under the GPL v3.
-#
-# I threw this together in about 10 minutes, so I my reaction is twofold:
-# I don't believe it. This works! I haven't run into any bugs yet. Also,
-# I don't believe it. Please file a bug if or when it breaks, at:
-# https://github.com/davidhubbard/v0lum3/
 
 declare_args() {
   is_posix = is_android || is_mac || is_ios || is_tvos || is_linux
@@ -13,32 +8,112 @@ declare_args() {
   is_wayland_enabled = false
   is_mir_enabled = false
   mir_path = "mir" # TODO: locate mir installation
+
+  vulkan_api_name = "Vulkan"
+  use_vulkan_layers = true
+  vulkan_install_dir = "$root_build_dir/vulkan"
+}
+
+template("lvl_genvk") {
+  forward_variables_from(invoker, [])
+  action(target_name) {
+    outputs = [ "$root_out_dir/include/vulkan/" + target_name ]
+
+    inputs = [ "scripts/vk.xml" ]
+    if (target_name == "vk_dispatch_table_helper.h") {
+      inputs += [ "scripts/dispatch_table_helper_generator.py" ]
+    } else if (target_name == "vk_layer_dispatch_table.h") {
+      inputs += [ "scripts/loader_extension_generator.py" ]
+    } else if (target_name == "vk_loader_extensions.h") {
+      inputs += [ "scripts/loader_extension_generator.py" ]
+    } else if (target_name == "vk_loader_extensions.c") {
+      inputs += [ "scripts/loader_extension_generator.py" ]
+    } else {
+      inputs += [ "scripts/helper_file_generator.py" ]
+    }
+
+    script = "scripts/lvl_genvk.py"
+    args = [
+      "-quiet",
+      "-registry",
+      rebase_path("scripts/vk.xml", root_out_dir),
+      "-o",
+      "include/vulkan",
+      target_name,
+    ]
+  }
+}
+
+template("vk_layer") {
+  if (target_name != "utils") {
+    json_file_name = "VkLayer_" + target_name + ".json"
+    copy(json_file_name) {
+      if (is_win) {
+        sources = [ "layers/windows/" + json_file_name ]
+      } else {
+        sources = [ "layers/linux/" + json_file_name ]
+      }
+      outputs = [ vulkan_install_dir + "/explicit_layer.d/" + json_file_name ]
+    }
+  }
+
+  shared_library("VkLayer_" + target_name) {
+    forward_variables_from(invoker, "*")
+    output_dir = vulkan_install_dir + "/explicit_layer.d"
+    configs += [
+      ":local_config_include_dir_loader",
+      ":vulkan_local_config",
+      ":vulkan_config",
+    ]
+    # due to using the 'gn' dir from skia:
+    configs -= [ "//gn:warnings" ]
+
+    if (!defined(deps)) {
+      deps = []
+    }
+    if (target_name != "utils") {
+      ldflags = [ "-Wl,-rpath=\$ORIGIN" ]
+      deps += [
+        ":VkLayer_utils",
+        ":" + json_file_name,
+      ]
+    }
+  }
 }
 
 config("vulkan_config") {
-  include_dirs = [ "include" ]
+  include_dirs = [ "$root_build_dir/include" ]
 }
 
 config("glm_config") {
   include_dirs = [ "libs" ]
 }
 
-config("loader_local_config") {
+config("vulkan_local_config") {
+  include_dirs = [ "$root_build_dir/include/vulkan" ]
+
   cflags = []
-  defines = []
+  defines = [ "API_NAME=\"" + vulkan_api_name + "\"" ]
+  if (is_debug) {
+    defines += [ "DEBUG" ]
+  }
+
   if (is_win) {
     defines += [
       "VK_USE_PLATFORM_WIN32_KHR",
       "WIN32_LEAN_AND_MEAN",
     ]
+
   } else if (is_android) {
     cflags += [ "-Wpointer-arith" ]
     defines += [ "VK_USE_PLATFORM_ANDROID_KHR" ]
+
   } else if (is_posix) {
     cflags += [ "-Wpointer-arith" ]
     defines += [
-      "FALLBACK_CONFIG_DIRS=\"" + rebase_path(root_out_dir) + "\"",
-      "FALLBACK_DATA_DIRS=\"" + rebase_path(root_out_dir) + "\"",
+      "FALLBACK_CONFIG_DIRS=\"/etc/xdg\"",
+      "FALLBACK_DATA_DIRS=\"/etc/xdg\"",
+      "EXTRASYSCONFDIR=\"/" + rebase_path(root_out_dir, "/") + "\"",
       "SYSCONFDIR=\"/etc\"",
     ]
 
@@ -63,6 +138,10 @@ config("loader_local_config") {
   }
 }
 
+config("local_config_include_dir_loader") {
+  include_dirs = [ "loader" ]
+}
+
 copy("vulkan_headers") {
   # this target is only needed for downstream BUILD.gn files that expect
   # the vulkan SDK to be deployed with headers and libs in the same dir
@@ -78,25 +157,16 @@ copy("vulkan_headers") {
   outputs = [ "$root_build_dir/{{source_target_relative}}" ]
 }
 
+lvl_genvk("vk_loader_extensions.h") {}
+lvl_genvk("vk_loader_extensions.c") {}
 shared_library("vulkan") {
   sources = [
     "loader/loader.c",
-    "loader/loader.h",
-    "loader/vk_loader_platform.h",
-    "loader/vk_loader_layer.h",
     "loader/trampoline.c",
     "loader/wsi.c",
-    "loader/wsi.h",
-    "loader/extensions.c",
-    "loader/extensions.h",
     "loader/debug_report.c",
-    "loader/debug_report.h",
-    "loader/table_ops.h",
-    "loader/gpa_helper.h",
     "loader/cJSON.c",
-    "loader/cJSON.h",
     "loader/murmurhash.c",
-    "loader/murmurhash.h",
 
     # TODO: these are split out as a separate dll on windows
     "loader/dev_ext_trampoline.c",
@@ -124,9 +194,123 @@ shared_library("vulkan") {
     libs = [ "mirclient" ]
   }
 
-  deps = [ ":vulkan_headers" ]
+  deps = [
+    ":vulkan_headers",
+    ":vk_loader_extensions.h",
+    ":vk_loader_extensions.c",
+  ]
   public_configs = [ ":vulkan_config" ]
-  configs += [ ":loader_local_config" ]
+  configs += [
+    ":local_config_include_dir_loader",
+    ":vulkan_local_config",
+  ]
+}
+
+lvl_genvk("vk_enum_string_helper.h") {}
+lvl_genvk("vk_struct_size_helper.h") {}
+lvl_genvk("vk_struct_size_helper.c") {}
+lvl_genvk("vk_safe_struct.h") {}
+lvl_genvk("vk_safe_struct.cpp") {}
+lvl_genvk("vk_layer_dispatch_table.h") {}
+
+
+group("generate_helper_files") {
+  deps = [
+    ":vulkan_headers",
+    ":vk_enum_string_helper.h",
+    ":vk_struct_size_helper.h",
+    ":vk_struct_size_helper.c",
+    ":vk_safe_struct.h",
+    ":vk_safe_struct.cpp",
+    ":vk_layer_dispatch_table.h",
+  ]
+}
+
+vk_layer("core_validation") {
+  deps = [
+    ":generate_helper_files",
+    "//vendor/glslang:SPIRV",
+    # TODO: this should be //vendor/skia/third_party/spirv-tools
+    # but to integrate skia requires pretending that skia is at the buildroot
+    # (so map //vendor/skia/third_party/foo -> //third_party/foo)
+    "//third_party/spirv-tools",
+  ]
+  sources = [
+    "layers/core_validation.cpp",
+    "layers/descriptor_sets.cpp",
+    "layers/buffer_validation.cpp",
+  ]
+}
+
+vk_layer("object_tracker") {
+  sources = [ "layers/object_tracker.cpp" ]
+}
+
+vk_layer("swapchain") {
+  sources = [ "layers/swapchain.cpp" ]
+}
+
+lvl_genvk("thread_check.h") {}
+vk_layer("threading") {
+  include_dirs = [ "layers" ]
+  sources = [ "layers/threading.cpp" ]
+  deps = [ ":thread_check.h" ]
+}
+
+lvl_genvk("unique_objects_wrappers.h") {}
+vk_layer("unique_objects") {
+  sources = [ "layers/unique_objects.cpp" ]
+  deps = [ ":unique_objects_wrappers.h" ]
+}
+
+lvl_genvk("parameter_validation.h") {}
+vk_layer("parameter_validation") {
+  include_dirs = [ "layers" ]
+  sources = [ "layers/parameter_validation.cpp" ]
+  deps = [ ":parameter_validation.h" ]
+}
+
+lvl_genvk("vk_dispatch_table_helper.h") {}
+#vk_layer("utils") {
+static_library("VkLayer_utils") {
+  output_dir = vulkan_install_dir + "/explicit_layer.d"
+  configs += [
+    ":local_config_include_dir_loader",
+    ":vulkan_local_config",
+    ":vulkan_config",
+  ]
+  # due to using the 'gn' dir from skia:
+  configs -= [ "//gn:warnings" ]
+
+  sources = [
+    "layers/vk_layer_config.cpp",
+    "layers/vk_layer_extension_utils.cpp",
+    "layers/vk_layer_utils.cpp",
+    "layers/vk_layer_table.cpp",
+  ]
+  deps = [
+    ":vulkan_headers",
+    ":generate_helper_files",
+    ":vk_dispatch_table_helper.h",
+  ]
+}
+
+group("VulkanSamples") {
+  deps = [
+    ":vulkan",
+    ":generate_helper_files",
+  ]
+  if (use_vulkan_layers) {
+    deps += [
+      ":VkLayer_core_validation",
+      ":VkLayer_object_tracker",
+      ":VkLayer_swapchain",
+      ":VkLayer_threading",
+      ":VkLayer_unique_objects",
+      ":VkLayer_parameter_validation",
+    ]
+  }
+  public_configs = [ ":vulkan_config" ]
 }
 
 group("glm") {

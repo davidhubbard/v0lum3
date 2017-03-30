@@ -9,7 +9,11 @@
 #   .frag   for a fragment shader
 #   .comp   for a compute shader
 #
+
 # The output file is the name of the input file with ".spv" appended.
+# To load the output file at runtime, dynamically load
+# "gen/full/path/to/source_file.vert.spv" relative to the executable path if the
+# source file is full/path/to/source_file.vert.
 template("glslangVulkan") {
   forward_variables_from(invoker, "*")
   action_foreach(target_name) {
@@ -24,10 +28,16 @@ template("glslangVulkan") {
     ]
 
     deps = [ "//vendor/glslang:glslangValidator" ]
+    public_configs = [ "//vendor/glslang:glslangVulkan_gen_config" ]
+    #TODO: description = "glslangValidator {{source_file_part}}.spv"
   }
 }
 
 # Adds --variable-name to the command line.
+# To load the output file at build time, the config
+# //vendor/glslang:glslang_config adds {{root_gen_dir}} to include_dirs, which
+# allows you to #include "full/path/to/source_file.vert.h" if the source file is
+# full/path/to/source_file.vert.
 template("glslangVulkanToHeader") {
   forward_variables_from(invoker, "*")
   action_foreach(target_name) {
@@ -44,5 +54,7 @@ template("glslangVulkanToHeader") {
     ]
 
     deps = [ "//vendor/glslang:glslangValidator" ]
+    public_configs = [ "//vendor/glslang:glslangVulkan_gen_config" ]
+    #TODO: description = "glslangValidator {{source_file_part}}.h"
   }
 }

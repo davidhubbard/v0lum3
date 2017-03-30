@@ -10,6 +10,8 @@ config("glfw_config") {
 
 # gn help source_set # source_set() is cool! Skip "ar rcs" plus other benefits!
 source_set("glfw") {
+  deps = [ "//vendor/VulkanSamples:vulkan_headers" ]
+
   defines = [
     "_GLFW_BUILD_DLL",
     "__GLFW_USE_HYBRID_HPG",

@@ -7,11 +7,12 @@ declare_args() {
   is_spirv_remap_enabled = false
 }
 
-config("glslang_config") {
-  include_dirs = [
-    "."
-  ]
+config("glslangVulkan_gen_config") {
+  include_dirs = [ root_gen_dir ]
+}
 
+config("glslang_config") {
+  include_dirs = [ "." ]
   defines = []
   if (is_linux || is_android) {
     defines += [ "GLSLANG_OSINCLUDE_UNIX" ]
@@ -23,6 +24,7 @@ config("glslang_config") {
 }
 
 config("glslang_local_config") {
+  #include_dirs = [ root_gen_dir, ]
   cflags = [
     "-Wno-missing-field-initializers",
     "-Wno-ignored-qualifiers",
@@ -48,23 +50,15 @@ static_library("OGLCompiler") {
 }
 
 static_library("SPIRV") {
+  public = [ "SPIRV/spirv.hpp" ]
   sources = [
-    "SPIRV/GLSL.std.450.h",
     "SPIRV/GlslangToSpv.cpp",
-    "SPIRV/GlslangToSpv.h",
     "SPIRV/InReadableOrder.cpp",
     "SPIRV/Logger.cpp",
-    "SPIRV/Logger.h",
     "SPIRV/SPVRemapper.cpp",
-    "SPIRV/SPVRemapper.h",
     "SPIRV/SpvBuilder.cpp",
-    "SPIRV/SpvBuilder.h",
     "SPIRV/disassemble.cpp",
-    "SPIRV/disassemble.h",
     "SPIRV/doc.cpp",
-    "SPIRV/doc.h",
-    "SPIRV/spirv.hpp",
-    "SPIRV/spvIR.h",
   ]
 
   all_dependent_configs = [ ":glslang_config" ]
@@ -84,63 +78,35 @@ static_library("glslang") {
   sources = [
     "glslang/GenericCodeGen/CodeGen.cpp",
     "glslang/GenericCodeGen/Link.cpp",
-    "glslang/Include/BaseTypes.h",
-    "glslang/Include/Common.h",
-    "glslang/Include/ConstantUnion.h",
-    "glslang/Include/InfoSink.h",
-    "glslang/Include/InitializeGlobals.h",
-    "glslang/Include/PoolAlloc.h",
-    "glslang/Include/ResourceLimits.h",
-    "glslang/Include/ShHandle.h",
-    "glslang/Include/Types.h",
-    "glslang/Include/arrays.h",
-    "glslang/Include/intermediate.h",
-    "glslang/Include/revision.h",
     "glslang/MachineIndependent/Constant.cpp",
     "glslang/MachineIndependent/InfoSink.cpp",
     "glslang/MachineIndependent/Initialize.cpp",
-    "glslang/MachineIndependent/Initialize.h",
     "glslang/MachineIndependent/IntermTraverse.cpp",
     "glslang/MachineIndependent/Intermediate.cpp",
     "glslang/MachineIndependent/ParseContextBase.cpp",
     "glslang/MachineIndependent/ParseHelper.cpp",
-    "glslang/MachineIndependent/ParseHelper.h",
     "glslang/MachineIndependent/PoolAlloc.cpp",
     "glslang/MachineIndependent/RemoveTree.cpp",
-    "glslang/MachineIndependent/RemoveTree.h",
     "glslang/MachineIndependent/Scan.cpp",
-    "glslang/MachineIndependent/Scan.h",
-    "glslang/MachineIndependent/ScanContext.h",
     "glslang/MachineIndependent/ShaderLang.cpp",
     "glslang/MachineIndependent/SymbolTable.cpp",
-    "glslang/MachineIndependent/SymbolTable.h",
     "glslang/MachineIndependent/Versions.cpp",
-    "glslang/MachineIndependent/Versions.h",
-    "glslang/MachineIndependent/gl_types.h",
     "glslang/MachineIndependent/glslang.y",
     "glslang/MachineIndependent/glslang_tab.cpp",
-    "glslang/MachineIndependent/glslang_tab.cpp.h",
     "glslang/MachineIndependent/iomapper.cpp",
     "glslang/MachineIndependent/intermOut.cpp",
     "glslang/MachineIndependent/limits.cpp",
     "glslang/MachineIndependent/linkValidate.cpp",
-    "glslang/MachineIndependent/localintermediate.h",
     "glslang/MachineIndependent/parseConst.cpp",
-    "glslang/MachineIndependent/parseVersions.h",
     "glslang/MachineIndependent/preprocessor/Pp.cpp",
     "glslang/MachineIndependent/preprocessor/PpAtom.cpp",
     "glslang/MachineIndependent/preprocessor/PpContext.cpp",
-    "glslang/MachineIndependent/preprocessor/PpContext.h",
     "glslang/MachineIndependent/preprocessor/PpMemory.cpp",
     "glslang/MachineIndependent/preprocessor/PpScanner.cpp",
     "glslang/MachineIndependent/preprocessor/PpSymbols.cpp",
     "glslang/MachineIndependent/preprocessor/PpTokens.cpp",
-    "glslang/MachineIndependent/preprocessor/PpTokens.h",
     "glslang/MachineIndependent/propagateNoContraction.cpp",
-    "glslang/MachineIndependent/propagateNoContraction.h",
     "glslang/MachineIndependent/reflection.cpp",
-    "glslang/MachineIndependent/reflection.h",
-    "glslang/Public/ShaderLang.h",
   ]
 
   if (is_linux || is_android) {
@@ -161,16 +127,10 @@ static_library("glslang") {
 static_library("HLSL") {
   sources = [
     "hlsl/hlslGrammar.cpp",
-    "hlsl/hlslGrammar.h",
     "hlsl/hlslOpMap.cpp",
-    "hlsl/hlslOpMap.h",
     "hlsl/hlslParseHelper.cpp",
-    "hlsl/hlslParseHelper.h",
     "hlsl/hlslScanContext.cpp",
-    "hlsl/hlslScanContext.h",
     "hlsl/hlslTokenStream.cpp",
-    "hlsl/hlslTokenStream.h",
-    "hlsl/hlslTokens.h",
   ]
 
   all_dependent_configs = [ ":glslang_config" ]
