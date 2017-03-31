@@ -68,8 +68,13 @@ int RenderPass::ctorError(language::Device& dev) {
 		return 1;
 	}
 
-	std::vector<VkAttachmentDescription> attachmentVk;
-	std::vector<VkAttachmentReference> attachmentRefVk;
+	size_t attachmentCount = 0, attachmentUse = 0;
+	for (size_t subpass_i = 0; subpass_i < pipelines.size(); subpass_i++) {
+		auto& pci = pipelines.at(subpass_i).info;
+		attachmentCount += pci.attach.size();
+	}
+	std::vector<VkAttachmentDescription> attachmentVk(attachmentCount);
+	std::vector<VkAttachmentReference> attachmentRefVk(attachmentCount);
 	std::vector<VkSubpassDescription> subpassVk;
 	std::vector<VkSubpassDependency> depVk;
 	for (size_t subpass_i = 0; subpass_i < pipelines.size(); subpass_i++) {
@@ -81,7 +86,8 @@ int RenderPass::ctorError(language::Device& dev) {
 		}
 
 		// Bookmark where the pci.attach data will be saved in attachmentRefs.
-		auto prevRefSize = attachmentRefVk.size();
+		size_t pciAttachmentStart = attachmentUse;
+
 		VkAttachmentReference depthRef;
 		int depthRefIndex = -1;
 		for (size_t attach_i = 0; attach_i < pci.attach.size(); attach_i++) {
@@ -99,29 +105,28 @@ int RenderPass::ctorError(language::Device& dev) {
 				depthRefIndex = attach_i;
 				depthRef = a.refvk;
 			} else {
-				a.refvk.attachment = attachmentVk.size();
-				attachmentRefVk.emplace_back(a.refvk);
-				attachmentVk.emplace_back(a.vk);
-			}
-			if (attachmentRefVk.size() != attachmentVk.size()) {
-				fprintf(stderr, "BUG: attachmentVk and attachmentRefVk out of sync\n");
-				exit(1);
-				return 1;
+				a.refvk.attachment = attachmentUse;
+				attachmentRefVk.at(attachmentUse) = a.refvk;
+				attachmentVk.at(attachmentUse) = a.vk;
+				attachmentUse++;
 			}
 		}
 
-		// Write attachmentRefVk[prevRefSize:] to pci.subpassDesc.
-		// Note that these are ONLY color attachments. depthRef is left out.
-		pci.subpassDesc.colorAttachmentCount = attachmentRefVk.size() - prevRefSize;
-		pci.subpassDesc.pColorAttachments = attachmentRefVk.data() + prevRefSize;
+		// Write attachmentRefVk[pciAttachmentStart:] to pci.subpassDesc.
+		pci.subpassDesc.colorAttachmentCount = attachmentUse - pciAttachmentStart;
+		pci.subpassDesc.pColorAttachments = attachmentRefVk.data() + pciAttachmentStart;
 
 		// Write depthRef last.
 		if (depthRefIndex != -1) {
-			depthRef.attachment = attachmentVk.size();
-			pci.attach.at(depthRefIndex).refvk.attachment = attachmentVk.size();
-			attachmentRefVk.emplace_back(depthRef);
-			attachmentVk.emplace_back(pci.attach.at(depthRefIndex).vk);
-			pci.subpassDesc.pDepthStencilAttachment = &*(attachmentRefVk.end() - 1);
+			depthRef.attachment = attachmentUse;
+			pci.attach.at(depthRefIndex).refvk.attachment = attachmentUse;
+
+			attachmentRefVk.at(attachmentUse) = depthRef;
+			attachmentVk.at(attachmentUse) = pci.attach.at(depthRefIndex).vk;
+
+			pci.subpassDesc.pDepthStencilAttachment = &attachmentRefVk.at(attachmentUse);
+
+			attachmentUse++;
 		}
 
 		// Save pci.subpassDesc into only_vk_subpasses.
