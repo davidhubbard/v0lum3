@@ -78,8 +78,6 @@ typedef struct Image {
 		info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 		// ctorError() sets currentLayout = info.initialLayout.
-		// ctorDeviceLocal() sets
-		// currentLayout = info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED.
 		currentLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
 	};
 	Image(Image&&) = default;
