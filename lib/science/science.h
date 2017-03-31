@@ -167,6 +167,10 @@ inline bool hasStencil(VkFormat format) {
 
 
 // PipeBuilder is a builder for command::Pipeline.
+// PipeBuilder immediately installs a new command::Pipeline in the
+// command::RenderPass it gets in its constructor, so instantiating a
+// PipeBuilder is an immediate commitment to completing the Pipeline before
+// calling RenderPass:ctorError().
 typedef struct PipeBuilder {
 	PipeBuilder(language::Device& dev, command::RenderPass& pass)
 		: pipeline{pass.addPipeline(dev)}
@@ -181,6 +185,10 @@ typedef struct PipeBuilder {
 	// of formatChoices that is available.
 	// Because addDepthImage automatically calls recreateSwapChainExtent, you must
 	// pass in a valid builder for recreateSwapChainExtent.
+	//
+	// Note: after calling addDepthImage(), the RenderPass holds a reference to
+	// PipeBuilder::depthImage. Do not delete PipeBuilder while RenderPass still
+	// exists. (If not using addDepthImage, feel free to delete PipeBuilder.)
 	WARN_UNUSED_RESULT int addDepthImage(
 		language::Device& dev,
 		command::RenderPass& pass,

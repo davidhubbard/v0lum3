@@ -474,15 +474,43 @@ public:
 
 	// submit calls vkQueueSubmit using commandPoolQueueI.
 	// Note vkQueueSubmit is a high overhead operation; submitting multiple
-	// command buffers and even multiple VkSubmitInfo batches is recommended.
-	WARN_UNUSED_RESULT int submit(size_t commandPoolQueueI) {
+	// command buffers and even multiple VkSubmitInfo batches is recommended --
+	// see submitMany.
+	//
+	// An optional VkFence parameter can be specified to signal the VkFence when
+	// the operation is complete.
+	WARN_UNUSED_RESULT int submit(
+			size_t commandPoolQueueI,
+			VkFence fence = VK_NULL_HANDLE) {
 		VkSubmitInfo VkInit(submitInfo);
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &buf;
 
-		VkResult v;
-		if ((v = vkQueueSubmit(cpool.q(commandPoolQueueI), 1, &submitInfo,
-				VK_NULL_HANDLE /*optional VkFence to sigmal*/)) != VK_SUCCESS) {
+		VkResult v = vkQueueSubmit(
+			cpool.q(commandPoolQueueI), 1, &submitInfo, fence);
+		if (v != VK_SUCCESS) {
+			fprintf(stderr, "vkQueueSubmit failed: %d (%s)\n", v, string_VkResult(v));
+			return 1;
+		}
+		return 0;
+	};
+
+	// submitMany bypasses the typical CommandBuilder::use() and allows raw
+	// access to the VkQueueSubmit() call.
+	//
+	// Note vkQueueSubmit is a high overhead operation. submitMany is the way to
+	// submit multiple VkSubmitInfo objects at once.
+	//
+	// An optional VkFence parameter can be specified to signal the VkFence when
+	// the operation is complete.
+	WARN_UNUSED_RESULT int submitMany(
+			size_t commandPoolQueueI,
+			std::vector<VkSubmitInfo> info,
+			VkFence fence = VK_NULL_HANDLE) {
+
+		VkResult v = vkQueueSubmit(
+			cpool.q(commandPoolQueueI), info.size(), info.data(), fence);
+		if (v != VK_SUCCESS) {
 			fprintf(stderr, "vkQueueSubmit failed: %d (%s)\n", v, string_VkResult(v));
 			return 1;
 		}
@@ -559,6 +587,18 @@ public:
 			memoryBarrierCount, pMemoryBarriers,
 			bufferMemoryBarrierCount, pBufferMemoryBarriers,
 			imageMemoryBarrierCount, pImageMemoryBarriers);
+		return 0;
+	};
+
+	WARN_UNUSED_RESULT int setEvent(VkEvent event, VkPipelineStageFlags stageMask)
+	{
+		vkCmdSetEvent(buf, event, stageMask);
+		return 0;
+	};
+
+	WARN_UNUSED_RESULT int resetEvent(VkEvent event, VkPipelineStageFlags stageMask)
+	{
+		vkCmdResetEvent(buf, event, stageMask);
 		return 0;
 	};
 
