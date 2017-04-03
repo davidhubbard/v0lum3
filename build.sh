@@ -19,7 +19,7 @@ fi
 N=$( /bin/ls -1 vendor/glfw | wc -l )
 if [ "$N" -eq "0" ]; then
   echo "git submodule update --init --recursive"
-  git submodule update --init --recursive
+  git submodule update --init --recursive --depth 51
 fi
 
 # patch glfw to use libvulkan.so instead of libvulkan.so.1
@@ -36,10 +36,10 @@ sed -i -e 's/\(skia_vulkan_sdk = \)getenv("VULKAN_SDK")/\1root_out_dir/' \
 # patch skia to honor {{output_dir}} in toolchain("gcc_like")
 # this is needed by //vendor/VulkanSamples because libVkLayer_*.so must be
 # installed with the layer json files, and that crowds {{root_out_dir}}.
-patch -p1 <<EOF
+patch --no-backup-if-mismatch -p1 <<EOF
 --- a/vendor/skia/gn/BUILD.gn
 +++ b/vendor/skia/gn/BUILD.gn
-@@ -687,8 +687,9 @@ toolchain("gcc_like") {
+@@ -698,8 +698,9 @@ toolchain("gcc_like") {
  
      command = "\$cc_wrapper \$cxx -shared {{ldflags}} {{inputs}} {{solibs}} {{libs}} \$rpath -o {{output}}"
      outputs = [

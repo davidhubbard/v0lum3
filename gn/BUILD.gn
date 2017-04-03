@@ -22,6 +22,7 @@ declare_args() {
 
   msvc = 2015
 
+  extra_asmflags = []
   extra_cflags = []
   extra_cflags_c = []
   extra_cflags_cc = []
@@ -147,14 +148,19 @@ config("default") {
     cflags += [
       "-fstrict-aliasing",
       "-fPIC",
-      "-fvisibility=hidden",
       "-Werror",
     ]
     cflags_cc += [
       "-std=c++11",
       "-fno-threadsafe-statics",
-      "-fvisibility-inlines-hidden",
     ]
+
+    # The main idea is to slim the exported API, but these flags also improve link time on Mac.
+    # These would make stack traces worse on Linux, so we don't just set them willy-nilly.
+    if (is_component_build || is_ios || is_mac) {
+      cflags += [ "-fvisibility=hidden" ]
+      cflags_cc += [ "-fvisibility-inlines-hidden" ]
+    }
   }
 
   if (current_cpu == "arm") {
@@ -401,6 +407,7 @@ config("warnings_except_public_headers") {
 }
 
 config("extra_flags") {
+  asmflags = extra_asmflags
   cflags = extra_cflags
   cflags_c = extra_cflags_c
   cflags_cc = extra_cflags_cc
@@ -495,7 +502,11 @@ toolchain("msvc") {
   }
 
   tool("asm") {
-    command = "$env_setup$bin/ml64.exe /nologo /c /Fo {{output}} {{source}}"
+    _ml = "ml"
+    if (target_cpu == "x64") {
+      _ml += "64"
+    }
+    command = "$env_setup$bin/$_ml.exe /nologo /c /Fo {{output}} {{source}}"
     outputs = [
       "{{source_out_dir}}/{{target_output_name}}.{{source_name_part}}.obj",
     ]
@@ -687,9 +698,8 @@ toolchain("gcc_like") {
 
     command = "$cc_wrapper $cxx -shared {{ldflags}} {{inputs}} {{solibs}} {{libs}} $rpath -o {{output}}"
     outputs = [
-      "{{output_dir}}/$soname"
+      "{{output_dir}}/$soname",
     ]
-
     default_output_dir = "{{root_out_dir}}"
     output_prefix = "lib"
     default_output_extension = ".so"

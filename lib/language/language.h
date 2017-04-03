@@ -44,10 +44,10 @@
  * }
  */
 
+#include <vulkan/vulkan.h>
 #include <set>
 #include <string>
 #include <vector>
-#include <vulkan/vulkan.h>
 #include "VkPtr.h"
 
 #pragma once
@@ -76,16 +76,16 @@ struct Device;
 //
 // ImageView is set up automatically by Device. Feel free to skip to Device now.
 typedef struct ImageView {
-	ImageView(Device& dev);  // ctor is in imageview.cpp for Device definition.
-	ImageView(ImageView&&) = default;
-	ImageView(const ImageView&) = delete;
+  ImageView(Device& dev);  // ctor is in imageview.cpp for Device definition.
+  ImageView(ImageView&&) = default;
+  ImageView(const ImageView&) = delete;
 
-	// ctorError() must be called with a valid VkImage for this to reference.
-	// Your application may customize this->info before calling ctorError().
-	WARN_UNUSED_RESULT int ctorError(Device& dev, VkImage image, VkFormat format);
+  // ctorError() must be called with a valid VkImage for this to reference.
+  // Your application may customize this->info before calling ctorError().
+  WARN_UNUSED_RESULT int ctorError(Device& dev, VkImage image, VkFormat format);
 
-	VkImageViewCreateInfo info;
-	VkPtr<VkImageView> vk;
+  VkImageViewCreateInfo info;
+  VkPtr<VkImageView> vk;
 } ImageView;
 
 // Framebuf is the on-screen pixels and the memory behind them.
@@ -109,25 +109,23 @@ typedef struct ImageView {
 //    attachments setup code goes in a subroutine to be called after
 //    Instance::open() and after Device::resetSwapChain().
 typedef struct Framebuf {
-	Framebuf(Device& dev);  // ctor is in imageview.cpp for Device definition.
-	Framebuf(Framebuf&&) = default;
-	Framebuf(const Framebuf&) = delete;
+  Framebuf(Device& dev);  // ctor is in imageview.cpp for Device definition.
+  Framebuf(Framebuf&&) = default;
+  Framebuf(const Framebuf&) = delete;
 
-	// ctorError() creates the VkFramebuffer, typically called from
-	// Pipeline::init() in <lib/command/command.h>.
-	WARN_UNUSED_RESULT int ctorError(
-		Device& dev,
-		VkRenderPass renderPass,
-		VkExtent2D swapChainExtent);
+  // ctorError() creates the VkFramebuffer, typically called from
+  // Pipeline::init() in <lib/command/command.h>.
+  WARN_UNUSED_RESULT int ctorError(Device& dev, VkRenderPass renderPass,
+                                   VkExtent2D swapChainExtent);
 
-	// Image from Device::swapChain. VkImage has no VkDestroyImage function.
-	VkImage image;
-	ImageView imageView0;
-	// attachments must be created with identical
-	// ImageView::info.subresourceRange.layerCount.
-	std::vector<VkImageView> attachments;
+  // Image from Device::swapChain. VkImage has no VkDestroyImage function.
+  VkImage image;
+  ImageView imageView0;
+  // attachments must be created with identical
+  // ImageView::info.subresourceRange.layerCount.
+  std::vector<VkImageView> attachments;
 
-	VkPtr<VkFramebuffer> vk;
+  VkPtr<VkFramebuffer> vk;
 } Framebuf;
 
 // SurfaceSupport encodes the result of vkGetPhysicalDeviceSurfaceSupportKHR().
@@ -136,30 +134,30 @@ typedef struct Framebuf {
 // Device::getQfamI().
 // TODO: add COMPUTE.
 enum SurfaceSupport {
-	UNDEFINED = 0,
-	NONE = 1,
-	PRESENT = 2,
+  UNDEFINED = 0,
+  NONE = 1,
+  PRESENT = 2,
 
-	GRAPHICS = 0x1000,  // Not used in struct QueueFamily.
+  GRAPHICS = 0x1000,  // Not used in struct QueueFamily.
 };
 
 // QueueRequest communicates the physical device and queue family within the
 // device -- a request by initQueues() (below). initQueues() pushes one
 // QueueRequest instance per queue.
 typedef struct QueueRequest {
-	uint32_t dev_index;
-	uint32_t dev_qfam_index;
-	float priority;
+  uint32_t dev_index;
+  uint32_t dev_qfam_index;
+  float priority;
 
-	// The default priority is the lowest possible (0.0), but can be changed.
-	// Many GPUs only have the minimum
-	// VkPhysicalDeviceLimits.discreteQueuePriorities, which is 2: 0.0 and 1.0.
-	QueueRequest(uint32_t dev_i, uint32_t dev_qfam_i) {
-		dev_index = dev_i;
-		dev_qfam_index = dev_qfam_i;
-		priority = 0.0;
-	}
-	virtual ~QueueRequest();
+  // The default priority is the lowest possible (0.0), but can be changed.
+  // Many GPUs only have the minimum
+  // VkPhysicalDeviceLimits.discreteQueuePriorities, which is 2: 0.0 and 1.0.
+  QueueRequest(uint32_t dev_i, uint32_t dev_qfam_i) {
+    dev_index = dev_i;
+    dev_qfam_index = dev_qfam_i;
+    priority = 0.0;
+  }
+  virtual ~QueueRequest();
 } QueueRequest;
 
 // QueueFamily wraps VkQueueFamilyProperties. QueueFamily also gives whether the
@@ -167,21 +165,21 @@ typedef struct QueueRequest {
 // to the screen if surfaceSupport == PRESENT).
 // SurfaceSupport is the result of vkGetPhysicalDeviceSurfaceSupportKHR().
 typedef struct QueueFamily {
-	QueueFamily(const VkQueueFamilyProperties& vk, SurfaceSupport surfaceSupport)
-		: vk(vk), surfaceSupport(surfaceSupport) {};
-	QueueFamily(QueueFamily&&) = default;
-	QueueFamily(const QueueFamily&) = delete;
+  QueueFamily(const VkQueueFamilyProperties& vk, SurfaceSupport surfaceSupport)
+      : vk(vk), surfaceSupport(surfaceSupport){};
+  QueueFamily(QueueFamily&&) = default;
+  QueueFamily(const QueueFamily&) = delete;
 
-	VkQueueFamilyProperties vk;
-	const SurfaceSupport surfaceSupport;
-	inline bool isGraphics() const {
-		return vk.queueFlags & VK_QUEUE_GRAPHICS_BIT;
-	};
+  VkQueueFamilyProperties vk;
+  const SurfaceSupport surfaceSupport;
+  inline bool isGraphics() const {
+    return vk.queueFlags & VK_QUEUE_GRAPHICS_BIT;
+  };
 
-	// Populated only after open().
-	std::vector<float> prios;
-	// Populated only after open().
-	std::vector<VkQueue> queues;
+  // Populated only after open().
+  std::vector<float> prios;
+  // Populated only after open().
+  std::vector<VkQueue> queues;
 } QueueFamily;
 
 // Device wraps the Vulkan logical and physical devices and a list of
@@ -197,92 +195,91 @@ typedef struct QueueFamily {
 // initQueues() populates a QueueRequest vector used to create Device::dev (the
 // logical device). open() then populates Device::qfams.queues.
 typedef struct Device {
-	Device() = default;
-	Device(Device&&) = default;
-	Device(const Device&) = delete;
-	virtual ~Device();
+  Device() = default;
+  Device(Device&&) = default;
+  Device(const Device&) = delete;
+  virtual ~Device();
 
-	// Logical Device. Populated only after open().
-	VkPtr<VkDevice> dev{vkDestroyDevice};
+  // Logical Device. Populated only after open().
+  VkPtr<VkDevice> dev{vkDestroyDevice};
 
-	// Physical Device. Populated after ctorError().
-	VkPhysicalDevice phys = VK_NULL_HANDLE;
+  // Physical Device. Populated after ctorError().
+  VkPhysicalDevice phys = VK_NULL_HANDLE;
 
-	// Properties, like device name. Populated after ctorError().
-	VkPhysicalDeviceProperties physProp;
+  // Properties, like device name. Populated after ctorError().
+  VkPhysicalDeviceProperties physProp;
 
-	// Memory properties like memory type. Populated after ctorError().
-	VkPhysicalDeviceMemoryProperties memProps;
+  // Memory properties like memory type. Populated after ctorError().
+  VkPhysicalDeviceMemoryProperties memProps;
 
-	// Device extensions to choose from. Populated after ctorError().
-	std::vector<VkExtensionProperties> availableExtensions;
+  // Device extensions to choose from. Populated after ctorError().
+  std::vector<VkExtensionProperties> availableExtensions;
 
-	// qfams is populated after ctorError() but qfams.queue is populated
-	// only after open().
-	std::vector<QueueFamily> qfams;
-	// getQfamI() is a convenience method to get the queue family index that
-	// supports the given SurfaceSupport. Returns (size_t) -1 on error.
-	size_t getQfamI(SurfaceSupport support) const;
+  // qfams is populated after ctorError() but qfams.queue is populated
+  // only after open().
+  std::vector<QueueFamily> qfams;
+  // getQfamI() is a convenience method to get the queue family index that
+  // supports the given SurfaceSupport. Returns (size_t) -1 on error.
+  size_t getQfamI(SurfaceSupport support) const;
 
-	// Request device extensions by adding to extensionRequests before open().
-	std::vector<const char *> extensionRequests;
+  // Request device extensions by adding to extensionRequests before open().
+  std::vector<const char*> extensionRequests;
 
-	std::vector<VkSurfaceFormatKHR> surfaceFormats;
-	std::vector<VkPresentModeKHR> presentModes;
-	VkSurfaceFormatKHR format = { (VkFormat) 0, (VkColorSpaceKHR) 0 };
-	// Present mode to use if vsync is off / freerun mode. Populated after
-	// ctorError().
-	VkPresentModeKHR freerunMode = (VkPresentModeKHR) 0;
-	// Present mode to use if vsync is on. Populated after ctorError().
-	VkPresentModeKHR vsyncMode = (VkPresentModeKHR) 0;
-	VkExtent2D swapChainExtent;
+  std::vector<VkSurfaceFormatKHR> surfaceFormats;
+  std::vector<VkPresentModeKHR> presentModes;
+  VkSurfaceFormatKHR format = {(VkFormat)0, (VkColorSpaceKHR)0};
+  // Present mode to use if vsync is off / freerun mode. Populated after
+  // ctorError().
+  VkPresentModeKHR freerunMode = (VkPresentModeKHR)0;
+  // Present mode to use if vsync is on. Populated after ctorError().
+  VkPresentModeKHR vsyncMode = (VkPresentModeKHR)0;
+  VkExtent2D swapChainExtent;
 
-	// aspectRatio is a convenience method to compute the aspect ratio of the
-	// swapChain.
-	float aspectRatio() const {
-		return swapChainExtent.width / (float) swapChainExtent.height;
-	};
+  // aspectRatio is a convenience method to compute the aspect ratio of the
+  // swapChain.
+  float aspectRatio() const {
+    return swapChainExtent.width / (float)swapChainExtent.height;
+  };
 
-	// formatProperties is a convenience wrapper around
-	// vkGetPhysicalDeviceFormatProperties.
-	WARN_UNUSED_RESULT VkFormatProperties formatProperties(VkFormat format) {
-		VkFormatProperties props;
-		vkGetPhysicalDeviceFormatProperties(phys, format, &props);
-		return props;
-	};
+  // formatProperties is a convenience wrapper around
+  // vkGetPhysicalDeviceFormatProperties.
+  WARN_UNUSED_RESULT VkFormatProperties formatProperties(VkFormat format) {
+    VkFormatProperties props;
+    vkGetPhysicalDeviceFormatProperties(phys, format, &props);
+    return props;
+  };
 
-	// chooseFormat is a convenience method to select the first matching format
-	// that has the given tiling and feature flags.
-	// If no format meets the criteria, VK_FORMAT_UNDEFINED is returned.
-	WARN_UNUSED_RESULT VkFormat chooseFormat(
-		VkImageTiling tiling,
-		VkFormatFeatureFlags flags,
-		const std::vector<VkFormat>& choices);
+  // chooseFormat is a convenience method to select the first matching format
+  // that has the given tiling and feature flags.
+  // If no format meets the criteria, VK_FORMAT_UNDEFINED is returned.
+  WARN_UNUSED_RESULT VkFormat
+  chooseFormat(VkImageTiling tiling, VkFormatFeatureFlags flags,
+               const std::vector<VkFormat>& choices);
 
-	// Instance::open() calls resetSwapChain() so swapChain is valid after open().
-	VkPtr<VkSwapchainKHR> swapChain{dev, vkDestroySwapchainKHR};
-	std::vector<Framebuf> framebufs;
+  // Instance::open() calls resetSwapChain() so swapChain is valid after open().
+  VkPtr<VkSwapchainKHR> swapChain{dev, vkDestroySwapchainKHR};
+  std::vector<Framebuf> framebufs;
 
-	// resetSwapChain() re-initializes swapChain with the new sizeRequest.
-	// swapChainExtent is updated to the new sizeRequest and the entire
-	// framebufs vector is recreated.
-	WARN_UNUSED_RESULT virtual int resetSwapChain(
-		VkSurfaceKHR surface, VkExtent2D sizeRequest);
+  // resetSwapChain() re-initializes swapChain with the new sizeRequest.
+  // swapChainExtent is updated to the new sizeRequest and the entire
+  // framebufs vector is recreated.
+  WARN_UNUSED_RESULT virtual int resetSwapChain(VkSurfaceKHR surface,
+                                                VkExtent2D sizeRequest);
 } Device;
 
 // InstanceExtensionChooser enumerates available extensions and chooses the
 // extensions to submit during Instance::ctorError().
 typedef struct InstanceExtensionChooser {
-	// Construct an InstanceExtensionChooser.
-	InstanceExtensionChooser() {};
-	virtual ~InstanceExtensionChooser();
+  // Construct an InstanceExtensionChooser.
+  InstanceExtensionChooser(){};
+  virtual ~InstanceExtensionChooser();
 
-	// choose generates the chosen vector using the extension names populated in
-	// required.
-	WARN_UNUSED_RESULT virtual int choose();
+  // choose generates the chosen vector using the extension names populated in
+  // required.
+  WARN_UNUSED_RESULT virtual int choose();
 
-	std::vector<std::string> required;
-	std::vector<std::string> chosen;
+  std::vector<std::string> required;
+  std::vector<std::string> chosen;
 } InstanceExtensionChooser;
 
 // Instance holds the root of the Vulkan pipeline. Constructor (ctor) is a
@@ -330,102 +327,101 @@ typedef struct InstanceExtensionChooser {
 // https://www.khronos.org/registry/vulkan/specs/1.0-extensions/html/vkspec.html#VK_KHX_device_group
 // )
 class Instance {
-public:
-	Instance();
-	Instance(Instance&&) = delete;
-	Instance(const Instance&) = delete;
+ public:
+  Instance();
+  Instance(Instance&&) = delete;
+  Instance(const Instance&) = delete;
 
-	VkPtr<VkInstance> vk{vkDestroyInstance};
-	VkPtr<VkSurfaceKHR> surface{vk, vkDestroySurfaceKHR};
+  VkPtr<VkInstance> vk{vkDestroyInstance};
+  VkPtr<VkSurfaceKHR> surface{vk, vkDestroySurfaceKHR};
 
-	// CreateWindowSurfaceFn defines the function signature for the
-	// function that is called to initialize Instance::surface.
-	// (e.g. glfwCreateWindowSurface, vkCreateXcbSurfaceKHR, or
-	// SDL_CreateVulkanSurface).
-	//
-	// window is an opaque pointer used only to call this function.
-	typedef VkResult (* CreateWindowSurfaceFn)(Instance& instance, void *window);
+  // CreateWindowSurfaceFn defines the function signature for the
+  // function that is called to initialize Instance::surface.
+  // (e.g. glfwCreateWindowSurface, vkCreateXcbSurfaceKHR, or
+  // SDL_CreateVulkanSurface).
+  //
+  // window is an opaque pointer used only to call this function.
+  typedef VkResult (*CreateWindowSurfaceFn)(Instance& instance, void* window);
 
-	// ctorError is step 2 of the constructor (see class comments above).
-	// Vulkan errors are returned from ctorError().
-	//
-	// requiredExtensions is an array of strings naming any required
-	// extensions (e.g. glfwGetRequiredInstanceExtensions for glfw).
-	// [The SDL API is not as well defined yet but might be
-	// SDL_GetVulkanInstanceExtensions]
-	//
-	// createWindowSurface is a function that is called to initialize
-	// Instance::surface. It is called exactly once inside ctorError and
-	// not retained.
-	//
-	// window is an opaque pointer used only in the call to
-	// createWindowSurface.
-	WARN_UNUSED_RESULT int ctorError(
-		const char ** requiredExtensions,
-		size_t requiredExtensionCount,
-		CreateWindowSurfaceFn createWindowSurface,
-		void *window);
+  // ctorError is step 2 of the constructor (see class comments above).
+  // Vulkan errors are returned from ctorError().
+  //
+  // requiredExtensions is an array of strings naming any required
+  // extensions (e.g. glfwGetRequiredInstanceExtensions for glfw).
+  // [The SDL API is not as well defined yet but might be
+  // SDL_GetVulkanInstanceExtensions]
+  //
+  // createWindowSurface is a function that is called to initialize
+  // Instance::surface. It is called exactly once inside ctorError and
+  // not retained.
+  //
+  // window is an opaque pointer used only in the call to
+  // createWindowSurface.
+  WARN_UNUSED_RESULT int ctorError(const char** requiredExtensions,
+                                   size_t requiredExtensionCount,
+                                   CreateWindowSurfaceFn createWindowSurface,
+                                   void* window);
 
-	// open() is step 3 of the constructor. Call open() after modifying
-	// Device::extensionRequests, Device::surfaceFormats, or
-	// Device::presentModes.
-	//
-	// surfaceSizeRequest is the initial size of the window.
-	WARN_UNUSED_RESULT int open(VkExtent2D surfaceSizeRequest);
+  // open() is step 3 of the constructor. Call open() after modifying
+  // Device::extensionRequests, Device::surfaceFormats, or
+  // Device::presentModes.
+  //
+  // surfaceSizeRequest is the initial size of the window.
+  WARN_UNUSED_RESULT int open(VkExtent2D surfaceSizeRequest);
 
-	virtual ~Instance();
+  virtual ~Instance();
 
-	size_t devs_size() const { return devs.size(); };
-	Device& at(size_t i) { return devs.at(i); };
+  size_t devs_size() const { return devs.size(); };
+  Device& at(size_t i) { return devs.at(i); };
 
-	// requestQfams() is a convenience function. It selects the minimal
-	// list of QueueFamily instances from Device dev_i and returns a
-	// vector of QueueRequest that cover the requested support.
-	//
-	// For example:
-	// auto r = dev.requestQfams(dev_i, {language::PRESENT,
-	//                                   language::GRAPHICS});
-	//
-	// After requestQfams() returns, multiple queues can be obtained by
-	// adding the QueueRequest multiple times in initQueues().
-	std::vector<QueueRequest> requestQfams(
-		size_t dev_i, std::set<SurfaceSupport> support);
+  // requestQfams() is a convenience function. It selects the minimal
+  // list of QueueFamily instances from Device dev_i and returns a
+  // vector of QueueRequest that cover the requested support.
+  //
+  // For example:
+  // auto r = dev.requestQfams(dev_i, {language::PRESENT,
+  //                                   language::GRAPHICS});
+  //
+  // After requestQfams() returns, multiple queues can be obtained by
+  // adding the QueueRequest multiple times in initQueues().
+  std::vector<QueueRequest> requestQfams(size_t dev_i,
+                                         std::set<SurfaceSupport> support);
 
-	// pDestroyDebugReportCallbackEXT is loaded from the vulkan library at
-	// startup (i.e. a .dll / .so function symbol lookup).
-	PFN_vkDestroyDebugReportCallbackEXT pDestroyDebugReportCallbackEXT = nullptr;
+  // pDestroyDebugReportCallbackEXT is loaded from the vulkan library at
+  // startup (i.e. a .dll / .so function symbol lookup).
+  PFN_vkDestroyDebugReportCallbackEXT pDestroyDebugReportCallbackEXT = nullptr;
 
-	VkDebugReportCallbackEXT debugReport = VK_NULL_HANDLE;
+  VkDebugReportCallbackEXT debugReport = VK_NULL_HANDLE;
 
-	// applicationInfo is set to defaults in Instance() and is sent to Vulkan
-	// in ctorError(). Customize your application before calling ctorError().
-	VkApplicationInfo applicationInfo;
-	std::string applicationName;
-	std::string engineName;
+  // applicationInfo is set to defaults in Instance() and is sent to Vulkan
+  // in ctorError(). Customize your application before calling ctorError().
+  VkApplicationInfo applicationInfo;
+  std::string applicationName;
+  std::string engineName;
 
-	// pAllocator defaults to nullptr. Your application can install a custom
-	// allocator before calling ctorError().
-	VkAllocationCallbacks * pAllocator = nullptr;
+  // pAllocator defaults to nullptr. Your application can install a custom
+  // allocator before calling ctorError().
+  VkAllocationCallbacks* pAllocator = nullptr;
 
-protected:
-	// Override initDebug() if your app needs different debug settings.
-	WARN_UNUSED_RESULT virtual int initDebug();
+ protected:
+  // Override initDebug() if your app needs different debug settings.
+  WARN_UNUSED_RESULT virtual int initDebug();
 
-	// After devs is initialized in ctorError(), it must not be resized.
-	// Any operation on the vector that causes it to reallocate its storage
-	// will invalidate references held to the individual Device instances,
-	// likely causing a segfault.
-	std::vector<Device> devs;
+  // After devs is initialized in ctorError(), it must not be resized.
+  // Any operation on the vector that causes it to reallocate its storage
+  // will invalidate references held to the individual Device instances,
+  // likely causing a segfault.
+  std::vector<Device> devs;
 
-	// Override initQueues() if your app needs more than one queue.
-	// initQueues() should call request.push_back() for at least one
-	// QueueRequest.
-	WARN_UNUSED_RESULT virtual int initQueues(std::vector<QueueRequest>& request);
+  // Override initQueues() if your app needs more than one queue.
+  // initQueues() should call request.push_back() for at least one
+  // QueueRequest.
+  WARN_UNUSED_RESULT virtual int initQueues(std::vector<QueueRequest>& request);
 
-	// Override initSurfaceFormatAndPresentMode() or just modify
-	// Device::surfaceFormats and Device::presentModes before calling
-	// open().
-	WARN_UNUSED_RESULT virtual int initSurfaceFormatAndPresentMode(Device& dev);
+  // Override initSurfaceFormatAndPresentMode() or just modify
+  // Device::surfaceFormats and Device::presentModes before calling
+  // open().
+  WARN_UNUSED_RESULT virtual int initSurfaceFormatAndPresentMode(Device& dev);
 };
 
-} // namespace language
+}  // namespace language

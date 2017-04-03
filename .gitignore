@@ -2,6 +2,7 @@ out
 third_party
 bin
 buildtools/*/gn
+buildtools/*/clang-format
 
 vendor/bin
 vendor/etc

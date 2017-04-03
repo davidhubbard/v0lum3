@@ -12,3 +12,6 @@
 	path = vendor/skia
 	url = https://github.com/google/skia
 	ignore = dirty
+[submodule "vendor/SPIRV-Cross"]
+	path = vendor/spirv_cross
+	url = github:KhronosGroup/SPIRV-Cross
