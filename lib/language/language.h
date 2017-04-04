@@ -166,7 +166,7 @@ typedef struct QueueRequest {
 // SurfaceSupport is the result of vkGetPhysicalDeviceSurfaceSupportKHR().
 typedef struct QueueFamily {
   QueueFamily(const VkQueueFamilyProperties& vk, SurfaceSupport surfaceSupport)
-      : vk(vk), surfaceSupport(surfaceSupport){};
+      : vk(vk), surfaceSupport(surfaceSupport) {}
   QueueFamily(QueueFamily&&) = default;
   QueueFamily(const QueueFamily&) = delete;
 
@@ -174,7 +174,7 @@ typedef struct QueueFamily {
   const SurfaceSupport surfaceSupport;
   inline bool isGraphics() const {
     return vk.queueFlags & VK_QUEUE_GRAPHICS_BIT;
-  };
+  }
 
   // Populated only after open().
   std::vector<float> prios;
@@ -239,7 +239,7 @@ typedef struct Device {
   // swapChain.
   float aspectRatio() const {
     return swapChainExtent.width / (float)swapChainExtent.height;
-  };
+  }
 
   // formatProperties is a convenience wrapper around
   // vkGetPhysicalDeviceFormatProperties.
@@ -247,7 +247,7 @@ typedef struct Device {
     VkFormatProperties props;
     vkGetPhysicalDeviceFormatProperties(phys, format, &props);
     return props;
-  };
+  }
 
   // chooseFormat is a convenience method to select the first matching format
   // that has the given tiling and feature flags.
@@ -271,7 +271,7 @@ typedef struct Device {
 // extensions to submit during Instance::ctorError().
 typedef struct InstanceExtensionChooser {
   // Construct an InstanceExtensionChooser.
-  InstanceExtensionChooser(){};
+  InstanceExtensionChooser() {}
   virtual ~InstanceExtensionChooser();
 
   // choose generates the chosen vector using the extension names populated in
@@ -371,8 +371,8 @@ class Instance {
 
   virtual ~Instance();
 
-  size_t devs_size() const { return devs.size(); };
-  Device& at(size_t i) { return devs.at(i); };
+  size_t devs_size() const { return devs.size(); }
+  Device& at(size_t i) { return devs.at(i); }
 
   // requestQfams() is a convenience function. It selects the minimal
   // list of QueueFamily instances from Device dev_i and returns a

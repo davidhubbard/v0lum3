@@ -1,7 +1,7 @@
 /* Copyright (c) David Hubbard 2017. Licensed under the GPLv3.
  */
-#include "language.h"
 #include "VkEnum.h"
+#include "language.h"
 
 namespace language {
 using namespace VkEnum;

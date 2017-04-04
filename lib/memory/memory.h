@@ -32,7 +32,7 @@ struct MemoryRequirements;
 // By using the overloaded constructors in MemoryRequirements,
 // DeviceMemory::alloc() is kept simple.
 typedef struct DeviceMemory {
-  DeviceMemory(language::Device& dev) : vk{dev.dev, vkFreeMemory} {};
+  DeviceMemory(language::Device& dev) : vk{dev.dev, vkFreeMemory} {}
 
   // alloc() calls vkAllocateMemory() and returns non-zero on error.
   // Note: if you use Image, Buffer, etc. below, alloc() is automatically called
@@ -74,7 +74,7 @@ typedef struct Image {
 
     // ctorError() sets currentLayout = info.initialLayout.
     currentLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
-  };
+  }
   Image(Image&&) = default;
   Image(const Image&) = delete;
 
@@ -97,7 +97,7 @@ typedef struct Image {
     info.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     currentLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
     return ctorError(dev, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-  };
+  }
 
   WARN_UNUSED_RESULT int ctorHostCoherent(language::Device& dev) {
     info.tiling = VK_IMAGE_TILING_LINEAR;
@@ -105,7 +105,7 @@ typedef struct Image {
     currentLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
     return ctorError(dev, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-  };
+  }
 
   // bindMemory() calls vkBindImageMemory which binds this->mem.
   // Note: do not call bindMemory() until some time after ctorError().
@@ -151,7 +151,7 @@ typedef struct Buffer {
     // You must set info.size.
     // You must set info.usage.
     info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-  };
+  }
   Buffer(Buffer&&) = default;
   Buffer(const Buffer&) = delete;
 
@@ -170,18 +170,18 @@ typedef struct Buffer {
   WARN_UNUSED_RESULT int ctorDeviceLocal(language::Device& dev) {
     info.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     return ctorError(dev, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-  };
+  }
 
   WARN_UNUSED_RESULT int ctorHostVisible(language::Device& dev) {
     info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     return ctorError(dev, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-  };
+  }
 
   WARN_UNUSED_RESULT int ctorHostCoherent(language::Device& dev) {
     info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     return ctorError(dev, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-  };
+  }
 
   // bindMemory() calls vkBindBufferMemory which binds this->mem.
   // Note: do not call bindMemory() until some time after ctorError().
@@ -237,7 +237,7 @@ typedef struct Sampler {
     info.unnormalizedCoordinates = VK_FALSE;
     info.compareEnable = VK_FALSE;
     info.compareOp = VK_COMPARE_OP_ALWAYS;
-  };
+  }
 
   // TODO: add a ctorError() method to construct vk, the Image (and bind it),
   // and the ImageView. Then just return. The caller can use the (host-visible)
@@ -258,12 +258,128 @@ typedef struct Sampler {
     imageInfo->imageLayout = image.currentLayout;
     imageInfo->imageView = imageView.vk;
     imageInfo->sampler = vk;
-  };
+  }
 
   Image image;
   language::ImageView imageView;
   VkSamplerCreateInfo info;
   VkPtr<VkSampler> vk;
 } Sampler;
+
+// DescriptorPool represents memory reserved for a DescriptorSet (or many).
+// The assumption is that your application knows in advance the max number of
+// DescriptorSet instances that will exist.
+//
+// It is also assumed your application knows the max number of each descriptor
+// (VkDescriptorType) that will make up the DescriptorSet or sets.
+typedef struct DescriptorPool {
+  DescriptorPool(language::Device& dev)
+      : dev(dev), vk{dev.dev, vkDestroyDescriptorPool} {
+    vk.allocator = dev.dev.allocator;
+  }
+
+  // ctorError calls vkCreateDescriptorPool to enable creating
+  // a DescriptorSet from this pool.
+  //
+  // maxSets is how many DescriptorSet instances can be created.
+  //
+  // maxDescriptors is how many of each VkDescriptorType to create:
+  // add 1 VkDescriptorType (in any order) for every descriptor of
+  // that type.
+  WARN_UNUSED_RESULT int ctorError(
+      uint32_t maxSets, std::vector<VkDescriptorType> maxDescriptors);
+
+  WARN_UNUSED_RESULT int reset() {
+    VkResult v = vkResetDescriptorPool(dev.dev, vk, 0 /*flags is reserved*/);
+    if (v != VK_SUCCESS) {
+      fprintf(stderr, "vkResetDescriptorPool failed: %d (%s)\n", v,
+              string_VkResult(v));
+      return 1;
+    }
+    return 0;
+  }
+
+  language::Device& dev;
+  VkPtr<VkDescriptorPool> vk;
+} DescriptorPool;
+
+// DescriptorSetLayout represents a group of VkDescriptorSetLayoutBinding
+// objects. This is useful when several groups are being assembled into a
+// DescriptorSet.
+//
+// It may be simpler to use science::ShaderLibrary.
+typedef struct DescriptorSetLayout {
+  DescriptorSetLayout(language::Device& dev)
+      : vk{dev.dev, vkDestroyDescriptorSetLayout} {
+    vk.allocator = dev.dev.allocator;
+  }
+
+  WARN_UNUSED_RESULT int ctorError(
+      language::Device& dev,
+      const std::vector<VkDescriptorSetLayoutBinding>& bindings) {
+    VkDescriptorSetLayoutCreateInfo VkInit(info);
+    info.bindingCount = bindings.size();
+    info.pBindings = bindings.data();
+
+    VkResult v =
+        vkCreateDescriptorSetLayout(dev.dev, &info, dev.dev.allocator, &vk);
+    if (v != VK_SUCCESS) {
+      fprintf(stderr, "vkCreateDescriptorSetLayout failed: %d (%s)\n", v,
+              string_VkResult(v));
+      return 1;
+    }
+    return 0;
+  }
+
+  VkPtr<VkDescriptorSetLayout> vk;
+} DescriptorSetLayout;
+
+// DescriptorSet represents a set of bindings (which represent buffers) that
+// the host application must bind (provide) for the shader. If the
+// DescriptorSet does not match the layout defined in the shader, Vulkan will
+// report an error.
+//
+// A DescriptorSet is allocated to match a DescriptorSetLayout and retains a
+// reference to the DescriptorPool from which it was allocated.
+//
+// Notes:
+// 1. When it is allocated, it does not contain a valid type or buffer! Use
+//    VkWriteDescriptorSet to populate the DescriptorSet with type and buffer.
+// 2. During Pipeline initialization, VkDescriptorSetLayout objects are linked
+//    to the shader to assemble a valid pipeline (see PipelineCreateInfo).
+// 3. During a RenderPass, binding a DescriptorSet to the shader provides the
+//    shader with its inputs and outputs.
+typedef struct DescriptorSet {
+  DescriptorSet(DescriptorPool& pool) : pool(pool) {}
+  virtual ~DescriptorSet();
+
+  WARN_UNUSED_RESULT int ctorError(DescriptorSetLayout& layout) {
+    return ctorError(layout.vk);
+  }
+
+  WARN_UNUSED_RESULT int ctorError(VkDescriptorSetLayout layout) {
+    VkDescriptorSetAllocateInfo VkInit(info);
+    info.descriptorPool = pool.vk;
+    info.descriptorSetCount = 1;
+    info.pSetLayouts = &layout;
+
+    VkResult v = vkAllocateDescriptorSets(pool.dev.dev, &info, &vk);
+    if (v != VK_SUCCESS) {
+      fprintf(stderr,
+              "vkAllocateDescriptorSets failed: %d (%s)\n"
+              "The Vulkan spec suggests:\n"
+              "1. Ignore the exact error code returned.\n"
+              "2. Try creating a new DescriptorPool.\n"
+              "3. Retry DescriptorSet::ctorError().\n"
+              "4. If that fails, abort.\n",
+              v, string_VkResult(v));
+      return 1;
+    }
+    return 0;
+  }
+
+  DescriptorPool& pool;
+  VkDescriptorSet vk;
+} DescriptorSet;
 
 }  // namespace memory

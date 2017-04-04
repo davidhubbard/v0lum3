@@ -139,4 +139,46 @@ VkMemoryAllocateInfo* MemoryRequirements::ofProps(VkMemoryPropertyFlags props) {
   return &vkalloc;
 }
 
+int DescriptorPool::ctorError(uint32_t maxSets,
+                              std::vector<VkDescriptorType> maxDescriptors) {
+  VkDescriptorPoolCreateInfo VkInit(info);
+  info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+
+  // Vulkan Spec says: "If multiple VkDescriptorPoolSize structures appear in
+  // the pPoolSizes array then the pool will be created with enough storage
+  // for the total number of descriptors of each type."
+  //
+  // The Vulkan driver will count the number of times each VkDescriptorType
+  // occurs. This just translates the VkDescriptorType into a request for
+  // 1 descriptor of that type.
+  std::vector<VkDescriptorPoolSize> poolSizes;
+  for (auto& dType : maxDescriptors) {
+    poolSizes.emplace_back();
+    auto& poolSize = *(poolSizes.end() - 1);
+    VkOverwrite(poolSize);
+    poolSize.type = dType;
+    poolSize.descriptorCount = 1;
+  }
+  info.poolSizeCount = poolSizes.size();
+  info.pPoolSizes = poolSizes.data();
+
+  VkResult v = vkCreateDescriptorPool(dev.dev, &info, dev.dev.allocator, &vk);
+  if (v != VK_SUCCESS) {
+    fprintf(stderr, "vkCreateDescriptorPool failed: %d (%s)\n", v,
+            string_VkResult(v));
+    return 1;
+  }
+  vk.allocator = dev.dev.allocator;
+  return 0;
+}
+
+DescriptorSet::~DescriptorSet() {
+  VkResult v = vkFreeDescriptorSets(pool.dev.dev, pool.vk, 1, &vk);
+  if (v != VK_SUCCESS) {
+    fprintf(stderr, "vkFreeDescriptorSets failed: %d (%s)\n", v,
+            string_VkResult(v));
+    exit(1);
+  }
+}
+
 }  // namespace memory

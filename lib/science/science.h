@@ -12,6 +12,7 @@
 #include <lib/memory/memory.h>
 #include <string.h>
 #include <unistd.h>
+#include <memory>
 
 #pragma once
 
@@ -53,7 +54,7 @@ class SubresUpdate {
       layers->aspectMask |= VK_IMAGE_ASPECT_COLOR_BIT;
     }
     return *this;
-  };
+  }
   // Specify that this Subres applied to a depth attachment.
   SubresUpdate& addDepth() {
     if (range) {
@@ -63,7 +64,7 @@ class SubresUpdate {
       layers->aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
     }
     return *this;
-  };
+  }
   // Specify that this Subres applied to a stencil attachment.
   SubresUpdate& addStencil() {
     if (range) {
@@ -73,7 +74,7 @@ class SubresUpdate {
       layers->aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
     }
     return *this;
-  };
+  }
 
   // Specify mip-mapping offset and count.
   // This only applies to VkImageSubresourceRange, and will abort on a
@@ -106,7 +107,7 @@ class SubresUpdate {
       layers->mipLevel = level;
     }
     return *this;
-  };
+  }
 
   // Specify layer offset and count. Might be used for stereo displays.
   SubresUpdate& setLayer(uint32_t offset, uint32_t count) {
@@ -119,7 +120,7 @@ class SubresUpdate {
       layers->layerCount = count;
     }
     return *this;
-  };
+  }
 
  protected:
   VkImageSubresourceRange* range = nullptr;
@@ -142,14 +143,14 @@ class Subres : public SubresUpdate {
     range->levelCount = 1;      // There is 1 mipmap (no mipmapping).
     range->baseArrayLayer = 0;  // Offset in layerCount layers.
     range->layerCount = 1;      // Might be 2 for stereo displays.
-  };
+  }
   // Construct a Subres that modifies a VkImageSubresourceLayers.
   Subres(VkImageSubresourceLayers& layers_) : SubresUpdate(layers_) {
     memset(layers, 0, sizeof(*layers));
     layers->mipLevel = 0;        // First mipmap level.
     layers->baseArrayLayer = 0;  // Offset in layerCount layers.
     layers->layerCount = 1;      // Might be 2 for stereo displays.
-  };
+  }
 };
 
 // hasStencil() returns whether a VkFormat includes the stencil buffer or not.
@@ -166,12 +167,81 @@ inline bool hasStencil(VkFormat format) {
   }
 };
 
+// SwapChainResizeObserver is an interface (pure virtual class) which
+// has one virtual method: onResized. Implement this class to get notified
+// when the swapchain is resized.
+class SwapChainResizeObserver {
+ public:
+  virtual ~SwapChainResizeObserver();
+
+  // onResized is called when the Device dev's swapchain is resized.
+  // The CommandBuilder builder is ready to receive setup commands related
+  // to the resize (specifically, begin...() has been called on builder.)
+  WARN_UNUSED_RESULT virtual int onResized(
+      language::Device& dev, command::CommandBuilder& builder) = 0;
+};
+
+struct ResizeDeviceWaitIdle : public SwapChainResizeObserver {
+  WARN_UNUSED_RESULT virtual int onResized(language::Device& dev,
+                                           command::CommandBuilder& builder) {
+    VkResult v = vkDeviceWaitIdle(dev.dev);
+    if (v != VK_SUCCESS) {
+      fprintf(stderr,
+              "ResizeDeviceWaitIdle: vkDeviceWaitIdle failed: %d (%s)\n", v,
+              string_VkResult(v));
+      return 1;
+    }
+    return 0;
+  }
+};
+
+struct SwapChainResizeList {
+  SwapChainResizeList(VkSurfaceKHR surface) : surface(surface) {
+    list.emplace_back(&resizeDeviceWaitIdle);
+  }
+  ResizeDeviceWaitIdle resizeDeviceWaitIdle;
+
+  // list contains all SwapChainResizeObserver to be notified in onResized.
+  std::vector<SwapChainResizeObserver*> list;
+  // surface is needed to call dev.resetSwapChain().
+  VkSurfaceKHR surface;
+
+  // syncResize notifies all SwapChainResizeObserver in list and waits until
+  // the device has completed any command buffers.
+  int syncResize(language::Device& dev, command::CommandPool& cpool,
+                 VkExtent2D newSize) {
+    command::CommandBuilder rebuilder(cpool);
+    if (rebuilder.beginOneTimeUse()) {
+      fprintf(stderr, "SwapChainResizeList: beginOneTimeUse failed\n");
+      return 1;
+    }
+    for (size_t i = 0; i < list.size(); i++) {
+      auto* observer = list.at(i);
+      if (observer->onResized(dev, rebuilder)) {
+        fprintf(stderr, "SwapChainResizeList: an observer failed\n");
+        return 1;
+      }
+      if (i == 0) {
+        if (dev.resetSwapChain(surface, newSize)) {
+          return 1;
+        }
+      }
+    }
+    if (rebuilder.end() || rebuilder.submit(0)) {
+      fprintf(stderr, "SwapChainResizeList: rebuilder failed\n");
+      return 1;
+    }
+    vkQueueWaitIdle(cpool.q(0));
+    return 0;
+  }
+};
+
 // PipeBuilder is a builder for command::Pipeline.
 // PipeBuilder immediately installs a new command::Pipeline in the
 // command::RenderPass it gets in its constructor, so instantiating a
 // PipeBuilder is an immediate commitment to completing the Pipeline before
 // calling RenderPass:ctorError().
-typedef struct PipeBuilder {
+typedef struct PipeBuilder : public SwapChainResizeObserver {
   PipeBuilder(language::Device& dev, command::RenderPass& pass)
       : pipeline{pass.addPipeline(dev)},
         depthImage{dev},
@@ -194,15 +264,102 @@ typedef struct PipeBuilder {
       command::CommandBuilder& builder,
       const std::vector<VkFormat>& formatChoices);
 
-  // recreateSwapChainExtent rebuilds the pipeline with an updated extent from
-  // dev.swapChainExtent. It adds commands to CommandBuilder builder to set up
-  // the depth image, which must have already had a begin...() call on it.
-  // You must then call end() and submit() before beginning a RenderPass.
-  WARN_UNUSED_RESULT int recreateSwapChainExtent(
-      language::Device& dev, command::CommandBuilder& builder);
+  // onResized allows PipeBuilder to rebuild itself when the swapChain is
+  // resized.
+  WARN_UNUSED_RESULT virtual int onResized(language::Device& dev,
+                                           command::CommandBuilder& builder);
 
   memory::Image depthImage;
   language::ImageView depthImageView;
 } PipeBuilder;
+
+#ifdef USE_SPIRV_CROSS_REFLECTION
+
+struct ShaderLibraryInternal;
+
+// ShaderLibrary uses //vendor/spirv_cross to determine the number of
+// descriptors in each shader's descriptor set.
+//
+// Best practice with Vulkan is to have a single DescriptorSet which is used by
+// all active shaders. Since not all shaders need all descriptors, it is
+// expected there will be "unused variables" in some or all shaders if the
+// shaders share the DescriptorSet in this manner.
+//
+// ShaderLibrary will print a warning if a Shader uses a different layout
+// (requiring a different DescriptorSet) but will still work:
+// "Shader does not match other Shader's layouts. Performance penalty."
+class ShaderLibrary {
+ public:
+  ShaderLibrary(language::Device& dev) : pool{dev} {}
+  virtual ~ShaderLibrary();
+
+  // load creates and calls loadSPV() on a Shader. If loadSPV() fails, it
+  // returns a null shared_ptr.
+  std::shared_ptr<command::Shader> load(const void* spvBegin,
+                                        const void* spvEnd) {
+    auto shader =
+        std::shared_ptr<command::Shader>(new command::Shader(pool.dev));
+    if (shader->loadSPV(spvBegin, spvEnd)) {
+      // Failed. Return a null shared_ptr.
+      return std::shared_ptr<command::Shader>();
+    }
+    return shader;
+  }
+  // load creates and calls loadSPV() on a Shader. If loadSPV() fails, it
+  // returns a null shared_ptr.
+  std::shared_ptr<command::Shader> load(const void* spvBegin, size_t len) {
+    return load(spvBegin, (const char*)spvBegin + len);
+  }
+  // load creates and calls loadSPV() on a Shader. If loadSPV() fails, it
+  // returns a null shared_ptr.
+  std::shared_ptr<command::Shader> load(const std::vector<char>& spv) {
+    return load(&*spv.begin(), &*spv.end());
+  }
+  // load creates and calls loadSPV() on a Shader. If loadSPV() fails, it
+  // returns a null shared_ptr.
+  std::shared_ptr<command::Shader> load(const std::vector<uint32_t>& spv) {
+    return load(&*spv.begin(), &*spv.end());
+  }
+  // load creates and calls loadSPV() on a Shader. If loadSPV() fails, it
+  // returns a null shared_ptr.
+  std::shared_ptr<command::Shader> load(const char* filename) {
+    auto shader =
+        std::shared_ptr<command::Shader>(new command::Shader(pool.dev));
+    if (shader->loadSPV(filename)) {
+      // Failed. Return a null shared_ptr.
+      return std::shared_ptr<command::Shader>();
+    }
+    return shader;
+  }
+  // load creates and calls loadSPV() on a Shader. If loadSPV() fails, it
+  // returns a null shared_ptr.
+  std::shared_ptr<command::Shader> load(std::string filename) {
+    return load(filename.c_str());
+  }
+
+  // stage puts a shader into a pipeline at the specified stageBits.
+  WARN_UNUSED_RESULT int stage(command::RenderPass& renderPass,
+                               PipeBuilder& pipe,
+                               std::shared_ptr<command::Shader> shader,
+                               VkShaderStageFlagBits stageBits,
+                               std::string entryPointName = "main");
+
+  // binding binds the given Sampler at the specified bindPoint.
+  WARN_UNUSED_RESULT int binding(int bindPoint, memory::Sampler& sampler);
+  // binding binds the given Buffer at the specified bindPoint.
+  WARN_UNUSED_RESULT int binding(int bindPoint, memory::Buffer& buffer);
+
+  // How to figure out the right DescriptorSet for the given pipe?
+  // Then call builder.bindGraphicsPipelineAndDescriptors(pipe, 0,
+  // sizeof(desc_set), desc_set).
+  WARN_UNUSED_RESULT int bindGraphicsPipeline(command::CommandBuilder& command,
+                                              PipeBuilder& pipe);
+
+ protected:
+  memory::DescriptorPool pool;
+  ShaderLibraryInternal* lib;
+};
+
+#endif /*USE_SPIRV_CROSS_REFLECTION*/
 
 }  // namespace science

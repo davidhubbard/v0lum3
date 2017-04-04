@@ -228,5 +228,26 @@ inline void _VkInit(VkSamplerCreateInfo& sci) {
   sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 }
 
+inline void _VkInit(VkDescriptorPoolCreateInfo& dpci) {
+  memset(&dpci, 0, sizeof(dpci));
+  dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+}
+
+inline void _VkInit(VkDescriptorPoolSize& dps) { memset(&dps, 0, sizeof(dps)); }
+
+inline void _VkInit(VkDescriptorSetLayoutCreateInfo& dsli) {
+  memset(&dsli, 0, sizeof(dsli));
+  dsli.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+}
+
+inline void _VkInit(VkDescriptorSetLayoutBinding& dslb) {
+  memset(&dslb, 0, sizeof(dslb));
+}
+
+inline void _VkInit(VkDescriptorSetAllocateInfo& dsai) {
+  memset(&dsai, 0, sizeof(dsai));
+  dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+}
+
 }  // namespace internal
 }  // namespace language

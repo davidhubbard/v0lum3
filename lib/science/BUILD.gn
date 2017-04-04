@@ -1,20 +1,27 @@
 # Copyright (c) David Hubbard 2017. Licensed under GPLv3.
 
+declare_args() {
+  use_spirv_cross_reflection = true
+}
+
 config("science_config") {
   include_dirs = [ get_path_info("../..", "abspath" ) ]
 }
 
 static_library("science") {
-  sources = [
-    "science.cpp",
-  ]
-
+  sources = [ "science.cpp" ]
   deps = [
     "//lib/command",
     "//lib/language",
     "//lib/memory",
     "//vendor/VulkanSamples:vulkan",
   ]
+  defines = []
+  if (use_spirv_cross_reflection) {
+    defines += [ "USE_SPIRV_CROSS_REFLECTION" ]
+    sources += [ "reflect.cpp" ]
+    deps += [ "//vendor/spirv_cross" ]
+  }
 
   configs -= [ "//gn:no_rtti" ]
   public_configs = [ ":science_config" ]

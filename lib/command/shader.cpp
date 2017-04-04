@@ -65,20 +65,22 @@ int Shader::loadSPV(const char* filename) {
   return r;
 }
 
-Shader& PipelineCreateInfo::addShader(language::Device& dev,
-                                      RenderPass& renderPass,
-                                      VkShaderStageFlagBits stageBits,
-                                      std::string entryPointName) {
-  renderPass.shaders.emplace_back(dev);
-  auto& shader = *(renderPass.shaders.end() - 1);
-
+int PipelineCreateInfo::addShader(std::shared_ptr<Shader> shader,
+                                  language::Device& dev, RenderPass& renderPass,
+                                  VkShaderStageFlagBits stageBits,
+                                  std::string entryPointName /*= "main"*/) {
   stages.emplace_back();
   auto& pipelinestage = *(stages.end() - 1);
-  pipelinestage.sci.stage = stageBits;
-  pipelinestage.shader_i = renderPass.shaders.size() - 1;
+  pipelinestage.info.stage = stageBits;
   pipelinestage.entryPointName = entryPointName;
 
-  return shader;
+  // renderPass.shaders is a set, so shader will not be duplicated in it.
+  auto result = renderPass.shaders.insert(shader);
+  // result.first is a std::iterator<std::shared_ptr<Shader>> pointing to
+  // the Shader in the set.
+  // result.second is (bool) false if the shader was a duplicate.
+  pipelinestage.shader = *result.first;
+  return 0;
 }
 
 }  // namespace command

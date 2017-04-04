@@ -190,17 +190,17 @@ int Pipeline::init(language::Device& dev, RenderPass& renderPass,
   }
 
   VkGraphicsPipelineCreateInfo VkInit(p);
-  std::vector<VkPipelineShaderStageCreateInfo> stagecis;
+  std::vector<VkPipelineShaderStageCreateInfo> stageCreateInfo;
   stageName.resize(info.stages.size());
   for (size_t i = 0; i < info.stages.size(); i++) {
     auto& stage = info.stages.at(i);
     stageName.at(i) = stage.entryPointName;
-    stage.sci.module = renderPass.shaders.at(stage.shader_i).vk;
-    stage.sci.pName = stageName.at(i).c_str();
-    stagecis.push_back(stage.sci);
+    stage.info.module = stage.shader->vk;
+    stage.info.pName = stageName.at(i).c_str();
+    stageCreateInfo.push_back(stage.info);
   }
-  p.stageCount = stagecis.size();
-  p.pStages = stagecis.data();
+  p.stageCount = stageCreateInfo.size();
+  p.pStages = stageCreateInfo.data();
   p.pVertexInputState = &info.vertsci;
   p.pInputAssemblyState = &info.asci;
   p.pViewportState = &info.viewsci;
@@ -227,5 +227,7 @@ int Pipeline::init(language::Device& dev, RenderPass& renderPass,
   }
   return 0;
 }
+
+Pipeline::~Pipeline() {}
 
 }  // namespace command

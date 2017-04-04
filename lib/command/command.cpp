@@ -42,4 +42,6 @@ int CommandPool::alloc(std::vector<VkCommandBuffer>& buf,
   return 0;
 }
 
+CommandBuilder::~CommandBuilder() { cpool.free(bufs); }
+
 }  // namespace command

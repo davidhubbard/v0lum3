@@ -4,6 +4,8 @@
 
 namespace science {
 
+SwapChainResizeObserver::~SwapChainResizeObserver(){};
+
 int PipeBuilder::addDepthImage(language::Device& dev, command::RenderPass& pass,
                                command::CommandBuilder& builder,
                                const std::vector<VkFormat>& formatChoices) {
@@ -45,11 +47,11 @@ int PipeBuilder::addDepthImage(language::Device& dev, command::RenderPass& pass,
       dev, depthImage.info.format,
       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-  return recreateSwapChainExtent(dev, builder);
+  return onResized(dev, builder);
 }
 
-int PipeBuilder::recreateSwapChainExtent(language::Device& dev,
-                                         command::CommandBuilder& builder) {
+int PipeBuilder::onResized(language::Device& dev,
+                           command::CommandBuilder& builder) {
   // if addDepthImage() was called, recreate the depthImage.
   if (depthImage.info.format != VK_FORMAT_UNDEFINED) {
     depthImage.info.extent = {1, 1, 1};
@@ -84,7 +86,6 @@ int PipeBuilder::recreateSwapChainExtent(language::Device& dev,
       framebuf.attachments.emplace_back(depthImageView.vk);
     }
   }
-
   return 0;
 }
 

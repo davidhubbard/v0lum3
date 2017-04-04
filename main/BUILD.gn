@@ -25,6 +25,7 @@ executable("v") {
     "//lib/science",
     "//lib/memory",
     "//vendor/glfw",
+    "//vendor/spirv_cross",
     "//vendor/VulkanSamples:glm",
     "//vendor/skia",
     # dep VulkanSamples must be after dep skia to produce the correct
