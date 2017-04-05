@@ -348,13 +348,10 @@ typedef struct Event {
 class CommandPool {
  protected:
   language::QueueFamily* qf_ = nullptr;
-  VkDevice vkdev;
 
  public:
   CommandPool(language::Device& dev, language::SurfaceSupport queueFamily)
-      : vkdev(dev.dev),
-        queueFamily(queueFamily),
-        vk{dev.dev, vkDestroyCommandPool} {
+      : dev(dev), queueFamily(queueFamily), vk{dev.dev, vkDestroyCommandPool} {
     vk.allocator = dev.dev.allocator;
   }
   CommandPool(CommandPool&&) = default;
@@ -374,7 +371,7 @@ class CommandPool {
   // when dynamically replacing an existing set of CommandBuffers.
   void free(std::vector<VkCommandBuffer>& buf) {
     if (!buf.size()) return;
-    vkFreeCommandBuffers(vkdev, vk, buf.size(), buf.data());
+    vkFreeCommandBuffers(dev.dev, vk, buf.size(), buf.data());
   }
 
   // alloc calls vkAllocateCommandBuffers to populate buf with empty buffers.
@@ -388,7 +385,7 @@ class CommandPool {
       VkCommandPoolResetFlagBits flags =
           VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT) {
     VkResult v;
-    if ((v = vkResetCommandPool(vkdev, vk, flags)) != VK_SUCCESS) {
+    if ((v = vkResetCommandPool(dev.dev, vk, flags)) != VK_SUCCESS) {
       fprintf(stderr, "vkResetCommandPool failed: %d (%s)\n", v,
               string_VkResult(v));
       return 1;
@@ -396,6 +393,7 @@ class CommandPool {
     return 0;
   }
 
+  language::Device& dev;
   const language::SurfaceSupport queueFamily;
   VkPtr<VkCommandPool> vk;
 };
@@ -621,7 +619,7 @@ class CommandBuilder {
   }
 
   WARN_UNUSED_RESULT int copyBuffer(VkBuffer src, VkBuffer dst,
-                                    std::vector<VkBufferCopy>& regions) {
+                                    const std::vector<VkBufferCopy>& regions) {
     if (regions.size() == 0) {
       fprintf(stderr, "copyBuffer with empty regions\n");
       return 1;

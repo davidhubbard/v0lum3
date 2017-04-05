@@ -6,9 +6,12 @@ declare_args() {
 
 config("science_config") {
   include_dirs = [ get_path_info("../..", "abspath" ) ]
+  if (use_spirv_cross_reflection) {
+    defines = [ "USE_SPIRV_CROSS_REFLECTION" ]
+  }
 }
 
-static_library("science") {
+source_set("science") {
   sources = [ "science.cpp" ]
   deps = [
     "//lib/command",
@@ -16,9 +19,7 @@ static_library("science") {
     "//lib/memory",
     "//vendor/VulkanSamples:vulkan",
   ]
-  defines = []
   if (use_spirv_cross_reflection) {
-    defines += [ "USE_SPIRV_CROSS_REFLECTION" ]
     sources += [ "reflect.cpp" ]
     deps += [ "//vendor/spirv_cross" ]
   }

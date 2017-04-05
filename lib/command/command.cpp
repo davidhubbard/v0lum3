@@ -33,7 +33,7 @@ int CommandPool::alloc(std::vector<VkCommandBuffer>& buf,
   ai.level = level;
   ai.commandBufferCount = (decltype(ai.commandBufferCount))buf.size();
 
-  VkResult v = vkAllocateCommandBuffers(vkdev, &ai, buf.data());
+  VkResult v = vkAllocateCommandBuffers(dev.dev, &ai, buf.data());
   if (v != VK_SUCCESS) {
     fprintf(stderr, "vkAllocateCommandBuffers failed: %d (%s)\n", v,
             string_VkResult(v));

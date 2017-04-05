@@ -177,13 +177,19 @@ class SwapChainResizeObserver {
   // onResized is called when the Device dev's swapchain is resized.
   // The CommandBuilder builder is ready to receive setup commands related
   // to the resize (specifically, begin...() has been called on builder.)
-  WARN_UNUSED_RESULT virtual int onResized(
-      language::Device& dev, command::CommandBuilder& builder) = 0;
+  WARN_UNUSED_RESULT virtual int onResized(language::Instance& instance,
+                                           language::Device& dev,
+                                           command::CommandBuilder& builder,
+                                           VkExtent2D newSize) = 0;
 };
 
+// ResizeDeviceWaitIdle is a convenient SwapChainResizeObserver  which
+// just calls vkDeviceWaitIdle.
 struct ResizeDeviceWaitIdle : public SwapChainResizeObserver {
-  WARN_UNUSED_RESULT virtual int onResized(language::Device& dev,
-                                           command::CommandBuilder& builder) {
+  WARN_UNUSED_RESULT virtual int onResized(language::Instance& instance,
+                                           language::Device& dev,
+                                           command::CommandBuilder& builder,
+                                           VkExtent2D newSize) {
     VkResult v = vkDeviceWaitIdle(dev.dev);
     if (v != VK_SUCCESS) {
       fprintf(stderr,
@@ -195,43 +201,51 @@ struct ResizeDeviceWaitIdle : public SwapChainResizeObserver {
   }
 };
 
+// ResizeResetSwapChain is a convenient SwapChainResizeObserver which
+// just calls language::Device::resetSwapChain.
+struct ResizeResetSwapChain : public SwapChainResizeObserver {
+  WARN_UNUSED_RESULT virtual int onResized(language::Instance& instance,
+                                           language::Device& dev,
+                                           command::CommandBuilder& builder,
+                                           VkExtent2D newSize) {
+    return dev.resetSwapChain(instance.surface, newSize);
+  }
+};
+
 struct SwapChainResizeList {
-  SwapChainResizeList(VkSurfaceKHR surface) : surface(surface) {
+  SwapChainResizeList(language::Instance& instance) : instance(instance) {
+    // Set up some default initial SwapChainResizeObservers.
     list.emplace_back(&resizeDeviceWaitIdle);
+    list.emplace_back(&resizeResetSwapChain);
   }
   ResizeDeviceWaitIdle resizeDeviceWaitIdle;
+  ResizeResetSwapChain resizeResetSwapChain;
 
+  language::Instance& instance;
   // list contains all SwapChainResizeObserver to be notified in onResized.
   std::vector<SwapChainResizeObserver*> list;
-  // surface is needed to call dev.resetSwapChain().
-  VkSurfaceKHR surface;
 
   // syncResize notifies all SwapChainResizeObserver in list and waits until
   // the device has completed any command buffers.
-  int syncResize(language::Device& dev, command::CommandPool& cpool,
-                 VkExtent2D newSize) {
-    command::CommandBuilder rebuilder(cpool);
+  int syncResize(command::CommandPool& pool, VkExtent2D newSize,
+                 size_t poolQindex = 0) {
+    command::CommandBuilder rebuilder(pool);
     if (rebuilder.beginOneTimeUse()) {
       fprintf(stderr, "SwapChainResizeList: beginOneTimeUse failed\n");
       return 1;
     }
     for (size_t i = 0; i < list.size(); i++) {
       auto* observer = list.at(i);
-      if (observer->onResized(dev, rebuilder)) {
+      if (observer->onResized(instance, pool.dev, rebuilder, newSize)) {
         fprintf(stderr, "SwapChainResizeList: an observer failed\n");
         return 1;
-      }
-      if (i == 0) {
-        if (dev.resetSwapChain(surface, newSize)) {
-          return 1;
-        }
       }
     }
     if (rebuilder.end() || rebuilder.submit(0)) {
       fprintf(stderr, "SwapChainResizeList: rebuilder failed\n");
       return 1;
     }
-    vkQueueWaitIdle(cpool.q(0));
+    vkQueueWaitIdle(pool.q(poolQindex));
     return 0;
   }
 };
@@ -260,14 +274,16 @@ typedef struct PipeBuilder : public SwapChainResizeObserver {
   // PipeBuilder::depthImage. Do not delete PipeBuilder while RenderPass still
   // exists. (If not using addDepthImage, feel free to delete PipeBuilder.)
   WARN_UNUSED_RESULT int addDepthImage(
-      language::Device& dev, command::RenderPass& pass,
-      command::CommandBuilder& builder,
+      language::Instance& instance, language::Device& dev,
+      command::RenderPass& pass, command::CommandBuilder& builder,
       const std::vector<VkFormat>& formatChoices);
 
   // onResized allows PipeBuilder to rebuild itself when the swapChain is
   // resized.
-  WARN_UNUSED_RESULT virtual int onResized(language::Device& dev,
-                                           command::CommandBuilder& builder);
+  WARN_UNUSED_RESULT virtual int onResized(language::Instance& unusedInstance,
+                                           language::Device& dev,
+                                           command::CommandBuilder& builder,
+                                           VkExtent2D unusedNewSize);
 
   memory::Image depthImage;
   language::ImageView depthImageView;
@@ -290,21 +306,13 @@ struct ShaderLibraryInternal;
 // "Shader does not match other Shader's layouts. Performance penalty."
 class ShaderLibrary {
  public:
-  ShaderLibrary(language::Device& dev) : pool{dev} {}
+  ShaderLibrary(language::Device& dev) : pool{dev}, _i(nullptr) {}
   virtual ~ShaderLibrary();
 
   // load creates and calls loadSPV() on a Shader. If loadSPV() fails, it
   // returns a null shared_ptr.
   std::shared_ptr<command::Shader> load(const void* spvBegin,
-                                        const void* spvEnd) {
-    auto shader =
-        std::shared_ptr<command::Shader>(new command::Shader(pool.dev));
-    if (shader->loadSPV(spvBegin, spvEnd)) {
-      // Failed. Return a null shared_ptr.
-      return std::shared_ptr<command::Shader>();
-    }
-    return shader;
-  }
+                                        const void* spvEnd);
   // load creates and calls loadSPV() on a Shader. If loadSPV() fails, it
   // returns a null shared_ptr.
   std::shared_ptr<command::Shader> load(const void* spvBegin, size_t len) {
@@ -322,15 +330,7 @@ class ShaderLibrary {
   }
   // load creates and calls loadSPV() on a Shader. If loadSPV() fails, it
   // returns a null shared_ptr.
-  std::shared_ptr<command::Shader> load(const char* filename) {
-    auto shader =
-        std::shared_ptr<command::Shader>(new command::Shader(pool.dev));
-    if (shader->loadSPV(filename)) {
-      // Failed. Return a null shared_ptr.
-      return std::shared_ptr<command::Shader>();
-    }
-    return shader;
-  }
+  std::shared_ptr<command::Shader> load(const char* filename);
   // load creates and calls loadSPV() on a Shader. If loadSPV() fails, it
   // returns a null shared_ptr.
   std::shared_ptr<command::Shader> load(std::string filename) {
@@ -340,24 +340,27 @@ class ShaderLibrary {
   // stage puts a shader into a pipeline at the specified stageBits.
   WARN_UNUSED_RESULT int stage(command::RenderPass& renderPass,
                                PipeBuilder& pipe,
-                               std::shared_ptr<command::Shader> shader,
                                VkShaderStageFlagBits stageBits,
+                               std::shared_ptr<command::Shader> shader,
                                std::string entryPointName = "main");
 
   // binding binds the given Sampler at the specified bindPoint.
   WARN_UNUSED_RESULT int binding(int bindPoint, memory::Sampler& sampler);
   // binding binds the given Buffer at the specified bindPoint.
-  WARN_UNUSED_RESULT int binding(int bindPoint, memory::Buffer& buffer);
+  WARN_UNUSED_RESULT int binding(int bindPoint, memory::UniformBuffer& buffer);
 
   // How to figure out the right DescriptorSet for the given pipe?
   // Then call builder.bindGraphicsPipelineAndDescriptors(pipe, 0,
   // sizeof(desc_set), desc_set).
   WARN_UNUSED_RESULT int bindGraphicsPipeline(command::CommandBuilder& command,
-                                              PipeBuilder& pipe);
+                                              PipeBuilder& pipe,
+                                              VkDescriptorSet descriptorSet);
 
+  // TODO: delete this helper function
+  int getLayout(VkDescriptorSetLayout* pDescriptorSetLayout);
  protected:
   memory::DescriptorPool pool;
-  ShaderLibraryInternal* lib;
+  ShaderLibraryInternal* _i;
 };
 
 #endif /*USE_SPIRV_CROSS_REFLECTION*/

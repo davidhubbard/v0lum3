@@ -55,6 +55,7 @@ int Shader::loadSPV(const char* filename) {
   if (munmap(map, s.st_size) < 0) {
     fprintf(stderr, "loadSPV: munmap(%s) failed: %d %s\n", filename, errno,
             strerror(errno));
+    close(infile);
     return 1;
   }
   if (close(infile) < 0) {
@@ -78,7 +79,8 @@ int PipelineCreateInfo::addShader(std::shared_ptr<Shader> shader,
   auto result = renderPass.shaders.insert(shader);
   // result.first is a std::iterator<std::shared_ptr<Shader>> pointing to
   // the Shader in the set.
-  // result.second is (bool) false if the shader was a duplicate.
+  // result.second is (bool) false if the shader was a duplicate -- this
+  // is not an error: shaders can be reused.
   pipelinestage.shader = *result.first;
   return 0;
 }

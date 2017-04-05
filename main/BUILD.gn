@@ -36,4 +36,3 @@ executable("v") {
 
   configs -= [ "//gn:no_rtti" ]
 }
-

@@ -32,7 +32,9 @@ struct MemoryRequirements;
 // By using the overloaded constructors in MemoryRequirements,
 // DeviceMemory::alloc() is kept simple.
 typedef struct DeviceMemory {
-  DeviceMemory(language::Device& dev) : vk{dev.dev, vkFreeMemory} {}
+  DeviceMemory(language::Device& dev) : vk{dev.dev, vkFreeMemory} {
+    vk.allocator = dev.dev.allocator;
+  }
 
   // alloc() calls vkAllocateMemory() and returns non-zero on error.
   // Note: if you use Image, Buffer, etc. below, alloc() is automatically called
@@ -57,6 +59,7 @@ typedef struct DeviceMemory {
 // Image represents a VkImage.
 typedef struct Image {
   Image(language::Device& dev) : vk{dev.dev, vkDestroyImage}, mem(dev) {
+    vk.allocator = dev.dev.allocator;
     VkOverwrite(info);
     info.imageType = VK_IMAGE_TYPE_2D;
     // You must set info.extent.width, info.extent.height, and
@@ -147,6 +150,7 @@ typedef struct Image {
 // Buffer represents a VkBuffer.
 typedef struct Buffer {
   Buffer(language::Device& dev) : vk{dev.dev, vkDestroyBuffer}, mem(dev) {
+    vk.allocator = dev.dev.allocator;
     VkOverwrite(info);
     // You must set info.size.
     // You must set info.usage.
@@ -188,6 +192,52 @@ typedef struct Buffer {
   WARN_UNUSED_RESULT int bindMemory(language::Device& dev,
                                     VkDeviceSize offset = 0);
 
+  // copyFromHost copies bytes from the host at 'src' into this buffer.
+  // Note that copyFromHost only makes sense if the buffer has been constructed
+  // with ctorHostVisible or ctorHostCoherent.
+  WARN_UNUSED_RESULT int copyFromHost(language::Device& dev, void* src,
+                                      size_t len, VkDeviceSize dstOffset = 0);
+
+  // copyFrom copies all the contents of Buffer src immediately and waits
+  // until the copy is complete (synchronizing host and device).
+  // This is the simplest form of copy.
+  WARN_UNUSED_RESULT int copy(command::CommandPool& pool, Buffer& src) {
+    if (src.info.size > info.size) {
+      fprintf(stderr,
+              "Buffer::copy: "
+              "src.info.size=0x%lx is larger than my size 0x%lx\n",
+              src.info.size, info.size);
+      return 1;
+    }
+
+    command::CommandBuilder copyCommand(pool);
+    if (copyCommand.beginOneTimeUse() || copy(copyCommand, src) ||
+        copyCommand.end() || copyCommand.submit(0)) {
+      return 1;
+    }
+    vkQueueWaitIdle(pool.q(0));
+    return 0;
+  }
+
+  // copy copies all the contents of Buffer src using builder, and does
+  // not wait for the copy to complete.
+  // Note that more finely controlled copies can be done with
+  // command::CommandBuilder::copyBuffer().
+  WARN_UNUSED_RESULT int copy(command::CommandBuilder& builder, Buffer& src,
+                              VkDeviceSize dstOffset = 0) {
+    if (dstOffset + src.info.size > info.size) {
+      fprintf(stderr,
+              "Buffer::copy: "
+              "dstOffset=0x%lx, src.info.size=0x%lx but my size 0x%lx\n",
+              dstOffset, src.info.size, info.size);
+      return 1;
+    }
+
+    VkBufferCopy region = {};
+    region.dstOffset = dstOffset;
+    region.size = src.info.size;
+    return builder.copyBuffer(src.vk, vk, std::vector<VkBufferCopy>{region});
+  }
   VkBufferCreateInfo info;
   VkPtr<VkBuffer> vk;  // populated after ctorError().
   DeviceMemory mem;    // ctorError() calls mem.alloc() for you.
@@ -225,6 +275,7 @@ typedef struct Sampler {
   // which looks very blocky / pixellated).
   Sampler(language::Device& dev)
       : image{dev}, imageView{dev}, vk{dev.dev, vkDestroySampler} {
+    vk.allocator = dev.dev.allocator;
     VkOverwrite(info);
     // info.magFilter = VK_FILTER_NEAREST;
     // info.minFilter = VK_FILTER_NEAREST;
@@ -265,6 +316,34 @@ typedef struct Sampler {
   VkSamplerCreateInfo info;
   VkPtr<VkSampler> vk;
 } Sampler;
+
+// UniformBuffer contains a buffer (just plain ordinary bytes) and adds a
+// helper method for updating it before starting a RenderPass.
+typedef struct UniformBuffer : public Buffer {
+  UniformBuffer(language::Device& dev) : Buffer{dev}, stage{dev} {}
+  UniformBuffer(UniformBuffer&&) = default;
+  UniformBuffer(const UniformBuffer&) = delete;
+
+  WARN_UNUSED_RESULT int ctorError(language::Device& dev, size_t nBytes) {
+    info.size = stage.info.size = nBytes;
+    info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    return stage.ctorHostCoherent(dev) || stage.bindMemory(dev) ||
+           ctorDeviceLocal(dev) || bindMemory(dev);
+  }
+
+  // copy automatically handles staging the host data in a host-visible
+  // Buffer 'stage', then copying it to the device-optimal Buffer 'this'.
+  WARN_UNUSED_RESULT int copy(command::CommandPool& pool, void* src, size_t len,
+                              VkDeviceSize dstOffset = 0) {
+    if (stage.copyFromHost(pool.dev, src, len, dstOffset)) {
+      fprintf(stderr, "stage.copyFromHost failed\n");
+      return 1;
+    }
+    return Buffer::copy(pool, stage);
+  }
+
+  Buffer stage;
+} UniformBuffer;
 
 // DescriptorPool represents memory reserved for a DescriptorSet (or many).
 // The assumption is that your application knows in advance the max number of

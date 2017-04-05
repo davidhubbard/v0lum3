@@ -90,6 +90,50 @@ int Buffer::bindMemory(language::Device& dev, VkDeviceSize offset /*= 0*/) {
   return 0;
 }
 
+int Buffer::copyFromHost(language::Device& dev, void* src, size_t len,
+                         VkDeviceSize dstOffset /*= 0*/) {
+  if (!(info.usage & VK_IMAGE_USAGE_TRANSFER_SRC_BIT)) {
+    fprintf(stderr,
+            "WARNING: Buffer::copyFromHost on a Buffer where neither "
+            "ctorHostVisible nor ctorHostCoherent was used.\n"
+            "WARNING: usage = 0x%x",
+            info.usage);
+
+    // Dump info.usage bits.
+    const char* firstPrefix = " (";
+    const char* prefix = firstPrefix;
+    for (uint64_t bit = 1; bit < VK_BUFFER_USAGE_FLAG_BITS_MAX_ENUM;
+         bit <<= 1) {
+      if (((uint64_t)info.usage) & bit) {
+        fprintf(stderr, "%s%s", prefix,
+                string_VkBufferUsageFlagBits((VkBufferUsageFlagBits)bit));
+        prefix = " | ";
+      }
+    }
+    if (prefix != firstPrefix) {
+      fprintf(stderr, ")");
+    }
+    fprintf(stderr, "\n");
+    return 1;
+  }
+
+  if (dstOffset + len > info.size) {
+    fprintf(stderr,
+            "BUG: Buffer::copyFromHost(len=0x%lx, dstOffset=0x%lx).\n"
+            "BUG: when Buffer.info.size=0x%lx\n",
+            len, dstOffset, info.size);
+    return 1;
+  }
+
+  void* mapped;
+  if (mem.mmap(dev, &mapped)) {
+    return 1;
+  }
+  memcpy(((char*)mapped) + dstOffset, src, len);
+  mem.munmap(dev);
+  return 0;
+}
+
 MemoryRequirements::MemoryRequirements(language::Device& dev, VkImage img)
     : dev(dev) {
   VkOverwrite(vkalloc);
