@@ -268,10 +268,10 @@ typedef struct RenderPass {
 
   // passBeginInfo is populated by ctorError(). Customize it as needed.
   // Note that YOU MUST update passBeginInfo.frameBuffer each frame -- it is not
-  // something ctorError() can set for you. And YOU MUST set
-  // passBeginInfo.renderArea.extent any time the window is resized.
-  // CommandBuilder::beginRenderPass() assumes you have correctly set
-  // passBeginInfo.
+  // something ctorError() can set for you. passBeginInfo.renderArea.extent
+  // must also be updated any time the window is resized, but
+  // CommandBuilder::beginRenderPass() just overwrites renderArea.extent for
+  // you.
   VkRenderPassBeginInfo passBeginInfo;
 
   // passBeginClearColors is referenced in passBeginInfo.
@@ -724,6 +724,8 @@ class CommandBuilder {
               "Device::framebufs.\n");
       return 1;
     }
+    pass.passBeginInfo.renderArea.extent = cpool.dev.swapChainExtent;
+
     vkCmdBeginRenderPass(buf, &pass.passBeginInfo, contents);
     return 0;
   }

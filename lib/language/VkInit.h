@@ -249,5 +249,10 @@ inline void _VkInit(VkDescriptorSetAllocateInfo& dsai) {
   dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 }
 
+inline void _VkInit(VkWriteDescriptorSet& wds) {
+  memset(&wds, 0, sizeof(wds));
+  wds.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+}
+
 }  // namespace internal
 }  // namespace language

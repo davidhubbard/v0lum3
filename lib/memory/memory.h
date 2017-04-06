@@ -195,8 +195,17 @@ typedef struct Buffer {
   // copyFromHost copies bytes from the host at 'src' into this buffer.
   // Note that copyFromHost only makes sense if the buffer has been constructed
   // with ctorHostVisible or ctorHostCoherent.
-  WARN_UNUSED_RESULT int copyFromHost(language::Device& dev, void* src,
+  WARN_UNUSED_RESULT int copyFromHost(language::Device& dev, const void* src,
                                       size_t len, VkDeviceSize dstOffset = 0);
+
+  // copyFromHost specialization for a std::vector<T>.
+  template <typename T>
+  WARN_UNUSED_RESULT int copyFromHost(language::Device& dev,
+                                      const std::vector<T>& vec,
+                                      VkDeviceSize dstOffset = 0) {
+    return copyFromHost(dev, vec.data(), sizeof(vec[0]) * vec.size(),
+                        dstOffset);
+  }
 
   // copyFrom copies all the contents of Buffer src immediately and waits
   // until the copy is complete (synchronizing host and device).
@@ -356,6 +365,8 @@ typedef struct DescriptorPool {
       : dev(dev), vk{dev.dev, vkDestroyDescriptorPool} {
     vk.allocator = dev.dev.allocator;
   }
+  DescriptorPool(DescriptorPool&&) = default;
+  DescriptorPool(const DescriptorPool&) = delete;
 
   // ctorError calls vkCreateDescriptorPool to enable creating
   // a DescriptorSet from this pool.
@@ -392,72 +403,83 @@ typedef struct DescriptorSetLayout {
       : vk{dev.dev, vkDestroyDescriptorSetLayout} {
     vk.allocator = dev.dev.allocator;
   }
+  DescriptorSetLayout(DescriptorSetLayout&&) = default;
+  DescriptorSetLayout(const DescriptorSetLayout&) = delete;
 
+  // ctorError calls vkCreateDescriptorSetLayout.
   WARN_UNUSED_RESULT int ctorError(
       language::Device& dev,
-      const std::vector<VkDescriptorSetLayoutBinding>& bindings) {
-    VkDescriptorSetLayoutCreateInfo VkInit(info);
-    info.bindingCount = bindings.size();
-    info.pBindings = bindings.data();
+      const std::vector<VkDescriptorSetLayoutBinding>& bindings);
 
-    VkResult v =
-        vkCreateDescriptorSetLayout(dev.dev, &info, dev.dev.allocator, &vk);
-    if (v != VK_SUCCESS) {
-      fprintf(stderr, "vkCreateDescriptorSetLayout failed: %d (%s)\n", v,
-              string_VkResult(v));
-      return 1;
-    }
-    return 0;
-  }
-
+  std::vector<VkDescriptorType> types;
   VkPtr<VkDescriptorSetLayout> vk;
 } DescriptorSetLayout;
 
 // DescriptorSet represents a set of bindings (which represent buffers) that
 // the host application must bind (provide) for the shader. If the
 // DescriptorSet does not match the layout defined in the shader, Vulkan will
-// report an error.
+// report an error (and/or crash).
 //
 // A DescriptorSet is allocated to match a DescriptorSetLayout and retains a
 // reference to the DescriptorPool from which it was allocated.
 //
 // Notes:
 // 1. When it is allocated, it does not contain a valid type or buffer! Use
-//    VkWriteDescriptorSet to populate the DescriptorSet with type and buffer.
+//    DescriptorSet::write to populate the DescriptorSet with type and buffer.
 // 2. During Pipeline initialization, VkDescriptorSetLayout objects are linked
 //    to the shader to assemble a valid pipeline (see PipelineCreateInfo).
 // 3. During a RenderPass, binding a DescriptorSet to the shader provides the
 //    shader with its inputs and outputs.
 typedef struct DescriptorSet {
-  DescriptorSet(DescriptorPool& pool) : pool(pool) {}
+  DescriptorSet(DescriptorPool& pool) : pool{pool} {}
   virtual ~DescriptorSet();
 
-  WARN_UNUSED_RESULT int ctorError(DescriptorSetLayout& layout) {
-    return ctorError(layout.vk);
+  // ctorError calls vkAllocateDescriptorSets.
+  WARN_UNUSED_RESULT int ctorError(const DescriptorSetLayout& layout);
+
+  // write populates the DescriptorSet with type and buffer.
+  WARN_UNUSED_RESULT int write(
+      uint32_t binding, const std::vector<VkDescriptorImageInfo> imageInfo,
+      uint32_t arrayI = 0);
+  // write populates the DescriptorSet with type and buffer.
+  WARN_UNUSED_RESULT int write(
+      uint32_t binding, const std::vector<VkDescriptorBufferInfo> bufferInfo,
+      uint32_t arrayI = 0);
+  // write populates the DescriptorSet with type and buffer.
+  WARN_UNUSED_RESULT int write(
+      uint32_t binding, const std::vector<VkBufferView> texelBufferViewInfo,
+      uint32_t arrayI = 0);
+
+  // write populates the DescriptorSet with type and buffer.
+  WARN_UNUSED_RESULT int write(uint32_t binding,
+                               const std::vector<Sampler*> samplers,
+                               uint32_t arrayI = 0) {
+    std::vector<VkDescriptorImageInfo> imageInfo;
+    imageInfo.resize(samplers.size());
+    for (size_t i = 0; i < samplers.size(); i++) {
+      samplers.at(i)->toDescriptor(&imageInfo.at(i));
+    }
+    return write(binding, imageInfo, arrayI);
   }
 
-  WARN_UNUSED_RESULT int ctorError(VkDescriptorSetLayout layout) {
-    VkDescriptorSetAllocateInfo VkInit(info);
-    info.descriptorPool = pool.vk;
-    info.descriptorSetCount = 1;
-    info.pSetLayouts = &layout;
-
-    VkResult v = vkAllocateDescriptorSets(pool.dev.dev, &info, &vk);
-    if (v != VK_SUCCESS) {
-      fprintf(stderr,
-              "vkAllocateDescriptorSets failed: %d (%s)\n"
-              "The Vulkan spec suggests:\n"
-              "1. Ignore the exact error code returned.\n"
-              "2. Try creating a new DescriptorPool.\n"
-              "3. Retry DescriptorSet::ctorError().\n"
-              "4. If that fails, abort.\n",
-              v, string_VkResult(v));
-      return 1;
+  // write populates the DescriptorSet with type and buffer.
+  WARN_UNUSED_RESULT int write(uint32_t binding,
+                               const std::vector<Buffer*> buffers,
+                               uint32_t arrayI = 0) {
+    std::vector<VkDescriptorBufferInfo> bufferInfos;
+    bufferInfos.resize(buffers.size());
+    for (size_t i = 0; i < buffers.size(); i++) {
+      auto& bufferInfo = bufferInfos.at(i);
+      auto& buffer = *buffers.at(i);
+      bufferInfo.buffer = buffer.vk;
+      bufferInfo.offset = 0;
+      bufferInfo.range = buffer.info.size;
     }
-    return 0;
+    return write(binding, bufferInfos, arrayI);
   }
 
   DescriptorPool& pool;
+  std::vector<VkDescriptorType> types;
   VkDescriptorSet vk;
 } DescriptorSet;
 

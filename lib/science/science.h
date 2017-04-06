@@ -1,7 +1,7 @@
-/* Copyright (c) David Hubbard 2016. Licensed under the GPLv3.
+/* Copyright (c) David Hubbard 2017. Licensed under the GPLv3.
  *
- * lib/memory is the 4th-level bindings for the Vulkan graphics library.
- * lib/memory is part of the v0lum3 project.
+ * lib/science is the 5th-level bindings for the Vulkan graphics library.
+ * lib/science is part of the v0lum3 project.
  * This library is called "science" as a homage to Star Trek First Contact.
  * Like the Vulcan Science Academy, this library is a repository of knowledge
  * as a series of builder classes.
@@ -278,6 +278,41 @@ typedef struct PipeBuilder : public SwapChainResizeObserver {
       command::RenderPass& pass, command::CommandBuilder& builder,
       const std::vector<VkFormat>& formatChoices);
 
+  // addVertexInput initializes a vertex *type* as an input to shaders. The
+  // type variable is passed at compile time.
+  // Example usage:
+  //   struct MyVertex {
+  //     glm::vec3 pos;
+  //   };
+  //   ...
+  //   if (pipeBuilder.addVertexInput<MyVertex>()) { ... }
+  template <typename T>
+  WARN_UNUSED_RESULT int addVertexInput(
+      const std::vector<VkVertexInputAttributeDescription> attributes) {
+    return addVertexInputBySize(sizeof(T), attributes);
+  }
+
+  // addVertexInputBySize is the non-template version of addVertexInput().
+  WARN_UNUSED_RESULT int addVertexInputBySize(
+      size_t nBytes,
+      const std::vector<VkVertexInputAttributeDescription> attributes) {
+    vertexInputs.emplace_back();
+    VkVertexInputBindingDescription& bindingDescription =
+        *(vertexInputs.end() - 1);
+    bindingDescription.binding = 0;
+    bindingDescription.stride = nBytes;
+    bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+    pipeline.info.vertsci.vertexBindingDescriptionCount = vertexInputs.size();
+    pipeline.info.vertsci.pVertexBindingDescriptions = vertexInputs.data();
+
+    attributeInputs.insert(attributes.begin(), attributes.end());
+    pipeline.info.vertsci.vertexAttributeDescriptionCount =
+        attributeInputs.size();
+    pipeline.info.vertsci.pVertexAttributeDescriptions = attributeInputs.data();
+    return 0;
+  }
+
   // onResized allows PipeBuilder to rebuild itself when the swapChain is
   // resized.
   WARN_UNUSED_RESULT virtual int onResized(language::Instance& unusedInstance,
@@ -285,11 +320,41 @@ typedef struct PipeBuilder : public SwapChainResizeObserver {
                                            command::CommandBuilder& builder,
                                            VkExtent2D unusedNewSize);
 
+  std::vector<VkVertexInputBindingDescription> vertexInputs;
+  std::vector<VkVertexInputAttributeDescription> attributeInputs;
   memory::Image depthImage;
   language::ImageView depthImageView;
 } PipeBuilder;
 
 #ifdef USE_SPIRV_CROSS_REFLECTION
+
+// DescriptorLibrary is the DescriptorSet objects and DescriptorPool they are
+// allocated from.
+class DescriptorLibrary {
+ public:
+  DescriptorLibrary(language::Device& dev) : pool{dev} {}
+
+  std::vector<memory::DescriptorSetLayout> layouts;
+
+  // makeSet creates a new DescriptorSet from layouts[layoutI].
+  // A shaders that declares "layout(set = N)" for N > 0 results in
+  // needing a layoutI > 0 here.
+  //
+  // Example usage:
+  //   DescriptorLibrary library;
+  //   // You MUST call makeDescriptorLibrary to init library.
+  //   shaderLibrary.makeDescriptorLibrary(library);
+  //   std::unique_ptr<memory::DescriptorSet> d(library.makeSet(pipeBuilder));
+  //   if (!d) {
+  //     handleErrors;
+  //   }
+  std::unique_ptr<memory::DescriptorSet> makeSet(PipeBuilder& pipe,
+                                                 size_t layoutI = 0);
+
+ protected:
+  friend class ShaderLibrary;
+  memory::DescriptorPool pool;
+};
 
 struct ShaderLibraryInternal;
 
@@ -306,7 +371,7 @@ struct ShaderLibraryInternal;
 // "Shader does not match other Shader's layouts. Performance penalty."
 class ShaderLibrary {
  public:
-  ShaderLibrary(language::Device& dev) : pool{dev}, _i(nullptr) {}
+  ShaderLibrary(language::Device& dev) : dev{dev}, _i(nullptr) {}
   virtual ~ShaderLibrary();
 
   // load creates and calls loadSPV() on a Shader. If loadSPV() fails, it
@@ -344,22 +409,15 @@ class ShaderLibrary {
                                std::shared_ptr<command::Shader> shader,
                                std::string entryPointName = "main");
 
-  // binding binds the given Sampler at the specified bindPoint.
-  WARN_UNUSED_RESULT int binding(int bindPoint, memory::Sampler& sampler);
-  // binding binds the given Buffer at the specified bindPoint.
-  WARN_UNUSED_RESULT int binding(int bindPoint, memory::UniformBuffer& buffer);
+  // makeDescriptorLibrary inits a DescriptorLibrary to the ShaderLibrary and
+  // inits its layouts from the layouts in the shaders in ShaderLibrary.
+  //
+  // Note: you MUST call load() at least once before calling
+  // makeDescriptorLibrary.
+  int makeDescriptorLibrary(DescriptorLibrary& descriptorLibrary);
 
-  // How to figure out the right DescriptorSet for the given pipe?
-  // Then call builder.bindGraphicsPipelineAndDescriptors(pipe, 0,
-  // sizeof(desc_set), desc_set).
-  WARN_UNUSED_RESULT int bindGraphicsPipeline(command::CommandBuilder& command,
-                                              PipeBuilder& pipe,
-                                              VkDescriptorSet descriptorSet);
-
-  // TODO: delete this helper function
-  int getLayout(VkDescriptorSetLayout* pDescriptorSetLayout);
  protected:
-  memory::DescriptorPool pool;
+  language::Device& dev;
   ShaderLibraryInternal* _i;
 };
 
