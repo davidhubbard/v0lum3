@@ -306,7 +306,8 @@ typedef struct PipeBuilder : public SwapChainResizeObserver {
     pipeline.info.vertsci.vertexBindingDescriptionCount = vertexInputs.size();
     pipeline.info.vertsci.pVertexBindingDescriptions = vertexInputs.data();
 
-    attributeInputs.insert(attributes.begin(), attributes.end());
+    attributeInputs.insert(attributeInputs.end(), attributes.begin(),
+                           attributes.end());
     pipeline.info.vertsci.vertexAttributeDescriptionCount =
         attributeInputs.size();
     pipeline.info.vertsci.pVertexAttributeDescriptions = attributeInputs.data();
