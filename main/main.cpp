@@ -62,18 +62,18 @@ struct Vertex {
     attribute->offset = offsetof(Vertex, pos);
 
     attributes.emplace_back();
-    VkVertexInputAttributeDescription* attribute = &*(attributes.end() - 1);
-    attributes->binding = 0;
-    attributes->location = 1;
-    attributes->format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributes->offset = offsetof(Vertex, color);
+    attribute = &*(attributes.end() - 1);
+    attribute->binding = 0;
+    attribute->location = 1;
+    attribute->format = VK_FORMAT_R32G32B32_SFLOAT;
+    attribute->offset = offsetof(Vertex, color);
 
     attributes.emplace_back();
-    VkVertexInputAttributeDescription* attribute = &*(attributes.end() - 1);
-    attributes->binding = 0;
-    attributes->location = 2;
-    attributes->format = VK_FORMAT_R32G32_SFLOAT;
-    attributes->offset = offsetof(Vertex, texCoord);
+    attribute = &*(attributes.end() - 1);
+    attribute->binding = 0;
+    attribute->location = 2;
+    attribute->format = VK_FORMAT_R32G32_SFLOAT;
+    attribute->offset = offsetof(Vertex, texCoord);
 
     return attributes;
   }
